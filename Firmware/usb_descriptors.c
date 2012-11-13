@@ -172,9 +172,9 @@ ROM USB_DEVICE_DESCRIPTOR device_dsc=
     0x00,                   // Subclass code
     0x00,                   // Protocol code
     USB_EP0_BUFF_SIZE,          // Max packet size for EP0, see usb_config.h
-    0x04D8,                 // Vendor ID
-    0x003F,                 // Product ID: Custom HID device demo
-    0x0002,                 // Device release number in BCD format
+    0x10CF,                 // Vendor ID: Velleman
+    0x55F0,                 // Product ID: Open8055
+    0x0000,                 // Device release number in BCD format
     0x01,                   // Manufacturer string index
     0x02,                   // Product string index
     0x00,                   // Device serial number string index
@@ -190,7 +190,7 @@ ROM BYTE configDescriptor1[]={
     1,                      // Number of interfaces in this cfg
     1,                      // Index value of this configuration
     0,                      // Configuration string index
-    _DEFAULT | _SELF,               // Attributes, see usb_device.h
+    _DEFAULT,               // Attributes, see usb_device.h
     50,                     // Max power consumption (2X mA)
 							
     /* Interface Descriptor */
@@ -207,27 +207,27 @@ ROM BYTE configDescriptor1[]={
     /* HID Class-Specific Descriptor */
     0x09,//sizeof(USB_HID_DSC)+3,    // Size of this descriptor in bytes
     DSC_HID,                // HID descriptor type
-    0x11,0x01,                 // HID Spec Release Number in BCD format (1.11)
+    0x11,0x01,				// HID Spec Release Number in BCD format (1.11)
     0x00,                   // Country Code (0x00 for Not supported)
     HID_NUM_OF_DSC,         // Number of class descriptors, see usbcfg.h
     DSC_RPT,                // Report descriptor type
-    HID_RPT01_SIZE,0x00,//sizeof(hid_rpt01),      // Size of the report descriptor
+    HID_RPT01_SIZE,0x00,	//sizeof(hid_rpt01),      // Size of the report descriptor
     
     /* Endpoint Descriptor */
-    0x07,/*sizeof(USB_EP_DSC)*/
-    USB_DESCRIPTOR_ENDPOINT,    //Endpoint Descriptor
-    HID_EP | _EP_IN,                   //EndpointAddress
-    _INTERRUPT,                       //Attributes
-    0x40,0x00,                  //size
-    0x01,                        //Interval
+    0x07,						//sizeof(USB_EP_DSC)
+    USB_DESCRIPTOR_ENDPOINT,	//Endpoint Descriptor
+    HID_EP | _EP_IN,			//EndpointAddress
+    _INTERRUPT,					//Attributes
+    0x20,0x00,					//size
+    0x01,						//Interval
 
     /* Endpoint Descriptor */
-    0x07,/*sizeof(USB_EP_DSC)*/
+    0x07,						//sizeof(USB_EP_DSC)
     USB_DESCRIPTOR_ENDPOINT,    //Endpoint Descriptor
-    HID_EP | _EP_OUT,                   //EndpointAddress
-    _INTERRUPT,                       //Attributes
-    0x40,0x00,                  //size
-    0x01                        //Interval
+    HID_EP | _EP_OUT,			//EndpointAddress
+    _INTERRUPT,					//Attributes
+    0x20,0x00,					//size
+    0x01						//Interval
 };
 
 //Language code string descriptor
@@ -238,15 +238,14 @@ sizeof(sd000),USB_DESCRIPTOR_STRING,{0x0409
 //Manufacturer string descriptor
 ROM struct{BYTE bLength;BYTE bDscType;WORD string[25];}sd001={
 sizeof(sd001),USB_DESCRIPTOR_STRING,
-{'M','i','c','r','o','c','h','i','p',' ',
-'T','e','c','h','n','o','l','o','g','y',' ','I','n','c','.'
+{'V','e','l','l','e','m','a','n',' ',
+'C','o','m','p','o','n','e','n','t','s',',',' ','I','n','c','.'
 }};
 
 //Product string descriptor
-ROM struct{BYTE bLength;BYTE bDscType;WORD string[22];}sd002={
+ROM struct{BYTE bLength;BYTE bDscType;WORD string[8];}sd002={
 sizeof(sd002),USB_DESCRIPTOR_STRING,
-{'S','i','m','p','l','e',' ','H','I','D',' ',
-'D','e','v','i','c','e',' ','D','e','m','o'
+{'O','p','e','n','8','0','5','5'
 }};
 
 //Class specific descriptor - HID 
@@ -256,15 +255,17 @@ ROM struct{BYTE report[HID_RPT01_SIZE];}hid_rpt01={
     0x09, 0x01,             // Usage (Vendor Usage 1)
     0xA1, 0x01,             // Collection (Application)
     0x19, 0x01,             //      Usage Minimum 
-    0x29, 0x40,             //      Usage Maximum 	//64 input usages total (0x01 to 0x40)
-    0x15, 0x01,             //      Logical Minimum (data bytes in the report may have minimum value = 0x00)
-    0x25, 0x40,      	  	//      Logical Maximum (data bytes in the report may have maximum value = 0x00FF = unsigned 255)
+    0x29, 0x08,             //      Usage Maximum 	//8 input usages total
+    0x15, 0x00,             //      Logical Minimum (data bytes in the report may have minimum value = 0x00)
+    0x25, 0xFF,		  	  	//      Logical Maximum (data bytes in the report may have maximum value = 0x00FF = unsigned 255)
     0x75, 0x08,             //      Report Size: 8-bit field size
-    0x95, 0x40,             //      Report Count: Make sixty-four 8-bit fields (the next time the parser hits an "Input", "Output", or "Feature" item)
+    0x95, 0x10,             //      Report Count: Make sixteen 8-bit fields (the next time the parser hits an "Input", "Output", or "Feature" item)
     0x81, 0x00,             //      Input (Data, Array, Abs): Instantiates input packet fields based on the above report size, count, logical min/max, and usage.
     0x19, 0x01,             //      Usage Minimum 
-    0x29, 0x40,             //      Usage Maximum 	//64 output usages total (0x01 to 0x40)
-    0x91, 0x00,             //      Output (Data, Array, Abs): Instantiates output packet fields.  Uses same report size and count as "Input" fields, since nothing new/different was specified to the parser since the "Input" item.
+    0x29, 0x08,             //      Usage Maximum 	//8 output usages total
+    0x75, 0x08,             //      Command Size: 8-bit field size
+    0x95, 0x08,				//      Command Count: Make eught 8-bit fields
+    0x91, 0x00,             //      Output (Data, Array, Abs): Instantiates output packet fields.  
     0xC0}                   // End Collection
 };                  
 
