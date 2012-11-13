@@ -1,26 +1,28 @@
-// File: Application_18f4550.lkr
+// File: PIC18F2550_HID_Bootload.lkr
 
-// Use this linker for the USB application that will be self programmed by the HID bootloader.
-// The HID bootloader project itself uses the BootModified.18f4450.lkr file instead.
+// Use this linker script for the USB application that will be self programmed by the 
+// Open8055 HID Bootloader
 
 // THIS LINKER SCRIPT HAS BEEN MODIFIED...  This version is intended to be used
-// with the "PROGRAMMABLE_WITH_USB_HID_BOOTLOADER" bootloader.  The HID
-// bootloader occupies memory ranges 0x000-0xFFF.  In order for the code generated
+// with the "PROGRAMMABLE_WITH_USB_HID_BOOTLOADER" bootloader for modified
+// Velleman K8055(N) USB Experiment Interface Boards.
+//
+// The bootloader occupies memory ranges 0x0000-0x10FF.  In order for the code generated
 // by this project to work with the bootloader, the linker must not put any code
-// in the 0x00-0xFFF address range.
+// in the 0x0000-0x10FF address range.
 
-// This linker script was originated from the 18f4550.lkr file provided by
-// the MCC18 distribution.
+// This linker script was derived from the "rm18f4550 - HID Bootload.lkr" file provided by
+// Microchip Application Libraries.
 
 LIBPATH .
 
 FILES c018i.o
 FILES clib.lib
-FILES p18F4550.lib
+FILES p18F2550.lib
 
-CODEPAGE   NAME=bootloader START=0x0          	   END=0xFFF          PROTECTED
-CODEPAGE   NAME=vectors    START=0x1000       	   END=0x1029	  	  PROTECTED
-CODEPAGE   NAME=page       START=0x102A            END=0x7FFF
+CODEPAGE   NAME=bootloader START=0x0          	   END=0x11FF         PROTECTED
+CODEPAGE   NAME=vectors    START=0x1200       	   END=0x1229	      PROTECTED
+CODEPAGE   NAME=page       START=0x122A            END=0x7FFF
 CODEPAGE   NAME=idlocs     START=0x200000          END=0x200007       PROTECTED
 CODEPAGE   NAME=config     START=0x300000          END=0x30000D       PROTECTED
 CODEPAGE   NAME=devid      START=0x3FFFFE          END=0x3FFFFF       PROTECTED
