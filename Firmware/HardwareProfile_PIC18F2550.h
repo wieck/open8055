@@ -1,8 +1,8 @@
 /********************************************************************
- FileName:     	HardwareProfile - PICDEM FSUSB.h
+ FileName:     	HardwareProfile - PIC18F2550.h
  Dependencies:  See INCLUDES section
- Processor:     PIC18 USB Microcontrollers
- Hardware:      PICDEM FSUSB
+ Processor:     PIC18F2550 USB Microcontroller
+ Hardware:      Open8055 based on original Vellaman K8055
  Compiler:      Microchip C18
  Company:       Microchip Technology, Inc.
 
@@ -36,10 +36,15 @@
                      coding style
   2.3   09/15/2008   Broke out each hardware platform into its own
                      "HardwareProfile - xxx.h" file
+                     
+  Open8055
+  
+  0.1	11/13/2012	Adjusted for Open8055 Firmware on modified
+  					K8055 board
 ********************************************************************/
 
-#ifndef HARDWARE_PROFILE_PICDEM_FSUSB_H
-#define HARDWARE_PROFILE_PICDEM_FSUSB_H
+#ifndef HARDWARE_PROFILE_PIC18F2550_H
+#define HARDWARE_PROFILE_PIC18F2550_H
 
     /*******************************************************************/
     /******** USB stack hardware selection options *********************/
@@ -53,30 +58,6 @@
     //  option carefully and determine which options are desired/required
     //  for your application.
 
-    //The PICDEM FS USB Demo Board platform supports the USE_SELF_POWER_SENSE_IO
-    //and USE_USB_BUS_SENSE_IO features.  Uncomment the below line(s) if
-    //it is desireable to use one or both of the features.
-    //#define USE_SELF_POWER_SENSE_IO
-    #define tris_self_power     TRISAbits.TRISA2    // Input
-    #if defined(USE_SELF_POWER_SENSE_IO)
-    #define self_power          PORTAbits.RA2
-    #else
-    #define self_power          1
-    #endif
-
-    //#define USE_USB_BUS_SENSE_IO
-    #define tris_usb_bus_sense  TRISAbits.TRISA1    // Input
-    #if defined(USE_USB_BUS_SENSE_IO)
-    #define USB_BUS_SENSE       PORTAbits.RA1
-    #else
-    #define USB_BUS_SENSE       1
-    #endif
-
-
-    //Uncomment the following line to make the output HEX of this  
-    //  project work with the MCHPUSB Bootloader    
-    //#define PROGRAMMABLE_WITH_USB_MCHPUSB_BOOTLOADER
-	
     //Uncomment the following line to make the output HEX of this 
     //  project work with the HID Bootloader
     #define PROGRAMMABLE_WITH_USB_HID_BOOTLOADER		
@@ -96,60 +77,110 @@
     //  initialization functions for the board.  These defitions are only
     //  required in the stack provided demos.  They are not required in
     //  final application design.
-    #define DEMO_BOARD PICDEM_FS_USB
-    #define PICDEM_FS_USB
+    #define OPEN8055_PIC18F2550
     #define CLOCK_FREQ 48000000
 
+    /** SELF POWER *****************************************************/
 
-    /** LED ************************************************************/
-    #define mInitAllLEDs()      LATD &= 0xF0; TRISD &= 0xF0;
+    #define tris_usb_bus_sense  
+    #define usb_bus_sense       1
+    #define tris_self_power     
+    #define self_power          1
     
-    #define mLED_1              LATDbits.LATD0
-    #define mLED_2              LATDbits.LATD1
-    #define mLED_3              LATDbits.LATD2
-    #define mLED_4              LATDbits.LATD3
+    /** IO PORT SETTINGS ***********************************************/
     
-    #define mGetLED_1()         mLED_1
-    #define mGetLED_2()         mLED_2
-    #define mGetLED_3()         mLED_3
-    #define mGetLED_4()         mLED_4
+    //Port A
+    //	RA0, RA1 are analog inputs
+    //	RA2, RA3 are the board addres jumpers sk5, sk6
+    //	RA4, RA5 are digital inputs I1, I2
+    #define OPEN8055_TRISA 0x3F
+    
+    //Port B
+    //	RB0..RB7 are digital outputs D1..D8
+    #define OPEN8055_TRISB 0x00
+    
+    //Port C
+    //	RC0 is digital input I3
+    //	RC1, RC2 are PWM outputs
+    //	RC6, RC7 are digital inputs I4, I5
+    #define OPEN8055_TRISC 0xC9
 
-    #define mLED_1_On()         mLED_1 = 1;
-    #define mLED_2_On()         mLED_2 = 1;
-    #define mLED_3_On()         mLED_3 = 1;
-    #define mLED_4_On()         mLED_4 = 1;
-    
-    #define mLED_1_Off()        mLED_1 = 0;
-    #define mLED_2_Off()        mLED_2 = 0;
-    #define mLED_3_Off()        mLED_3 = 0;
-    #define mLED_4_Off()        mLED_4 = 0;
-    
-    #define mLED_1_Toggle()     mLED_1 = !mLED_1;
-    #define mLED_2_Toggle()     mLED_2 = !mLED_2;
-    #define mLED_3_Toggle()     mLED_3 = !mLED_3;
-    #define mLED_4_Toggle()     mLED_4 = !mLED_4;
-    
-    /** SWITCH *********************************************************/
-    #define mInitAllSwitches()  TRISBbits.TRISB4=1;TRISBbits.TRISB5=1;
-    #define mInitSwitch2()      TRISBbits.TRISB4=1;
-    #define mInitSwitch3()      TRISBbits.TRISB5=1;
-    #define sw2                 PORTBbits.RB4
-    #define sw3                 PORTBbits.RB5
-    
-    /** POT ************************************************************/
-    #define mInitPOT()          {TRISAbits.TRISA0=1;ADCON0=0x01;ADCON2=0x3C;ADCON2bits.ADFM = 1;}
+    /** SWITCHES *******************************************************/
 
-    /** USB external transceiver interface (optional) ******************/
-    #define tris_usb_vpo        TRISBbits.TRISB3    // Output
-    #define tris_usb_vmo        TRISBbits.TRISB2    // Output
-    #define tris_usb_rcv        TRISAbits.TRISA4    // Input
-    #define tris_usb_vp         TRISCbits.TRISC5    // Input
-    #define tris_usb_vm         TRISCbits.TRISC4    // Input
-    #define tris_usb_oe         TRISCbits.TRISC1    // Output
+	#define OPEN8055sw1	PORTAbits.RA4
+	#define OPEN8055sw2	PORTAbits.RA5
+	#define OPEN8055sw3	PORTCbits.RC0
+	#define OPEN8055sw4	PORTCbits.RC6
+	#define OPEN8055sw5	PORTCbits.RC7
+
+    /** ADDRESS JUMPER *************************************************/
+
+    #define OPEN8055sk5	PORTAbits.RA2
+    #define OPEN8055sk6	PORTAbits.RA3
     
-    #define tris_usb_suspnd     TRISAbits.TRISA3    // Output
+    /** OUPUT PORTS ****************************************************/
+
+    #define OPEN8055d1	PORTBbits.RB0
+    #define OPEN8055d2	PORTBbits.RB1
+    #define OPEN8055d3	PORTBbits.RB2
+    #define OPEN8055d4	PORTBbits.RB3
+    #define OPEN8055d5	PORTBbits.RB4
+    #define OPEN8055d6	PORTBbits.RB5
+    #define OPEN8055d7	PORTBbits.RB6
+    #define OPEN8055d8	PORTBbits.RB7
+    
+    /** ADC CONFIG *****************************************************/
+
+	// set up ADC we need to wait a least 2us after this before setting GO/DONE
+	// 2us = 8*Tcy (at 4MHz bus clock)
+	
+	// ADCON1
+	// bit7..6 	- Unimplemented
+	// bit5..4	- VCFG1..0, 00 = supply rails
+	// bit3..0	- PCGG3..0, 1101 = AIN1..0 only
+	#define OPEN8055_ADCON1 0x0D
+
+	// ADCON2
+	// bit 5-3 ACQT2:ACQT0: A/D Acquisition Time Select bits
+	//		111 = 20 TAD
+	//		110 = 16 TAD
+	//		101 = 12 TAD
+	//		100 = 8 TAD
+	//		011 = 6 TAD
+	//		010 = 4 TAD
+	//		001 = 2 TAD
+	//		000 = 0 TAD(1)
+	// bit 2-0 ADCS2:ADCS0: A/D Conversion Clock Select bits
+	//		111 = FRC (clock derived from A/D RC oscillator)(1)
+	//		110 = FOSC/64
+	//		101 = FOSC/16
+	//		100 = FOSC/4
+	//		011 = FRC (clock derived from A/D RC oscillator)(1)
+	//		010 = FOSC/32
+	//		001 = FOSC/8
+	//		000 = FOSC/2
+	#define OPEN8055_ADCON2 0b10101010 // 20TAD,FOSC/32
+
+
+	//ADCON0
+	// bit7..6 	- Unimplemented
+	// bit5..2 	- CHS3:0, channel select
+	// bit1		- GO/DONE
+	// bit1		- ADON
+	#define OPEN8055_ADCON0 0x01
+
+    /** PWM CONFIG *****************************************************/
+	
+	//The original K8055 PWM runs at 23.43 kHz. 
+	//At 96 MHz Fosc with a Timer2 prescale of 4 
+	// 1 / ((255+1) * 4 * (1/Fosc) * 4) = 23,437
+	#define OPEN8055_T2CKPS0	1
+	#define OPEN8055_T2CKPS1	0
+	#define OPEN8055_PWMPR2		127
+	#define OPEN8055_CCP1CON	0x0C
+	#define OPEN8055_CCP2CON	0x0C
     
     /** I/O pin definitions ********************************************/
     #define INPUT_PIN 1
     #define OUTPUT_PIN 0
-#endif  //HARDWARE_PROFILE_PICDEM_FSUSB_H
+#endif  //HARDWARE_PROFILE_PIC18F2550_H
