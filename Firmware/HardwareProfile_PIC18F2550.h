@@ -88,6 +88,10 @@
     #define self_power          1
     
     /** IO PORT SETTINGS ***********************************************/
+
+	//ADCON1
+	//	Setting these bits in ADCON1 configures all ports to digital.
+	#define OPEN8055_ADCON1_ALL_DIGITAL_MASK	0x0F
     
     //Port A
     //	RA0, RA1 are analog inputs

@@ -43,9 +43,6 @@
   
 ********************************************************************/
 
-#ifndef MAIN_C
-#define MAIN_C
-
 /** INCLUDES *******************************************************/
 
 #include "HardwareProfile.h"
@@ -97,9 +94,7 @@
 	#error "Unsupported Processor type"
 #endif
 
-/** VARIABLES ******************************************************/
-#pragma udata
-
+/** USB IO Buffers *************************************************/
 #if defined(__18F14K50) || defined(__18F13K50) || defined(__18LF14K50) || defined(__18LF13K50) 
     #pragma udata usbram2
 #elif defined(__18F2455) || defined(__18F2550) || defined(__18F4455) || defined(__18F4550)\
@@ -111,38 +106,38 @@
     #pragma udata
 #endif
 
-unsigned char ReceivedDataBuffer[32];
-unsigned char ToSendDataBuffer[32];
+unsigned char receivedDataBuffer[32];
+unsigned char toSendDataBuffer[32];
+
+/** VARIABLES ******************************************************/
 #pragma udata
 
-USB_HANDLE USBOutHandle = 0;
-USB_HANDLE USBInHandle = 0;
+USB_HANDLE outputHandle = 0;
+USB_HANDLE inputHandle = 0;
 
 /** PRIVATE PROTOTYPES *********************************************/
-void BlinkUSBStatus(void);
-BOOL Switch2IsPressed(void);
-BOOL Switch3IsPressed(void);
-static void InitializeSystem(void);
-void ProcessIO(void);
-void UserInit(void);
-void YourHighPriorityISRCode();
-void YourLowPriorityISRCode();
+void highPriorityISRCode();
+void lowPriorityISRCode();
+
+static void initializeSystem(void);
+static void userInit(void);
+static void processIO(void);
+static void BlinkUSBStatus(void);
+
 void USBCBSendResume(void);
 
 /** VECTOR REMAPPING ***********************************************/
 
 //On PIC18 devices, addresses 0x00, 0x08, and 0x18 are used for
 //the reset, high priority interrupt, and low priority interrupt
-//vectors.  However, the current Microchip USB bootloader 
-//examples are intended to occupy addresses 0x00-0x7FF or
-//0x00-0xFFF depending on which bootloader is used.  Therefore,
+//vectors.  However, the current Open8055 boot loader occupies
+//addresses 0x0000-0x11FF. Therefore,
 //the bootloader code remaps these vectors to new locations
 //as indicated below.  This remapping is only necessary if you
 //wish to program the hex file generated from this project with
 //the USB bootloader.  If no bootloader is used, edit the
-//usb_config.h file and comment out the following defines:
+//usb_config.h file and comment out the following define:
 //#define PROGRAMMABLE_WITH_USB_HID_BOOTLOADER
-//#define PROGRAMMABLE_WITH_USB_LEGACY_CUSTOM_CLASS_BOOTLOADER
 
 #if defined(PROGRAMMABLE_WITH_USB_HID_BOOTLOADER)
 	#define REMAPPED_RESET_VECTOR_ADDRESS			0x1200
@@ -163,14 +158,14 @@ void _reset (void)
 }
 #endif
 #pragma code REMAPPED_HIGH_INTERRUPT_VECTOR = REMAPPED_HIGH_INTERRUPT_VECTOR_ADDRESS
-void Remapped_High_ISR (void)
+void remappedHighISR (void)
 {
-     _asm goto YourHighPriorityISRCode _endasm
+     _asm goto highPriorityISRCode _endasm
 }
 #pragma code REMAPPED_LOW_INTERRUPT_VECTOR = REMAPPED_LOW_INTERRUPT_VECTOR_ADDRESS
-void Remapped_Low_ISR (void)
+void remappedLowISR (void)
 {
-     _asm goto YourLowPriorityISRCode _endasm
+     _asm goto lowPriorityISRCode _endasm
 }
 
 #if defined(PROGRAMMABLE_WITH_USB_HID_BOOTLOADER)
@@ -192,12 +187,12 @@ void Remapped_Low_ISR (void)
 //and the hex file still works like normal.  The below section is only required to fix this
 //scenario.
 #pragma code HIGH_INTERRUPT_VECTOR = 0x08
-void High_ISR (void)
+void highISR (void)
 {
      _asm goto REMAPPED_HIGH_INTERRUPT_VECTOR_ADDRESS _endasm
 }
 #pragma code LOW_INTERRUPT_VECTOR = 0x18
-void Low_ISR (void)
+void lowISR (void)
 {
      _asm goto REMAPPED_LOW_INTERRUPT_VECTOR_ADDRESS _endasm
 }
@@ -206,9 +201,9 @@ void Low_ISR (void)
 #pragma code
 
 
-//These are your actual interrupt handling routines.
-#pragma interrupt YourHighPriorityISRCode
-void YourHighPriorityISRCode()
+//This is the actual high priority interrupt hander.
+#pragma interrupt highPriorityISRCode
+void highPriorityISRCode()
 {
 	//Check which interrupt flag caused the interrupt.
 	//Service the interrupt
@@ -219,8 +214,11 @@ void YourHighPriorityISRCode()
     #endif
 
 }	//This return will be a "retfie fast", since this is in a #pragma interrupt section 
-#pragma interruptlow YourLowPriorityISRCode
-void YourLowPriorityISRCode()
+
+
+//This is the actual low priority interrupt hander.
+#pragma interruptlow lowPriorityISRCode
+void lowPriorityISRCode()
 {
 	//Check which interrupt flag caused the interrupt.
 	//Service the interrupt
@@ -254,7 +252,7 @@ void main(void)
 int main(void)
 #endif
 {   
-    InitializeSystem();
+    initializeSystem();
 
     #if defined(USB_INTERRUPT)
         USBDeviceAttach();
@@ -280,13 +278,13 @@ int main(void)
  
 		// Application-specific tasks.
 		// Application related code may be added here, or in the ProcessIO() function.
-        ProcessIO();        
+        processIO();        
     }//end while
 }//end main
 
 
 /********************************************************************
- * Function:        static void InitializeSystem(void)
+ * Function:        static void initializeSystem(void)
  *
  * PreCondition:    None
  *
@@ -305,58 +303,19 @@ int main(void)
  *
  * Note:            None
  *******************************************************************/
-static void InitializeSystem(void)
+static void initializeSystem(void)
 {
-    ADCON1 |= 0x0F;                 // Default all pins to digital
-
-//	The USB specifications require that USB peripheral devices must never source
-//	current onto the Vbus pin.  Additionally, USB peripherals should not source
-//	current on D+ or D- when the host/hub is not actively powering the Vbus line.
-//	When designing a self powered (as opposed to bus powered) USB peripheral
-//	device, the firmware should make sure not to turn on the USB module and D+
-//	or D- pull up resistor unless Vbus is actively powered.  Therefore, the
-//	firmware needs some means to detect when Vbus is being powered by the host.
-//	A 5V tolerant I/O pin can be connected to Vbus (through a resistor), and
-// 	can be used to detect when Vbus is high (host actively powering), or low
-//	(host is shut down or otherwise not supplying power).  The USB firmware
-// 	can then periodically poll this I/O pin to know when it is okay to turn on
-//	the USB module/D+/D- pull up resistor.  When designing a purely bus powered
-//	peripheral device, it is not possible to source current on D+ or D- when the
-//	host is not actively providing power on Vbus. Therefore, implementing this
-//	bus sense feature is optional.  This firmware can be made to use this bus
-//	sense feature by making sure "USE_USB_BUS_SENSE_IO" has been defined in the
-//	HardwareProfile.h file.    
-    #if defined(USE_USB_BUS_SENSE_IO)
-    tris_usb_bus_sense = INPUT_PIN; // See HardwareProfile.h
-    #endif
-    
-//	If the host PC sends a GetStatus (device) request, the firmware must respond
-//	and let the host know if the USB peripheral device is currently bus powered
-//	or self powered.  See chapter 9 in the official USB specifications for details
-//	regarding this request.  If the peripheral device is capable of being both
-//	self and bus powered, it should not return a hard coded value for this request.
-//	Instead, firmware should check if it is currently self or bus powered, and
-//	respond accordingly.  If the hardware has been configured like demonstrated
-//	on the PICDEM FS USB Demo Board, an I/O pin can be polled to determine the
-//	currently selected power source.  On the PICDEM FS USB Demo Board, "RA2" 
-//	is used for	this purpose.  If using this feature, make sure "USE_SELF_POWER_SENSE_IO"
-//	has been defined in HardwareProfile.h, and that an appropriate I/O pin has been mapped
-//	to it in HardwareProfile.h.
-    #if defined(USE_SELF_POWER_SENSE_IO)
-    tris_self_power = INPUT_PIN;	// See HardwareProfile.h
-    #endif
-
-    UserInit();
+    userInit();			//Initialize according to Hardware Profile
     
     USBDeviceInit();	//usb_device.c.  Initializes USB module SFRs and firmware
     					//variables to known states.
 
-}//end InitializeSystem
+}//end initializeSystem
 
 
 
 /******************************************************************************
- * Function:        void UserInit(void)
+ * Function:        static void userInit(void)
  *
  * PreCondition:    None
  *
@@ -372,12 +331,15 @@ static void InitializeSystem(void)
  * Note:            
  *
  *****************************************************************************/
-void UserInit(void)
+static void userInit(void)
 {
     //initialize the variable holding the handle for the last
     // transmission
-    USBOutHandle = 0;
-    USBInHandle = 0;
+    outputHandle = 0;
+    inputHandle = 0;
+
+	//Set all ports to digital
+    ADCON1 |= OPEN8055_ADCON1_ALL_DIGITAL_MASK;
 
     //Configure all IO ports (definitions are in "HardwareProfile_PIC18F*.h")
     TRISA = OPEN8055_TRISA;
@@ -422,10 +384,10 @@ void UserInit(void)
 	T3CONbits.TMR3ON = 1;		//and turn it on.
 */
 
-}//end UserInit
+}//end userInit
 
 /********************************************************************
- * Function:        void ProcessIO(void)
+ * Function:        static void processIO(void)
  *
  * PreCondition:    None
  *
@@ -441,7 +403,7 @@ void UserInit(void)
  *
  * Note:            None
  *******************************************************************/
-void ProcessIO(void)
+static void processIO(void)
 {   
     //Blink the LEDs
     BlinkUSBStatus();
@@ -449,16 +411,16 @@ void ProcessIO(void)
     // User Application USB tasks
     if((USBDeviceState < CONFIGURED_STATE)||(USBSuspendControl==1)) return;
     
-    if(!HIDRxHandleBusy(USBOutHandle))				//Check if data was received from the host.
+    if(!HIDRxHandleBusy(outputHandle))				//Check if data was received from the host.
     {   
         // Process host message (by ignoring it)
         
         //Re-arm the OUT endpoint for the next packet
-        USBOutHandle = HIDRxPacket(HID_EP,(BYTE*)&ReceivedDataBuffer,64);
+        outputHandle = HIDRxPacket(HID_EP,(BYTE*)&receivedDataBuffer,64);
     }
 
     
-}//end ProcessIO
+}//end processIO
 
 /********************************************************************
  * Function:        void BlinkUSBStatus(void)
@@ -840,7 +802,7 @@ void USBCBInitEP(void)
     //enable the HID endpoint
     USBEnableEndpoint(HID_EP,USB_IN_ENABLED|USB_OUT_ENABLED|USB_HANDSHAKE_ENABLED|USB_DISALLOW_SETUP);
     //Re-arm the OUT endpoint for the next packet
-    USBOutHandle = HIDRxPacket(HID_EP,(BYTE*)&ReceivedDataBuffer,64);
+    outputHandle = HIDRxPacket(HID_EP,(BYTE*)&receivedDataBuffer,64);
 }
 
 /********************************************************************
@@ -1050,4 +1012,3 @@ BOOL USER_USB_CALLBACK_EVENT_HANDLER(USB_EVENT event, void *pdata, WORD size)
 }
 
 /** EOF main.c *************************************************/
-#endif
