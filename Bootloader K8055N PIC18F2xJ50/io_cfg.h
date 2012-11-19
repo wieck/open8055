@@ -36,7 +36,7 @@
  *							are not particularly useful for the
  *							bootloader.
  * Unofficial	02/17/2012	Added IO port definition section for the
- *							K8055_PIC18F2550_Bootloader.
+ *				OPEN8055_PIC18F2550_Bootloader.
  ********************************************************************/
 
 #ifndef IO_CFG_H
@@ -49,7 +49,7 @@
 #define INPUT_PIN           1
 #define OUTPUT_PIN          0
 
-#if defined(K8055N_PIC18F24J50)
+#if defined(OPEN8055_PIC18F24J50)
     /** SELF POWER *****************************************************/
 
     #define tris_usb_bus_sense  

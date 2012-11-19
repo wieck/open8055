@@ -39,8 +39,8 @@
 /** C O N S T A N T S **********************************************************/
 
 //Section defining the address range to erase for the erase device command, along with the valid programming range to be reported by the QUERY_DEVICE command.
-#define StartPageToErase				4		 //The 1024 byte page starting at address 0x1000 will be erased.
-#define ProgramMemStart					0x001000 //Beginning of application program memory (not occupied by bootloader).  **THIS VALUE MUST BE ALIGNED WITH 64 BYTE BLOCK BOUNDRY** Also, in order to work correctly, make sure the StartPageToErase is set to erase this section.
+#define StartPageToErase				5		 //The 1024 byte page starting at address 0x1400 will be erased.
+#define ProgramMemStart					0x001400 //Beginning of application program memory (not occupied by bootloader).  **THIS VALUE MUST BE ALIGNED WITH 64 BYTE BLOCK BOUNDRY** Also, in order to work correctly, make sure the StartPageToErase is set to erase this section.
 #define ConfigWordsSectionLength		0x08	//8 bytes worth of Configuration words on the PIC18F87J50 family devices
 
 //#if defined(__18F87J50)||defined(__18F67J50)

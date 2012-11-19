@@ -58,8 +58,10 @@
 
 #if defined(__18F2550)
     #include "HardwareProfile_PIC18F2550.h"
+#elif defined(__18F24J50)
+    #include "HardwareProfile_PIC18F24J50.h"
 #else
-    #error "Unsupported Processor for Open8055 Project"
+    #error "Unsupported Processor for Open8055 Project file __FILE__, line __LINE__"
 #endif
 
 #endif  //HARDWARE_PROFILE_H

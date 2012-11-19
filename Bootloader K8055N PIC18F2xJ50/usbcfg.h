@@ -50,7 +50,7 @@
 //#define PIC18F87J50_FS_USB_PIM
 //#define PIC18F46J50_PIM
 //#define YOUR_BOARD
-#define K8055N_PIC18F24J50
+#define OPEN8055_PIC18F24J50
 
 #if defined(PIC18F4550_PICDEM_FS_USB)
     #define USE_SELF_POWER_SENSE_IO
@@ -67,7 +67,7 @@
 #elif defined(PIC18F46J50_PIM)
     //#define USE_USB_BUS_SENSE_IO		//JP1 must be in R-U position to use this feature on this board		
 
-#elif defined (K8055N_PIC18F24J50)
+#elif defined (OPEN8055_PIC18F24J50)
 
 /*If using the YOUR_BOARD selection, uncomment below section as appropriate for your hardware*/
 //#elif defined(YOUR_BOARD)

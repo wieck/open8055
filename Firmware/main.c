@@ -93,6 +93,30 @@
 //      #pragma config EBTR2    = OFF
 //      #pragma config EBTR3    = OFF
         #pragma config EBTRB    = OFF
+#elif defined(OPEN8055_PIC18F24J50)
+     #pragma config WDTEN = OFF          //WDT disabled (enabled by SWDTEN bit)
+     #pragma config PLLDIV = 1           //4 MHz oscillator input
+     #pragma config STVREN = ON            //stack overflow/underflow reset enabled
+     #pragma config XINST = OFF          //Extended instruction set disabled
+     #pragma config CPUDIV = OSC1        //No CPU system clock divide
+     #pragma config CP0 = OFF            //Program memory is not code-protected
+     #pragma config OSC = HSPLL          //HS oscillator, PLL enabled, HSPLL used by USB
+     #pragma config T1DIG = OFF          //Sec Osc clock source may not be selected, unless T1OSCEN = 1
+     #pragma config LPT1OSC = OFF        //high power Timer1 mode
+     #pragma config FCMEN = OFF          //Fail-Safe Clock Monitor disabled
+     #pragma config IESO = OFF           //Two-Speed Start-up disabled
+     #pragma config WDTPS = 32768        //1:32768
+     #pragma config DSWDTOSC = INTOSCREF //DSWDT uses INTOSC/INTRC as clock
+     #pragma config RTCOSC = T1OSCREF    //RTCC uses T1OSC/T1CKI as clock
+     #pragma config DSBOREN = OFF        //Zero-Power BOR disabled in Deep Sleep
+     #pragma config DSWDTEN = OFF        //Disabled
+     #pragma config DSWDTPS = 8192       //1:8,192 (8.5 seconds)
+     #pragma config IOL1WAY = OFF        //IOLOCK bit can be set and cleared
+     #pragma config MSSP7B_EN = MSK7     //7 Bit address masking
+     #pragma config WPFP = PAGE_1        //Write Protect Program Flash Page 0
+     #pragma config WPEND = PAGE_0       //Start protection at page 0
+     #pragma config WPCFG = OFF          //Write/Erase last page protect Disabled
+     #pragma config WPDIS = OFF          //WPFP[5:0], WPEND, and WPCFG bits ignored 
 #else
 	#error "Unsupported Processor type file __FILE__ line __LINE__"
 #endif
@@ -144,9 +168,17 @@ void USBCBSendResume(void);
 //#define PROGRAMMABLE_WITH_USB_HID_BOOTLOADER
 
 #if defined(PROGRAMMABLE_WITH_USB_HID_BOOTLOADER)
+  #if defined(OPEN8055_PIC18F2550)
 	#define REMAPPED_RESET_VECTOR_ADDRESS			0x1200
 	#define REMAPPED_HIGH_INTERRUPT_VECTOR_ADDRESS	0x1208
 	#define REMAPPED_LOW_INTERRUPT_VECTOR_ADDRESS	0x1218
+  #elif defined(OPEN8055_PIC18F24J50)
+	#define REMAPPED_RESET_VECTOR_ADDRESS			0x1400
+	#define REMAPPED_HIGH_INTERRUPT_VECTOR_ADDRESS	0x1408
+	#define REMAPPED_LOW_INTERRUPT_VECTOR_ADDRESS	0x1418
+  #else
+    #error "Unsupported processor in file __FILE__, line __LINE__"
+  #endif
 #else	
 	#define REMAPPED_RESET_VECTOR_ADDRESS			0x00
 	#define REMAPPED_HIGH_INTERRUPT_VECTOR_ADDRESS	0x08
@@ -256,6 +288,21 @@ void main(void)
 int main(void)
 #endif
 {   
+    #if defined(OPEN8055_PIC18F24J50)
+	//On the PIC18F87J50 Family of USB microcontrollers, the PLL will not power up and be enabled
+	//by default, even if a PLL enabled oscillator configuration is selected (such as HS+PLL).
+	//This allows the device to power up at a lower initial operating frequency, which can be
+	//advantageous when powered from a source which is not gauranteed to be adequate for 48MHz
+	//operation.  On these devices, user firmware needs to manually set the OSCTUNE<PLLEN> bit to
+	//power up the PLL.
+    {
+        unsigned int pll_startup_counter = 600;
+        OSCTUNEbits.PLLEN = 1;  //Enable the PLL and wait 2+ms until the PLL locks before enabling USB module
+        while(pll_startup_counter--);
+    }
+    //Device switches over automatically to PLL output after PLL is locked and ready.
+    #endif
+
     initializeSystem();
 
     #if defined(USB_INTERRUPT)
@@ -313,7 +360,6 @@ static void initializeSystem(void)
     
     USBDeviceInit();	//usb_device.c.  Initializes USB module SFRs and firmware
     					//variables to known states.
-
 }//end initializeSystem
 
 
@@ -347,7 +393,14 @@ static void userInit(void)
     inputHandle = 0;
 
 	//Set all ports to digital
-    ADCON1 |= OPEN8055_ADCON1_ALL_DIGITAL_MASK;
+	#if defined(OPEN8055_PIC18F2550)
+	    ADCON1 |= OPEN8055_ADCON1_ALL_DIGITAL_MASK;
+	#elif defined(OPEN8055_PIC18F24J50)
+		ANCON0 = OPEN8055_ANCON0;
+		ANCON1 = OPEN8055_ANCON1;
+	#else
+		#error "Unsupported processor in file __FILE__, line __LINE__"
+	#endif
 
     //Configure all IO ports (definitions are in "HardwareProfile_PIC18F*.h")
     TRISA = OPEN8055_TRISA;
@@ -359,13 +412,21 @@ static void userInit(void)
     CCPR2L = 0;
     
 	//Configure ADC (definitions are in "HardwareProfile_PIC18F*.h")
-	ADCON1 = OPEN8055_ADCON1;
-	ADCON2 = OPEN8055_ADCON2;
-	ADCON0 = OPEN8055_ADCON0;
+	#if defined(OPEN8055_PIC18F2550)
+		ADCON1 = OPEN8055_ADCON1;
+		ADCON2 = OPEN8055_ADCON2;
+		ADCON0 = OPEN8055_ADCON0;
+	#elif defined(OPEN8055_PIC18F24J50)
+		ADCON1 = OPEN8055_ADCON1;
+		ADCON0 = OPEN8055_ADCON0;
+	#else
+		#error "Unsupported processor in file __FILE__, line __LINE__"
+	#endif
+	
 
 	//Make sure that interrupt priotities and low priority interrupts
 	//are enabled.
-	RCONbits.IPEN	= 1;
+/*	RCONbits.IPEN	= 1;
 	INTCONbits.GIEL	= 1;
 
 	//Setup PWM configuration including timer2
@@ -379,7 +440,7 @@ static void userInit(void)
 	CCP2CON = OPEN8055_CCP2CON;
 
     T2CONbits.TMR2ON = 1;
-
+*/
 /*
 	//Enable Timer3 for our internal ticker
 	T3CON = 0x04;				//Timer1 is using internal 12 MHz clock
@@ -393,15 +454,20 @@ static void userInit(void)
 */
 
 	//Determine the cardAddress depending on sk5 and sk6.
-	#if defined (__18F2550)
-		cardAddress = ((PORTAbits.RA3) ? 2 : 0) | ((PORTAbits.RA2) ? 1 : 0);
+	#if defined(OPEN8055_PIC18F2550)
+		cardAddress = ((OPEN8055sk6) ? 2 : 0) + ((OPEN8055sk5) ? 1 : 0);
+	#elif defined(OPEN8055_PIC18F24J50)
+		OPEN8055sk56power = 1;
+		{int i = 100; while(--i);}
+		cardAddress = ((OPEN8055sk6) ? 0 : 2) + ((OPEN8055sk5) ? 0 : 1);
+		OPEN8055sk56power = 0;
+		TRISC = OPEN8055_TRISC_J;
 	#else
 		#error "Unsupported Processor type file __FILE__ line __LINE__"
 	#endif
 	#if defined(USB_USER_DEVICE_DESCRIPTOR_INCLUDE)
 		device_dsc.idProduct = (device_dsc.idProduct & 0xFFF0) | cardAddress;
 	#endif
-
 }//end userInit
 
 /********************************************************************
@@ -422,7 +488,10 @@ static void userInit(void)
  * Note:            None
  *******************************************************************/
 static void processIO(void)
-{   
+{
+    OPEN8055d7 = OPEN8055sw1;
+    OPEN8055d8 = OPEN8055sw2;
+
     // User Application USB tasks
     if((USBDeviceState < CONFIGURED_STATE)||(USBSuspendControl==1)) return;
     
@@ -434,7 +503,6 @@ static void processIO(void)
         outputHandle = HIDRxPacket(HID_EP,(BYTE*)&receivedDataBuffer,64);
     }
 
-    
 }//end processIO
 
 

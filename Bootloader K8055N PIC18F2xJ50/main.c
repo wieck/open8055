@@ -151,7 +151,7 @@ project will have to be modified to make the BootPage section larger.
 //#elif defined(YOUR_BOARD)
 		//Add the configuration pragmas here for your hardware platform
 		//#pragma config ... 		= ...
-#elif defined(K8055N_PIC18F24J50)
+#elif defined(OPEN8055_PIC18F24J50)
      #pragma config WDTEN = OFF          //WDT disabled (enabled by SWDTEN bit)
      #pragma config PLLDIV = 1           //4 MHz oscillator input
      #pragma config STVREN = ON            //stack overflow/underflow reset enabled
@@ -207,38 +207,21 @@ void
 _entry (void)
 {
 	_asm
-	//movlb	0x0F				//Address: 0x00		//Will be checking RB2 pushbutton state, but need to set ANCON1<PCFG8> bit first. ANCON1 register is not in access bank
-	//bsf		ANCON1, 0, 1		//Address: 0x02		//Configure RB2/AN8 as digital input
-	//bra		BootEntryIOCheck	//Address: 0x04		//bra BootEntryIOCheck skips past the high-priority interrupt redirect
-	//nop							//Address: 0x06		//Filler to waste 2 byte of program memory
 	goto 0x001C					//Address: 0x00		//Jump to BootLoader startup
 	nop							//Address: 0x04
 	nop							//Address: 0x06
 
 	//HIGH PRIORITY INTRRUPT VECTOR at address 0x08
-    goto 0x1008					//Address: 0x08		//If a high priority interrupt occurs, PC first goes to 0x0008, then executes "goto 0x1008" redirect
+    goto 0x1408					//Address: 0x08		//If a high priority interrupt occurs, PC first goes to 0x0008, then executes "goto 0x1008" redirect
 	nop							//Address: 0x0C
 	nop							//Address: 0x0E
 	nop							//Address: 0x10
 	nop							//Address: 0x12
 	nop							//Address: 0x14
 	nop							//Address: 0x16
-
-//BootEntryIOCheck:
-	//Perform an I/O pin check to see if we should enter either the main application firmware, or this bootloader firmware.
-	//Currently using RB2 I/O pin for this purpose.  If pushbutton pressed (RB2 = 0), enter bootloader firmware.
-	//If not pressed (RB2 = 1, due to pull up resistor), enter the main application firmware instead.
-    //btfss	PORTB, 2, 0			//Address: 0x0C		//Check RB2 I/O pin state	
-    //bra		BootAppStart		//Address: 0x0E		//If pushbutton pressed, enter bootloader	
-	
-	//Otherwise, need to enter the main application firmware.
-	//Should restore state of BSR and ANCON1 registers to default state first.
-	//bcf		ANCON1, 0, 1		//Address: 0x10		//Restore ANCON1<PCFG8> bit to default
-	//movlb	0x00				//Address: 0x12		//Restore BSR to POR default
-    //goto	0x1200				//Address: 0x14		//Goto the main application firmware, user was not pressing the pushbutton to enter bootloader
     
 	//LOW PRIORITY INTERRUPT VECTOR at address 0x18    
-    goto	0x1018				//Address: 0x18		//If a low-priority interrupt occurs, PC first goes to 0x0018, then executes "goto 0x1018" redirect
+    goto	0x1418				//Address: 0x18		//If a low-priority interrupt occurs, PC first goes to 0x0018, then executes "goto 0x1018" redirect
 	_endasm
 
 BootAppStart:					//Address: 0x1C		//If executing the main application firmware, and user wishes to enter the bootloader
@@ -292,7 +275,7 @@ void Main(void)
 	if (cardAddress != 3)
 	{
 		_asm
-		goto 0x1200
+		goto 0x1400
 		_endasm
 	}
 		
@@ -341,6 +324,7 @@ static void ReadCardAddress(void)
 		ANCON1 = 0x1F;				//Make sure RC1 and RC2 can be used as digital inputs
 		mInitAllJumpers();
 		sk56power = 1;				//Provide full power to sk5 and sk6
+		{int i = 100; while(--i);}
 		cardAddress = ((sk6) ? 0 : 2) + ((sk5) ? 0 : 1);
 		sk56power = 0;				//Pull sk5 and sk6 low
 		ANCON1 = 0x00;				//Reset ANCON1 to power on default
@@ -543,11 +527,11 @@ void BlinkUSBStatus(void)
 
 
 
-//Placeholder code at address 0x1200 (the start of the non-bootloader firmware space)
+//Placeholder code at address 0x1400 (the start of the non-bootloader firmware space)
 //This gets overwritten when a real hex file gets programmed by the bootloader.
 //If however no hex file has been programmed, might as well stay in the bootloader
 //firmware, even if the RB2 pushbutton was not pressed after coming out of reset.
-#pragma code user_app_vector=0x1200	
+#pragma code user_app_vector=0x1400	
 void userApp(void)
 {
 	_asm goto 0x001C _endasm 	//Goes to the "BootAppStart:" section which will enter the bootloader firmware				
