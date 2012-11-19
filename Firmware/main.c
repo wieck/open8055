@@ -139,10 +139,15 @@ open8055HIDMessage_t toSendDataBuffer;
 /** VARIABLES ******************************************************/
 #pragma udata
 
-USB_HANDLE outputHandle = 0;
-USB_HANDLE inputHandle = 0;
+USB_HANDLE	outputHandle = 0;
+USB_HANDLE 	inputHandle = 0;
 
-uint8_t cardAddress;
+uint8_t		cardAddress = 0;
+uint8_t		cardConnected = 0;
+
+uint8_t		tickCounter = 0;
+uint8_t		tickMillisecond = 0;
+uint16_t	tickSecond = 0;
 
 /** PRIVATE PROTOTYPES *********************************************/
 void highPriorityISRCode();
@@ -245,6 +250,25 @@ void highPriorityISRCode()
 	//Service the interrupt
 	//Clear the interrupt flag
 	//Etc.
+	
+	if (PIR2bits.TMR3IF)
+	{
+		unsigned int increment;
+		
+		increment = OPEN8055_TICK_TIMER_CYCLES;
+		
+		// Set Timer3 to the next ticker timeout. We do all the math
+		// with the timer disabled to avoid roll-over issues.
+		T3CONbits.TMR3ON = 0;
+		increment = ~(increment - (TMR3L | ((unsigned int)TMR3H << 8))); 
+		TMR3L = increment & 0xFF;
+		TMR3H = (increment >> 8) & 0xFF;
+		T3CONbits.TMR3ON = 1;
+		
+		// Count ticks seen and clear the interrupt flag.
+		tickCounter++;
+		PIR2bits.TMR3IF = 0;
+	}	
 
 }	//This return will be a "retfie fast", since this is in a #pragma interrupt section 
 
@@ -440,17 +464,17 @@ static void userInit(void)
 	CCP2CON = OPEN8055_CCP2CON;
 
     T2CONbits.TMR2ON = 1;
-
+*/
 	//Enable Timer3 for our internal ticker
-	T3CON = 0x04;				//Timer1 is using internal 12 MHz clock
+	T3CON = 0x04;				//Timer3 is using internal 12 MHz clock
 	TMR3H = 0xFB;
 	TMR3L = 0x50;
-	IPR2bits.TMR3IP = 0;		//Timer1 will trigger high priority interrupt
+	IPR2bits.TMR3IP = 1;		//Timer3 will trigger high priority interrupt
 	PIR2bits.TMR3IF = 0;		//Reset the timer1 flag
 	PIE2bits.TMR3IE = 1;
 	
 	T3CONbits.TMR3ON = 1;		//and turn it on.
-*/
+
 
 	//Determine the cardAddress depending on sk5 and sk6.
 	#if defined(OPEN8055_PIC18F2550)
@@ -488,13 +512,16 @@ static void userInit(void)
  *******************************************************************/
 static void processIO(void)
 {
-    OPEN8055d7 = OPEN8055sw1;
-    OPEN8055d8 = OPEN8055sw2;
-
+	uint8_t	ticksSeen;
+	
     // User Application USB tasks
-    if((USBDeviceState < CONFIGURED_STATE)||(USBSuspendControl==1)) return;
+    if((USBDeviceState < CONFIGURED_STATE)||(USBSuspendControl==1))
+    	cardConnected = 0;
+    else
+    	cardConnected = 1;
     
-    if(!HIDRxHandleBusy(outputHandle))				//Check if data was received from the host.
+    // Check if data was received from the host.
+    if(cardConnected && !HIDRxHandleBusy(outputHandle))
     {   
         // Process host message (by ignoring it)
         
@@ -502,6 +529,37 @@ static void processIO(void)
         outputHandle = HIDRxPacket(HID_EP,(BYTE*)&receivedDataBuffer,64);
     }
 
+	// Count ticks
+	ticksSeen = tickCounter;
+	tickCounter -= ticksSeen;
+	
+	if (ticksSeen > 0)
+	{
+		// Per 100 microsecond code comes here
+		
+		// Timer related code
+		while (ticksSeen-- > 0)
+		{
+			if (++tickMillisecond >= OPEN8055_TICKS_PER_MS)
+			{
+				tickMillisecond = 0;
+				
+				// Per 1 millisecond code comes here
+
+				if (++tickSecond >= 1000)
+				{
+					tickSecond = 0;
+					
+					// Per 1 second code comes here
+				}	
+			}	
+		}	
+	}
+	
+	if (tickSecond < 500)
+		OPEN8055d8 = 1;
+	else
+		OPEN8055d8 = 0;
 }//end processIO
 
 

@@ -64,4 +64,7 @@
     #error "Unsupported Processor for Open8055 Project file __FILE__, line __LINE__"
 #endif
 
+#define OPEN8055_TICK_TIMER_CYCLES		1160
+#define OPEN8055_TICKS_PER_MS			10
+
 #endif  //HARDWARE_PROFILE_H
