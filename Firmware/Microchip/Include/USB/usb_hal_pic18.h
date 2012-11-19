@@ -380,7 +380,7 @@ typedef union _POINTER
 
 //STALLIE, IDLEIE, TRNIE, and URSTIE are all enabled by default and are required
 #if defined(USB_INTERRUPT)
-    #define USBEnableInterrupts() {RCONbits.IPEN = 1;IPR2bits.USBIP = 1;PIE2bits.USBIE = 1;INTCONbits.GIEH = 1;}
+    #define USBEnableInterrupts() {RCONbits.IPEN = 1;IPR2bits.USBIP = 0;PIE2bits.USBIE = 1;INTCONbits.GIEH = 1;}
 #else
     #define USBEnableInterrupts()
 #endif

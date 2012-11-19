@@ -245,9 +245,6 @@ void highPriorityISRCode()
 	//Service the interrupt
 	//Clear the interrupt flag
 	//Etc.
-    #if defined(USB_INTERRUPT)
-    	USBDeviceTasks();
-    #endif
 
 }	//This return will be a "retfie fast", since this is in a #pragma interrupt section 
 
@@ -261,6 +258,9 @@ void lowPriorityISRCode()
 	//Clear the interrupt flag
 	//Etc.
 
+    #if defined(USB_INTERRUPT)
+    	USBDeviceTasks();
+    #endif
 }	//This return will be a "retfie", since this is in a #pragma interruptlow section 
 
 
@@ -426,9 +426,9 @@ static void userInit(void)
 
 	//Make sure that interrupt priotities and low priority interrupts
 	//are enabled.
-/*	RCONbits.IPEN	= 1;
+	RCONbits.IPEN	= 1;
 	INTCONbits.GIEL	= 1;
-
+/*
 	//Setup PWM configuration including timer2
 	T2CONbits.T2CKPS0 = OPEN8055_T2CKPS0;
 	T2CONbits.T2CKPS1 = OPEN8055_T2CKPS1;
@@ -440,13 +440,12 @@ static void userInit(void)
 	CCP2CON = OPEN8055_CCP2CON;
 
     T2CONbits.TMR2ON = 1;
-*/
-/*
+
 	//Enable Timer3 for our internal ticker
 	T3CON = 0x04;				//Timer1 is using internal 12 MHz clock
 	TMR3H = 0xFB;
 	TMR3L = 0x50;
-	IPR2bits.TMR3IP = 1;		//Timer1 will trigger high priority interrupt
+	IPR2bits.TMR3IP = 0;		//Timer1 will trigger high priority interrupt
 	PIR2bits.TMR3IF = 0;		//Reset the timer1 flag
 	PIE2bits.TMR3IE = 1;
 	
