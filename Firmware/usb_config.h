@@ -64,7 +64,7 @@
 //  a ROM USB_DEVICE_DESCRIPTOR variable by the exact name of device_dsc
 //  must exist.
 #define USB_USER_DEVICE_DESCRIPTOR &device_dsc
-#define USB_USER_DEVICE_DESCRIPTOR_INCLUDE extern ROM USB_DEVICE_DESCRIPTOR device_dsc
+#define USB_USER_DEVICE_DESCRIPTOR_INCLUDE extern USB_DEVICE_DESCRIPTOR device_dsc
 
 //Configuration descriptors - if these two definitions do not exist then
 //  a ROM BYTE *ROM variable named exactly USB_CD_Ptr[] must exist.

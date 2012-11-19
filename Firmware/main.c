@@ -50,6 +50,9 @@
 #include "./USB/usb.h"
 #include "./USB/usb_function_hid.h"
 
+#include "usb_config.h"
+#include "Open8055_HID_Protocol.h"
+
 /** CONFIGURATION **************************************************/
 
 #if defined(OPEN8055_PIC18F2550)
@@ -91,7 +94,7 @@
 //      #pragma config EBTR3    = OFF
         #pragma config EBTRB    = OFF
 #else
-	#error "Unsupported Processor type"
+	#error "Unsupported Processor type file __FILE__ line __LINE__"
 #endif
 
 /** USB IO Buffers *************************************************/
@@ -106,14 +109,16 @@
     #pragma udata
 #endif
 
-unsigned char receivedDataBuffer[32];
-unsigned char toSendDataBuffer[32];
+open8055HIDMessage_t receivedDataBuffer;
+open8055HIDMessage_t toSendDataBuffer;
 
 /** VARIABLES ******************************************************/
 #pragma udata
 
 USB_HANDLE outputHandle = 0;
 USB_HANDLE inputHandle = 0;
+
+uint8_t cardAddress;
 
 /** PRIVATE PROTOTYPES *********************************************/
 void highPriorityISRCode();
@@ -122,7 +127,6 @@ void lowPriorityISRCode();
 static void initializeSystem(void);
 static void userInit(void);
 static void processIO(void);
-static void BlinkUSBStatus(void);
 
 void USBCBSendResume(void);
 
@@ -333,6 +337,10 @@ static void initializeSystem(void)
  *****************************************************************************/
 static void userInit(void)
 {
+	#if defined(USB_USER_DEVICE_DESCRIPTOR_INCLUDE)
+		USB_USER_DEVICE_DESCRIPTOR_INCLUDE;
+	#endif
+
     //initialize the variable holding the handle for the last
     // transmission
     outputHandle = 0;
@@ -384,6 +392,16 @@ static void userInit(void)
 	T3CONbits.TMR3ON = 1;		//and turn it on.
 */
 
+	//Determine the cardAddress depending on sk5 and sk6.
+	#if defined (__18F2550)
+		cardAddress = ((PORTAbits.RA3) ? 2 : 0) | ((PORTAbits.RA2) ? 1 : 0);
+	#else
+		#error "Unsupported Processor type file __FILE__ line __LINE__"
+	#endif
+	#if defined(USB_USER_DEVICE_DESCRIPTOR_INCLUDE)
+		device_dsc.idProduct = (device_dsc.idProduct & 0xFFF0) | cardAddress;
+	#endif
+
 }//end userInit
 
 /********************************************************************
@@ -405,9 +423,6 @@ static void userInit(void)
  *******************************************************************/
 static void processIO(void)
 {   
-    //Blink the LEDs
-    BlinkUSBStatus();
-
     // User Application USB tasks
     if((USBDeviceState < CONFIGURED_STATE)||(USBSuspendControl==1)) return;
     
@@ -421,106 +436,6 @@ static void processIO(void)
 
     
 }//end processIO
-
-/********************************************************************
- * Function:        void BlinkUSBStatus(void)
- *
- * PreCondition:    None
- *
- * Input:           None
- *
- * Output:          None
- *
- * Side Effects:    None
- *
- * Overview:        BlinkUSBStatus turns on and off LEDs 
- *                  corresponding to the USB device state.
- *
- * Note:            mLED macros can be found in HardwareProfile.h
- *                  USBDeviceState is declared and updated in
- *                  usb_device.c.
- *******************************************************************/
-void BlinkUSBStatus(void)
-{
-    // No need to clear UIRbits.SOFIF to 0 here.
-    // Callback caller is already doing that.
-    static WORD led_count=0;
-    
-    if(led_count == 0)led_count = 10000U;
-    led_count--;
-
-    #define mLED_1_Toggle()			{OPEN8055d3 = (1 - OPEN8055d3);}
-	#define mLED_1_On()				{OPEN8055d3 = 1;}
-	#define mLED_1_Off()			{OPEN8055d3 = 0;}
-	#define mLED_2_On()				{OPEN8055d4 = 1;}
-	#define mLED_2_Off()			{OPEN8055d4 = 0;}
-
-    #define mLED_Both_Off()         {mLED_1_Off();mLED_2_Off();}
-    #define mLED_Both_On()          {mLED_1_On();mLED_2_On();}
-    #define mLED_Only_1_On()        {mLED_1_On();mLED_2_Off();}
-    #define mLED_Only_2_On()        {mLED_1_Off();mLED_2_On();}
-
-	#define mGetLED_1()				OPEN8055d3
-    if(USBSuspendControl == 1)
-    {
-        if(led_count==0)
-        {
-            mLED_1_Toggle();
-            if(mGetLED_1())
-            {
-                mLED_2_On();
-            }
-            else
-            {
-                mLED_2_Off();
-            }
-        }//end if
-    }
-    else
-    {
-        if(USBDeviceState == DETACHED_STATE)
-        {
-            mLED_Both_Off();
-        }
-        else if(USBDeviceState == ATTACHED_STATE)
-        {
-            mLED_Both_On();
-        }
-        else if(USBDeviceState == POWERED_STATE)
-        {
-            mLED_Only_1_On();
-        }
-        else if(USBDeviceState == DEFAULT_STATE)
-        {
-            mLED_Only_2_On();
-        }
-        else if(USBDeviceState == ADDRESS_STATE)
-        {
-            if(led_count == 0)
-            {
-                mLED_1_Toggle();
-                mLED_2_Off();
-            }//end if
-        }
-        else if(USBDeviceState == CONFIGURED_STATE)
-        {
-            if(led_count==0)
-            {
-                mLED_1_Toggle();
-                if(mGetLED_1())
-                {
-                    mLED_2_Off();
-                }
-                else
-                {
-                    mLED_2_On();
-                }
-            }//end if
-        }
-    }
-}//end BlinkUSBStatus
-
-
 
 
 // ******************************************************************************************************

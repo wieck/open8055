@@ -158,12 +158,8 @@ state according to the definition in the USB specification.
 #include "./USB/usb_function_hid.h"
 
 /** CONSTANTS ******************************************************/
-#if defined(__18CXX)
-#pragma romdata
-#endif
-
 /* Device Descriptor */
-ROM USB_DEVICE_DESCRIPTOR device_dsc=
+USB_DEVICE_DESCRIPTOR device_dsc=
 {
     0x12,					// Size of this descriptor in bytes
     USB_DESCRIPTOR_DEVICE,	// DEVICE descriptor type
@@ -180,6 +176,10 @@ ROM USB_DEVICE_DESCRIPTOR device_dsc=
     0x00,                   // Device serial number string index
     0x01                    // Number of possible configurations
 };
+
+#if defined(__18CXX)
+#pragma romdata
+#endif
 
 /* Configuration 1 Descriptor */
 ROM BYTE configDescriptor1[]={

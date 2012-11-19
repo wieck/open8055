@@ -2203,10 +2203,11 @@ static void USBStdGetDscHandler(void)
         switch(SetupPkt.bDescriptorType)
         {
             case USB_DESCRIPTOR_DEVICE:
+		        inPipes[0].info.Val = USB_EP0_RAM | USB_EP0_BUSY | USB_EP0_INCLUDE_ZERO;
                 #if !defined(USB_USER_DEVICE_DESCRIPTOR)
-                    inPipes[0].pSrc.bRom = (ROM BYTE*)&device_dsc;
+                    inPipes[0].pSrc.bRam = (ROM BYTE*)&device_dsc;
                 #else
-                    inPipes[0].pSrc.bRom = (ROM BYTE*)USB_USER_DEVICE_DESCRIPTOR;
+                    inPipes[0].pSrc.bRam = (BYTE*)USB_USER_DEVICE_DESCRIPTOR;
                 #endif
                 inPipes[0].wCount.Val = sizeof(device_dsc);
                 break;
