@@ -88,8 +88,7 @@ bootloader to use more program memory.
 // see the compiler documentation, and/or click "Help --> Topics..." and then 
 // select "PIC18 Config Settings" in the Language Tools section.
 
-#if defined(PIC18F4550_PICDEM_FS_USB)		// Configuration bits for PICDEM FS USB Demo Board
- 	#if defined(__18F4550) || defined(__18F4553)
+#if defined(__18F2550)		// Configuration bits K8055 based PIC18F2550 board
         #pragma config PLLDIV   = 5         // (20 MHz crystal on PICDEM FS USB board)
         #pragma config CPUDIV   = OSC1_PLL2	
         #pragma config USBDIV   = 2         // Clock source from 96MHz PLL/2
@@ -134,44 +133,6 @@ bootloader to use more program memory.
 //      #pragma config EBTR2    = OFF
 //      #pragma config EBTR3    = OFF
         #pragma config EBTRB    = OFF
-	#endif	//18F4550 and 18F4553
-
-//If using the YOUR_BOARD hardware platform (see usbcfg.h), uncomment below and add pragmas
-//#elif defined(YOUR_BOARD)
-		//Add the configuration pragmas here for your hardware platform
-		//#pragma config ... 		= ...
-#elif defined(LOW_PIN_COUNT_USB_DEVELOPMENT_KIT)
-        //14K50
-        #if !defined(__18F14K50) && !defined(__18F13K50) && !defined(__18LF14K50) && !defined(__18LF13K50)
-            #error Wrong processor selected for the selected demo board.
-        #endif
-        #pragma config CPUDIV = NOCLKDIV
-        #pragma config USBDIV = OFF
-        #pragma config FOSC   = HS
-        #pragma config PLLEN  = ON
-        #pragma config FCMEN  = OFF
-        #pragma config IESO   = OFF
-        #pragma config PWRTEN = OFF
-        #pragma config BOREN  = OFF
-        #pragma config BORV   = 30
-        #pragma config WDTEN  = OFF
-        #pragma config WDTPS  = 32768
-        #pragma config MCLRE  = OFF
-        #pragma config HFOFST = OFF
-        #pragma config STVREN = ON
-        #pragma config LVP    = OFF
-        #pragma config XINST  = OFF
-        #pragma config BBSIZ  = OFF
-        #pragma config CP0    = OFF
-        #pragma config CP1    = OFF
-        #pragma config CPB    = OFF
-        #pragma config WRT0   = OFF
-        #pragma config WRT1   = OFF
-        #pragma config WRTB   = OFF
-        #pragma config WRTC   = OFF
-        #pragma config EBTR0  = OFF
-        #pragma config EBTR1  = OFF
-        #pragma config EBTRB  = OFF      
 #else
 	#error Not a supported board (yet), make sure the proper board is selected in usbcfg.h, and if so, set configuration bits in __FILE__, line __LINE__
 #endif
@@ -192,12 +153,12 @@ void USBTasks(void);
 #pragma code high_vector=0x08
 void interrupt_at_high_vector(void)
 {
-    _asm goto 0x1008 _endasm
+    _asm goto 0x1208 _endasm
 }
 #pragma code low_vector=0x18
 void interrupt_at_low_vector(void)
 {
-    _asm goto 0x1018 _endasm
+    _asm goto 0x1218 _endasm
 }
 #pragma code
 
@@ -225,11 +186,11 @@ void main(void)
  	//	TRISBbits.TRISB4 = 1;	//No need to explicitly do this since reset state is = 1 already.
 
     //Check Bootload Mode Entry Condition
-	if(sw2 == 1)	//This example uses the sw2 I/O pin to determine if the device should enter the bootloader, or the main application code
+	if(sk5 != 1 || sk6 != 1)	//We use Card Address 3 to launch the boot loader
 	{
        	ADCON1 = 0x07;		//Restore "reset value" of the ADCON1 register
 		_asm
-		goto 0x1000			//If the user is not trying to enter the bootloader, go straight to the main application remapped "reset" vector.
+		goto 0x1200			//If the user is not trying to enter the bootloader, go straight to the main application remapped "reset" vector.
 		_endasm
 	}
 

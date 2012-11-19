@@ -1,5 +1,8 @@
 // File: BootModified.18f2550_g.lkr
 // Modified linker script for the PIC18F2550 processor to be used with the USB HID Bootloader firmware.
+//
+// Modified to work for the Open8055 project based on a Velleman K8055
+// converted to PIC18F2550 @20MHz.
 
 #DEFINE _CODEEND _DEBUGCODESTART - 1
 #DEFINE _CEND _CODEEND + _DEBUGCODELEN
@@ -23,12 +26,12 @@ LIBPATH .
 #FI
 
   CODEPAGE   NAME=vectors    START=0x0               END=0x1F           PROTECTED
-  CODEPAGE   NAME=BootPage   START=0x20              END=0xFFF
+  CODEPAGE   NAME=BootPage   START=0x20              END=0x11FF
 #IFDEF _DEBUGCODESTART
-  CODEPAGE   NAME=page       START=0x1000            END=_CODEEND     PROTECTED
+  CODEPAGE   NAME=page       START=0x1200            END=_CODEEND     PROTECTED
   CODEPAGE   NAME=debug      START=_DEBUGCODESTART   END=_CEND        PROTECTED
 #ELSE
-  CODEPAGE   NAME=page       START=0x1000            END=0x7FFF       PROTECTED
+  CODEPAGE   NAME=page       START=0x1200            END=0x7FFF       PROTECTED
 #FI
 
 CODEPAGE   NAME=idlocs     START=0x200000          END=0x200007       PROTECTED

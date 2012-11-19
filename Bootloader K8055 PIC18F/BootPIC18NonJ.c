@@ -43,10 +43,10 @@
 /** C O N S T A N T S **********************************************************/
 
 //Section defining the address range to erase for the erase device command, along with the valid programming range to be reported by the QUERY_DEVICE command.
-#define ProgramMemStart					0x001000 //Beginning of application program memory (not occupied by bootloader).  **THIS VALUE MUST BE ALIGNED WITH 64 BYTE BLOCK BOUNDRY** Also, in order to work correctly, make sure the StartPageToErase is set to erase this section.
+#define ProgramMemStart					0x001200 //Beginning of application program memory (not occupied by bootloader).  **THIS VALUE MUST BE ALIGNED WITH 64 BYTE BLOCK BOUNDRY** Also, in order to work correctly, make sure the StartPageToErase is set to erase this section.
 
 #if defined(__18F4550)||defined(__18F2550)
-	#define StartPageToErase			64		 //The 4096 byte section from 0x000-0xFFF contains the bootloader and will not be erased
+	#define StartPageToErase			72		 //The 4096 byte section from 0x000-0xFFF contains the bootloader and will not be erased
 	#define MaxPageToErase				511		 //Last 64 byte page of flash on the PIC18F4550
 	#define ProgramMemStop				0x008000 //**MUST BE WORD ALIGNED (EVEN) ADDRESS.  This address does not get updated, but the one just below it does: IE: If AddressToStopPopulating = 0x200, 0x1FF is the last programmed address (0x200 not programmed)**	
 	#define ConfigWordsStartAddress		0x300000 //0x300000 is CONFIG space for PIC18F4550/PIC18F4553/PIC18F4450 family devices
@@ -58,7 +58,7 @@
 	#define EEPROMEffectiveAddress		0xF00000
 	#define	ProgramBlockSize			0x20	 //32 byte programming block size on the PIC18F4550/PIC18F4553 family devices
 #elif defined(__18F4553)||defined(__18F2553)
-	#define StartPageToErase			64		 //The 4096 byte section from 0x000-0xFFF contains the bootloader and will not be erased
+	#define StartPageToErase			72		 //The 4096 byte section from 0x000-0xFFF contains the bootloader and will not be erased
 	#define MaxPageToErase				511		 //Last 64 byte page of flash on the PIC18F4550
 	#define ProgramMemStop				0x008000 //**MUST BE WORD ALIGNED (EVEN) ADDRESS.  This address does not get updated, but the one just below it does: IE: If AddressToStopPopulating = 0x200, 0x1FF is the last programmed address (0x200 not programmed)**	
 	#define ConfigWordsStartAddress		0x300000 //0x300000 is CONFIG space for PIC18F4550/PIC18F4553/PIC18F4450 family devices
@@ -70,7 +70,7 @@
 	#define EEPROMEffectiveAddress		0xF00000
 	#define	ProgramBlockSize			0x20	 //32 byte programming block size on the PIC18F4550/PIC18F4553 family devices
 #elif defined(__18F4455)||defined(__18F2455)
-	#define StartPageToErase			64		 //The 4096 byte section from 0x000-0xFFF contains the bootloader and will not be erased
+	#define StartPageToErase			72		 //The 4096 byte section from 0x000-0xFFF contains the bootloader and will not be erased
 	#define MaxPageToErase				383		 //Last 64 byte page of flash on the PIC18F4455
 	#define ProgramMemStop				0x006000 //**MUST BE WORD ALIGNED (EVEN) ADDRESS.  This address does not get updated, but the one just below it does: IE: If AddressToStopPopulating = 0x200, 0x1FF is the last programmed address (0x200 not programmed)**	
 	#define ConfigWordsStartAddress		0x300000 //0x300000 is CONFIG space for PIC18F4550/PIC18F4553/PIC18F4450 family devices
@@ -82,7 +82,7 @@
 	#define EEPROMEffectiveAddress		0xF00000
 	#define	ProgramBlockSize			0x20	 //32 byte programming block size on the PIC18F4550/PIC18F4553 family devices
 #elif defined(__18F4458)||defined(__18F2458)
-	#define StartPageToErase			64		 //The 4096 byte section from 0x000-0xFFF contains the bootloader and will not be erased
+	#define StartPageToErase			72		 //The 4096 byte section from 0x000-0xFFF contains the bootloader and will not be erased
 	#define MaxPageToErase				383		 //Last 64 byte page of flash on the PIC18F4455
 	#define ProgramMemStop				0x006000 //**MUST BE WORD ALIGNED (EVEN) ADDRESS.  This address does not get updated, but the one just below it does: IE: If AddressToStopPopulating = 0x200, 0x1FF is the last programmed address (0x200 not programmed)**	
 	#define ConfigWordsStartAddress		0x300000 //0x300000 is CONFIG space for PIC18F4550/PIC18F4553/PIC18F4450 family devices
@@ -95,7 +95,7 @@
 	#define	ProgramBlockSize			0x20	 //32 byte programming block size on the PIC18F4550/PIC18F4553 family devices
 
 #elif defined(__18F4450)||defined(__18F2450)
-	#define StartPageToErase			64		 //The 4096 byte section from 0x000-0xFFF contains the bootloader and will not be erased
+	#define StartPageToErase			72		 //The 4096 byte section from 0x000-0xFFF contains the bootloader and will not be erased
 	#define MaxPageToErase				255		 //Last 64 byte page of flash on the PIC18F4450
 	#define ProgramMemStop				0x004000 //**MUST BE WORD ALIGNED (EVEN) ADDRESS.  This address does not get updated, but the one just below it does: IE: If AddressToStopPopulating = 0x200, 0x1FF is the last programmed address (0x200 not programmed)**	
 	#define ConfigWordsStartAddress		0x300000 //0x300000 is CONFIG space for PIC18F4550/PIC18F4553/PIC18F4450 family devices
@@ -105,7 +105,7 @@
 	#define	ProgramBlockSize			0x10	 //16 byte programming block size on the PIC18F4450/2450 family devices
 
 #elif defined(__18F14K50) || defined(__18LF14K50)
-	#define StartPageToErase			64		 //The 4096 byte section from 0x000-0xFFF contains the bootloader and will not be erased
+	#define StartPageToErase			72		 //The 4096 byte section from 0x000-0xFFF contains the bootloader and will not be erased
 	#define MaxPageToErase				255		 //Last 64 byte page of flash on the PIC18F4455
 	#define ProgramMemStop				0x004000 //**MUST BE WORD ALIGNED (EVEN) ADDRESS.  This address does not get updated, but the one just below it does: IE: If AddressToStopPopulating = 0x200, 0x1FF is the last programmed address (0x200 not programmed)**	
 	#define ConfigWordsStartAddress		0x300000 //0x300000 is CONFIG space for PIC18F4550/PIC18F4553/PIC18F4450 family devices
@@ -117,7 +117,7 @@
 	#define EEPROMEffectiveAddress		0xF00000
     #define	ProgramBlockSize			0x10	 //16 byte programming block size on the PIC18F14K50 family devices
 #elif defined(__18F13K50) || defined(__18LF13K50)
-	#define StartPageToErase			64		 //The 4096 byte section from 0x000-0xFFF contains the bootloader and will not be erased
+	#define StartPageToErase			72		 //The 4096 byte section from 0x000-0xFFF contains the bootloader and will not be erased
 	#define MaxPageToErase				127		 //Last 64 byte page of flash on the PIC18F4455
 	#define ProgramMemStop				0x002000 //**MUST BE WORD ALIGNED (EVEN) ADDRESS.  This address does not get updated, but the one just below it does: IE: If AddressToStopPopulating = 0x200, 0x1FF is the last programmed address (0x200 not programmed)**	
 	#define ConfigWordsStartAddress		0x300000 //0x300000 is CONFIG space for PIC18F4550/PIC18F4553/PIC18F4450 family devices

@@ -5,11 +5,11 @@
 
 // THIS LINKER SCRIPT HAS BEEN MODIFIED...  This version is intended to be used
 // with the "PROGRAMMABLE_WITH_USB_HID_BOOTLOADER" bootloader for modified
-// Velleman K8055(N) USB Experiment Interface Boards.
+// Velleman K8055 USB Experiment Interface Boards.
 //
 // The bootloader occupies memory ranges 0x0000-0x10FF.  In order for the code generated
 // by this project to work with the bootloader, the linker must not put any code
-// in the 0x0000-0x10FF address range.
+// in the 0x0000-0x11FF address range.
 
 // This linker script was derived from the "rm18f4550 - HID Bootload.lkr" file provided by
 // Microchip Application Libraries.

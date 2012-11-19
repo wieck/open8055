@@ -1,7 +1,7 @@
 [HEADER]
 magic_cookie={66E99B07-E706-4689-9E80-9B2582898A13}
 file_version=1.0
-device=PIC18F4550
+device=PIC18F2550
 [PATH_INFO]
 BuildDirPolicy=BuildDirIsProjectDir
 dir_src=
@@ -114,7 +114,7 @@ file_017=usbdrv.h
 file_018=usbdsc.h
 file_019=usbmmap.h
 file_020=BootPIC18NonJ.h
-file_021=BootModified.18f4550_g.lkr
+file_021=BootModified.18f2550_g.lkr
 [SUITE_INFO]
 suite_guid={5B7D72DD-9861-47BD-9F60-2BE967BF8416}
 suite_state=
