@@ -114,8 +114,8 @@
 	#define OPEN8055sw1	PORTAbits.RA3
 	#define OPEN8055sw2	PORTAbits.RA5
 	#define OPEN8055sw3	PORTCbits.RC0
-	#define OPEN8055sw4	PORTCbits.RC6
-	#define OPEN8055sw5	PORTCbits.RC7
+	#define OPEN8055sw4	PORTCbits.RC7
+	#define OPEN8055sw5	PORTCbits.RC6
 
     /** ADDRESS JUMPER *************************************************/
 
