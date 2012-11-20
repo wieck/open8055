@@ -57,6 +57,7 @@
 
 #if defined(OPEN8055_PIC18F2550)
         #pragma config CPUDIV   = OSC1_PLL2	
+        #pragma config PLLDIV	= 5			// 20 MHz crystal
         #pragma config USBDIV   = 2         // Clock source from 96MHz PLL/2
         #pragma config FOSC     = HSPLL_HS
         #pragma config FCMEN    = OFF
