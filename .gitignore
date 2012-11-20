@@ -4,5 +4,6 @@
 *.cof
 *.map
 *.err
+*.o
 *.i
 Objects
