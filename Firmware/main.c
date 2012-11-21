@@ -51,7 +51,7 @@
 #include "./USB/usb_function_hid.h"
 
 #include "usb_config.h"
-#include "Open8055_HID_Protocol.h"
+#include "open8055_hid_protocol.h"
 
 /** CONFIGURATION **************************************************/
 

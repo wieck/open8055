@@ -101,7 +101,7 @@ file_013=Microchip\Include\USB\usb_function_hid.h
 file_014=Microchip\Include\USB\usb_hal.h
 file_015=HardwareProfile_PIC18F2550.h
 file_016=Microchip\USB\usb_device_local.h
-file_017=..\Include\Open8055_HID_Protocol.h
+file_017=..\Include\open8055_hid_protocol.h
 file_018=..\Linker Files\PIC18F2550_HID_Bootload.lkr
 [SUITE_INFO]
 suite_guid={5B7D72DD-9861-47BD-9F60-2BE967BF8416}
