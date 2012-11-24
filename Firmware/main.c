@@ -123,19 +123,14 @@
 #endif
 
 /** USB IO Buffers *************************************************/
-#if defined(__18F14K50) || defined(__18F13K50) || defined(__18LF14K50) || defined(__18LF13K50) 
-    #pragma udata usbram2
-#elif defined(__18F2455) || defined(__18F2550) || defined(__18F4455) || defined(__18F4550)\
-    || defined(__18F2458) || defined(__18F2453) || defined(__18F4558) || defined(__18F4553)
+#if defined(OPEN8055_PIC18F2550)
     #pragma udata USB_VARIABLES=0x500
-#elif defined(__18F4450) || defined(__18F2450)
-    #pragma udata USB_VARIABLES=0x480
 #else
-    #pragma udata
+    #error "Unsupported processor in file __FILE__, line __LINE__"
 #endif
 
-open8055HIDMessage_t receivedDataBuffer;
-open8055HIDMessage_t toSendDataBuffer;
+Open8055_hidMessage_t receivedDataBuffer;
+Open8055_hidMessage_t toSendDataBuffer;
 
 /** VARIABLES ******************************************************/
 #pragma udata
@@ -400,7 +395,7 @@ static void initializeSystem(void)
  *
  * Side Effects:    None
  *
- * Overview:        This routine should take care of all of the demo code
+ * Overview:        This routine should take care of all of the code
  *                  initialization that is required.
  *
  * Note:            
@@ -449,10 +444,10 @@ static void userInit(void)
 	#endif
 	
 
-	//Make sure that interrupt priotities and low priority interrupts
+	//Make sure that interrupt priotities and high priority interrupts
 	//are enabled.
 	RCONbits.IPEN	= 1;
-	INTCONbits.GIEL	= 1;
+	INTCONbits.GIEH	= 1;
 /*
 	//Setup PWM configuration including timer2
 	T2CONbits.T2CKPS0 = OPEN8055_T2CKPS0;
@@ -515,10 +510,10 @@ static void processIO(void)
 {
 	uint8_t	ticksSeen;
 	
-    // User Application USB tasks
+    // Check if we are USB connected
     if((USBDeviceState < CONFIGURED_STATE)||(USBSuspendControl==1))
     	cardConnected = 0;
-    else
+	else
     	cardConnected = 1;
     
     // Check if data was received from the host.
@@ -527,40 +522,49 @@ static void processIO(void)
         // Process host message (by ignoring it)
         
         //Re-arm the OUT endpoint for the next packet
-        outputHandle = HIDRxPacket(HID_EP,(BYTE*)&receivedDataBuffer,64);
+        outputHandle = HIDRxPacket(HID_EP, (BYTE*)&receivedDataBuffer, sizeof(receivedDataBuffer));
     }
 
-	// Count ticks
+	// Count timer ticks
 	ticksSeen = tickCounter;
 	tickCounter -= ticksSeen;
 	
-	if (ticksSeen > 0)
+	// Timer related code
+	while (ticksSeen-- > 0)
 	{
 		// Per 100 microsecond code comes here
 		
-		// Timer related code
-		while (ticksSeen-- > 0)
+		if (++tickMillisecond >= OPEN8055_TICKS_PER_MS)
 		{
-			if (++tickMillisecond >= OPEN8055_TICKS_PER_MS)
-			{
-				tickMillisecond = 0;
-				
-				// Per 1 millisecond code comes here
+			tickMillisecond = 0;
+			
+			// Per 1 millisecond code comes here
 
-				if (++tickSecond >= 1000)
-				{
-					tickSecond = 0;
-					
-					// Per 1 second code comes here
-				}	
+			if (++tickSecond >= 1000)
+			{
+				tickSecond = 0;
+				
+				// Per 1 second code comes here
 			}	
 		}	
-	}
+	}	
 	
-	if (tickSecond < 500)
-		OPEN8055d8 = 1;
-	else
-		OPEN8055d8 = 0;
+	if (cardConnected && !HIDTxHandleBusy(inputHandle))
+	{
+		// Time to send a report.
+		
+		// Construct a standard input state report.
+		memset(&toSendDataBuffer, 0, sizeof(toSendDataBuffer));
+		toSendDataBuffer.msgType		= OPEN8055_HID_MESSAGE_INPUT;
+		toSendDataBuffer.inputBits		= OPEN8055sw1 |
+										  (OPEN8055sw2 << 1) |
+										  (OPEN8055sw3 << 2) |
+										  (OPEN8055sw4 << 3) |
+										  (OPEN8055sw5 << 4);
+		
+		inputHandle = HIDTxPacket(HID_EP, (BYTE*)&toSendDataBuffer, sizeof(toSendDataBuffer));	
+	}
+
 }//end processIO
 
 
@@ -843,7 +847,7 @@ void USBCBInitEP(void)
     //enable the HID endpoint
     USBEnableEndpoint(HID_EP,USB_IN_ENABLED|USB_OUT_ENABLED|USB_HANDSHAKE_ENABLED|USB_DISALLOW_SETUP);
     //Re-arm the OUT endpoint for the next packet
-    outputHandle = HIDRxPacket(HID_EP,(BYTE*)&receivedDataBuffer,64);
+    outputHandle = HIDRxPacket(HID_EP, (BYTE*)&receivedDataBuffer, sizeof(receivedDataBuffer));
 }
 
 /********************************************************************

@@ -259,12 +259,12 @@ ROM struct{BYTE report[HID_RPT01_SIZE];}hid_rpt01={
     0x15, 0x00,             //      Logical Minimum (data bytes in the report may have minimum value = 0x00)
     0x25, 0xFF,		  	  	//      Logical Maximum (data bytes in the report may have maximum value = 0x00FF = unsigned 255)
     0x75, 0x08,             //      Report Size: 8-bit field size
-    0x95, 0x10,             //      Report Count: Make sixteen 8-bit fields (the next time the parser hits an "Input", "Output", or "Feature" item)
+    0x95, 0x20,             //      Report Count: Make 32 8-bit fields (the next time the parser hits an "Input", "Output", or "Feature" item)
     0x81, 0x00,             //      Input (Data, Array, Abs): Instantiates input packet fields based on the above report size, count, logical min/max, and usage.
     0x19, 0x01,             //      Usage Minimum 
     0x29, 0x08,             //      Usage Maximum 	//8 output usages total
     0x75, 0x08,             //      Command Size: 8-bit field size
-    0x95, 0x08,				//      Command Count: Make eught 8-bit fields
+    0x95, 0x20,				//      Command Count: Make 32 8-bit fields
     0x91, 0x00,             //      Output (Data, Array, Abs): Instantiates output packet fields.  
     0xC0}                   // End Collection
 };                  
