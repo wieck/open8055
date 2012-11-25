@@ -55,9 +55,20 @@
 
 /** CONFIGURATION **************************************************/
 
+
+/* ----
+ * If you get this error, please add a line
+ * OPEN8055_PLLDIV=n
+ * according to your boards crystal speed under
+ * Project->Build Options->Project in the tab MPLAB C18 tab.
+ */
+#if !defined(OPEN8055_PLLDIV)
+    #error "OPEN8055_PLLDIV has not been defined in the Project's preprocessor settings"
+#endif
+
 #if defined(OPEN8055_PIC18F2550)
         #pragma config CPUDIV   = OSC1_PLL2	
-        #pragma config PLLDIV	= 5			// 20 MHz crystal
+        #pragma config PLLDIV	= OPEN8055_PLLDIV
         #pragma config USBDIV   = 2         // Clock source from 96MHz PLL/2
         #pragma config FOSC     = HSPLL_HS
         #pragma config FCMEN    = OFF
@@ -94,32 +105,33 @@
 //      #pragma config EBTR2    = OFF
 //      #pragma config EBTR3    = OFF
         #pragma config EBTRB    = OFF
+        
 #elif defined(OPEN8055_PIC18F24J50)
-     #pragma config WDTEN = OFF          //WDT disabled (enabled by SWDTEN bit)
-     #pragma config PLLDIV = 1           //4 MHz oscillator input
-     #pragma config STVREN = ON            //stack overflow/underflow reset enabled
-     #pragma config XINST = OFF          //Extended instruction set disabled
-     #pragma config CPUDIV = OSC1        //No CPU system clock divide
-     #pragma config CP0 = OFF            //Program memory is not code-protected
-     #pragma config OSC = HSPLL          //HS oscillator, PLL enabled, HSPLL used by USB
-     #pragma config T1DIG = OFF          //Sec Osc clock source may not be selected, unless T1OSCEN = 1
-     #pragma config LPT1OSC = OFF        //high power Timer1 mode
-     #pragma config FCMEN = OFF          //Fail-Safe Clock Monitor disabled
-     #pragma config IESO = OFF           //Two-Speed Start-up disabled
-     #pragma config WDTPS = 32768        //1:32768
-     #pragma config DSWDTOSC = INTOSCREF //DSWDT uses INTOSC/INTRC as clock
-     #pragma config RTCOSC = T1OSCREF    //RTCC uses T1OSC/T1CKI as clock
-     #pragma config DSBOREN = OFF        //Zero-Power BOR disabled in Deep Sleep
-     #pragma config DSWDTEN = OFF        //Disabled
-     #pragma config DSWDTPS = 8192       //1:8,192 (8.5 seconds)
-     #pragma config IOL1WAY = OFF        //IOLOCK bit can be set and cleared
-     #pragma config MSSP7B_EN = MSK7     //7 Bit address masking
-     #pragma config WPFP = PAGE_1        //Write Protect Program Flash Page 0
-     #pragma config WPEND = PAGE_0       //Start protection at page 0
-     #pragma config WPCFG = OFF          //Write/Erase last page protect Disabled
-     #pragma config WPDIS = OFF          //WPFP[5:0], WPEND, and WPCFG bits ignored 
+        #pragma config WDTEN = OFF          //WDT disabled (enabled by SWDTEN bit)
+        #pragma config PLLDIV = OPEN8055_PLLDIV
+        #pragma config STVREN = ON            //stack overflow/underflow reset enabled
+        #pragma config XINST = OFF          //Extended instruction set disabled
+        #pragma config CPUDIV = OSC1        //No CPU system clock divide
+        #pragma config CP0 = OFF            //Program memory is not code-protected
+        #pragma config OSC = HSPLL          //HS oscillator, PLL enabled, HSPLL used by USB
+        #pragma config T1DIG = OFF          //Sec Osc clock source may not be selected, unless T1OSCEN = 1
+        #pragma config LPT1OSC = OFF        //high power Timer1 mode
+        #pragma config FCMEN = OFF          //Fail-Safe Clock Monitor disabled
+        #pragma config IESO = OFF           //Two-Speed Start-up disabled
+        #pragma config WDTPS = 32768        //1:32768
+        #pragma config DSWDTOSC = INTOSCREF //DSWDT uses INTOSC/INTRC as clock
+        #pragma config RTCOSC = T1OSCREF    //RTCC uses T1OSC/T1CKI as clock
+        #pragma config DSBOREN = OFF        //Zero-Power BOR disabled in Deep Sleep
+        #pragma config DSWDTEN = OFF        //Disabled
+        #pragma config DSWDTPS = 8192       //1:8,192 (8.5 seconds)
+        #pragma config IOL1WAY = OFF        //IOLOCK bit can be set and cleared
+        #pragma config MSSP7B_EN = MSK7     //7 Bit address masking
+        #pragma config WPFP = PAGE_1        //Write Protect Program Flash Page 0
+        #pragma config WPEND = PAGE_0       //Start protection at page 0
+        #pragma config WPCFG = OFF          //Write/Erase last page protect Disabled
+        #pragma config WPDIS = OFF          //WPFP[5:0], WPEND, and WPCFG bits ignored 
 #else
-	#error "Unsupported Processor type file __FILE__ line __LINE__"
+	    #error "Unsupported Processor type file __FILE__ line __LINE__"
 #endif
 
 /** USB IO Buffers *************************************************/
@@ -188,7 +200,7 @@ void USBCBSendResume(void);
 	#define REMAPPED_LOW_INTERRUPT_VECTOR_ADDRESS	0x18
 #endif
 
-#if defined(PROGRAMMABLE_WITH_USB_HID_BOOTLOADER)||defined(PROGRAMMABLE_WITH_USB_MCHPUSB_BOOTLOADER)
+#if defined(PROGRAMMABLE_WITH_USB_HID_BOOTLOADER)
 extern void _startup (void);        // See c018i.c in your C18 compiler dir
 #pragma code REMAPPED_RESET_VECTOR = REMAPPED_RESET_VECTOR_ADDRESS
 void _reset (void)
@@ -196,11 +208,13 @@ void _reset (void)
     _asm goto _startup _endasm
 }
 #endif
+
 #pragma code REMAPPED_HIGH_INTERRUPT_VECTOR = REMAPPED_HIGH_INTERRUPT_VECTOR_ADDRESS
 void remappedHighISR (void)
 {
      _asm goto highPriorityISRCode _endasm
 }
+
 #pragma code REMAPPED_LOW_INTERRUPT_VECTOR = REMAPPED_LOW_INTERRUPT_VECTOR_ADDRESS
 void remappedLowISR (void)
 {
@@ -475,16 +489,16 @@ static void userInit(void)
 
 
 	//Determine the cardAddress depending on sk5 and sk6.
-	#if defined(OPEN8055_PIC18F2550)
+	#if defined(OPEN8055_BOARD1)
 		cardAddress = ((OPEN8055sk6) ? 2 : 0) + ((OPEN8055sk5) ? 1 : 0);
-	#elif defined(OPEN8055_PIC18F24J50)
+	#elif defined(OPEN8055_BOARD2)
 		OPEN8055sk56power = 1;
 		{int i = 100; while(--i);}
 		cardAddress = ((OPEN8055sk6) ? 0 : 2) + ((OPEN8055sk5) ? 0 : 1);
 		OPEN8055sk56power = 0;
-		TRISC = OPEN8055_TRISC_J;
+		TRISC = OPEN8055_TRISC_2;
 	#else
-		#error "Unsupported Processor type file __FILE__ line __LINE__"
+		#error "Unsupported Board type file __FILE__ line __LINE__"
 	#endif
 	#if defined(USB_USER_DEVICE_DESCRIPTOR_INCLUDE)
 		device_dsc.idProduct = (device_dsc.idProduct & 0xFFF0) | cardAddress;

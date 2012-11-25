@@ -56,15 +56,57 @@
 #define HARDWARE_PROFILE_H
 
 
-#if defined(__18F2550)
+/* ----
+ * Processor and Board independent settings.
+ * ----
+ */
+
+// Open8055 firmware is always running on 12 MHz. That means that
+// the actual clock frequency is 48 MHz.
+#define CLOCK_FREQ 48000000
+
+// Open8055 firmware is HID Bootloader friendly.
+#define PROGRAMMABLE_WITH_USB_HID_BOOTLOADER		
+
+// Timer3 is used for a 100us ticker. At 12 MHz 100 microseconds
+// would be 1200 cycles. The missing 40 cycles elapse while the
+// timer is turned off and reloaded.
+#define OPEN8055_TICK_TIMER_CYCLES		1160
+#define OPEN8055_TICKS_PER_MS			10
+
+
+// IO pin definitions
+#define INPUT_PIN 1
+#define OUTPUT_PIN 0
+
+
+/* ----
+ * Include the Processor specific Hardware Profile
+ * ----
+ */
+#if defined(OPEN8055_PIC18F2550)
     #include "HardwareProfile_PIC18F2550.h"
-#elif defined(__18F24J50)
+#elif defined(OPEN8055_PIC18F24J50)
     #include "HardwareProfile_PIC18F24J50.h"
 #else
     #error "Unsupported Processor for Open8055 Project file __FILE__, line __LINE__"
 #endif
 
-#define OPEN8055_TICK_TIMER_CYCLES		1160
-#define OPEN8055_TICKS_PER_MS			10
+
+/* ----
+ * Include the Board specific Hardware Profile
+ * 
+ * BOARD1 is the K8055-1
+ * BOARD2 is the K8055N-2
+ * ----
+ */
+#if defined(OPEN8055_BOARD1)
+    #include "HardwareProfile_Board1.h"
+#elif defined(OPEN8055_BOARD2)
+    #include "HardwareProfile_Board2.h"
+#else
+    #error "Unsupported Board Type for Open8055 Project file __FILE__, line __LINE__"
+#endif
+
 
 #endif  //HARDWARE_PROFILE_H
