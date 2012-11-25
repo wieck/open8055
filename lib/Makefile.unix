@@ -1,0 +1,106 @@
+# ----------------------------------------------------------------------
+# Makefile.unix
+#
+#	Unix specific Makefile for the open8055.so
+#
+# ----------------------------------------------------------------------
+#
+#  Copyright (c) 2012, Jan Wieck
+#  All rights reserved.
+#  
+#  Redistribution and use in source and binary forms, with or without
+#  modification, are permitted provided that the following conditions are met:
+#      * Redistributions of source code must retain the above copyright
+#        notice, this list of conditions and the following disclaimer.
+#      * Redistributions in binary form must reproduce the above copyright
+#        notice, this list of conditions and the following disclaimer in the
+#        documentation and/or other materials provided with the distribution.
+#      * Neither the name of the <organization> nor the
+#        names of its contributors may be used to endorse or promote products
+#        derived from this software without specific prior written permission.
+#  
+#  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+#  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+#  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+#  DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+#  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+#  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+#  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+#  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+#  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+#  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#  
+# ----------------------------------------------------------------------
+
+
+# ----
+# Global compiler and loader settings
+# ----
+CC=		gcc
+CFLAGS+=	-O2 -Wall -I../include
+LDFLAGS+=	
+AR=		ar
+
+
+# ----
+# Stuff required for building the open8055.a static library
+# ----
+OPEN8055_A=			open8055.a
+OPEN8055_A_OBJS=		open8055.o
+OPEN8055_A_EXTRA=	
+OPEN8055_A_LIBS=
+
+
+# ----
+# Stuff required for building the open8055.so
+# ----
+OPEN8055_DLL=			open8055.so
+OPEN8055_DLL_OBJS=	open8055.o
+OPEN8055_DLL_EXTRA=
+OPEN8055_DLL_LIBS=
+
+
+# ----
+# Combine individual stuff into all my stuff.
+# (Do I start sounding like George Carlin?)
+# ----
+ALL=		$(OPEN8055_A) $(OPEN8055_DLL)
+ALL_OBJS=	$(OPEN8055_A_OBJS) $(OPEN8055_DLL_OBJS)
+
+
+# ----
+# Default target is to build all my stuff.
+# ----
+all:		$(ALL)
+
+
+# ----
+# Remove all the stuff that wasn't there before.
+# ----
+clean:
+	rm -f $(ALL) $(ALL_EXE) $(ALL_OBJS)
+
+
+# ----
+# Put here whatever is needed to screw up your system
+# ----
+install:	all
+#	cp *.dll C:/bin
+
+# ----
+# Individual toplevel target dependencies and build instructions
+# ----
+$(OPEN8055_A):	$(OPEN8055_A_OBJS)
+	$(AR) -rs $@ $^
+
+$(OPEN8055_DLL):	$(OPEN8055_DLL_OBJS) $(OPEN8055_DLL_EXTRA)
+	$(CC) $(CFLAGS) -shared -o $@ $^ $(OPEN8055_DLL_LIBS)
+
+
+# ----
+# Component dependencies that can be resolved by default
+# GNUmake rules.
+# ----
+open8055.o:	open8055.c open8055.h open8055_compat.h ../include/open8055_hid_protocol.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+

@@ -1,0 +1,5 @@
+Makefile
+*.a
+*.o
+*.so
+*.dll
