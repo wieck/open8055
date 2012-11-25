@@ -125,6 +125,8 @@
 /** USB IO Buffers *************************************************/
 #if defined(OPEN8055_PIC18F2550)
     #pragma udata USB_VARIABLES=0x500
+#elif defined(OPEN8055_PIC18F24J50)
+	#pragma udata
 #else
     #error "Unsupported processor in file __FILE__, line __LINE__"
 #endif
