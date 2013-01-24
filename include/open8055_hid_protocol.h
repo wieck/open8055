@@ -33,8 +33,8 @@ typedef unsigned short uint16_t;
 #define OPEN8055_HID_MESSAGE_SIZE	32
 
 
-#define OPEN8055_HID_MESSAGE_INPUT	0x01
-#define OPEN8055_HID_MESSAGE_OUTPUT	0x81
+#define OPEN8055_HID_MESSAGE_OUTPUT	0x01
+#define OPEN8055_HID_MESSAGE_INPUT	0x81
 
 
 typedef union {

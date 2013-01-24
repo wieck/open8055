@@ -65,7 +65,39 @@ typedef struct {
     int				outputChanged;
     Open8055_hidMessage_t	outputNext;
 } Open8055_card_t;
-  
+
+
+#define OPEN8055_INITIALIZED() {					\
+	if (!initialized)						\
+	{								\
+	    if (Open8055_Init() < 0)					\
+		return -1;						\
+	}								\
+    }
+
+#define OPEN8055_LOCK_CARD(h) {					\
+	/* ----								\
+	 * Check that the handle is valid.				\
+	 * ----								\
+	 */								\
+	pthread_mutex_lock(&openCardsLock);				\
+	if ((h) < 0 || (h) >= openCardsUsed || openCards[(h)] == NULL)	\
+	{								\
+	    SetError("invalid Open8055 handle %d", (h));		\
+	    pthread_mutex_unlock(&openCardsLock);			\
+	    return -1;							\
+	}								\
+									\
+	/* ----								\
+	 * Obtain a lock on the specific card and release 		\
+	 * the global lock.						\
+	 * ----								\
+	 */								\
+	card = openCards[(h)];						\
+	pthread_mutex_lock(&(card->lock));				\
+	pthread_mutex_unlock(&openCardsLock);				\
+    }
+
 
 /* ----------------------------------------------------------------------
  * Local functions
@@ -154,15 +186,7 @@ Open8055_LastErrorCopy(void)
 OPEN8055_EXTERN int STDCALL
 Open8055_CardPresent(int cardNumber)
 {
-    /* ----
-     * Ensure library initialization.
-     * ----
-     */
-    if (!initialized)
-    {
-    	if (Open8055_Init() < 0)
-	    return -1;
-    }
+    OPEN8055_INITIALIZED();
 
     return DevicePresent(cardNumber);
 }
@@ -175,22 +199,14 @@ Open8055_CardPresent(int cardNumber)
  *  Returns -1 on error or the ID of the new card.
  * ----
  */
-OPEN8055_EXTERN Open8055_handle STDCALL
+OPEN8055_EXTERN int STDCALL
 Open8055_Connect(char *destination, char *password)
 {
     int			cardNumber;
     int			handle;
     Open8055_card_t    *card;
 
-    /* ----
-     * Ensure library initialization.
-     * ----
-     */
-    if (!initialized)
-    {
-    	if (Open8055_Init() < 0)
-	    return -1;
-    }
+    OPEN8055_INITIALIZED();
 
     /* ----
      * Parse the destination. At some point in the future this string
@@ -320,6 +336,7 @@ Open8055_Connect(char *destination, char *password)
 	pthread_mutex_unlock(&openCardsLock);
 	return -1;
     }
+    card->outputNext.msgType = OPEN8055_HID_MESSAGE_OUTPUT;
 
     /* ----
      * Finally launch the IO thread for this card.
@@ -352,40 +369,13 @@ Open8055_Connect(char *destination, char *password)
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_Close(Open8055_handle handle)
+Open8055_Close(int handle)
 {
     Open8055_card_t	*card;
     int			rc = 0;
 
-    /* ----
-     * Ensure library initialization.
-     * ----
-     */
-    if (!initialized)
-    {
-    	if (Open8055_Init() < 0)
-	    return -1;
-    }
-
-    /* ----
-     * Check that the handle is valid.
-     * ----
-     */
-    pthread_mutex_lock(&openCardsLock);
-    if (handle < 0 || handle >= openCardsUsed || openCards[handle] == NULL)
-    {
-    	SetError("invalid Open8055 handle %d", handle);
-	pthread_mutex_unlock(&openCardsLock);
-    	return -1;
-    }
-
-    /* ----
-     * Obtain a lock on the specific card and release the global lock.
-     * ----
-     */
-    card = openCards[handle];
-    pthread_mutex_lock(&(card->lock));
-    pthread_mutex_unlock(&openCardsLock);
+    OPEN8055_INITIALIZED();
+    OPEN8055_LOCK_CARD(handle);
 
     /* ----
      * If the ioTerminate flag is set some other thread is already
@@ -401,7 +391,19 @@ Open8055_Close(Open8055_handle handle)
     }
 
     /* ----
-     * First thing is to terminate the IO thread.
+     * If the application requested some final changes in output that have
+     * not yet been sent, we need to wait for that to happen.
+     * ----
+     */
+    while (card->ioError == FALSE && card->outputChanged)
+    {
+    	pthread_mutex_unlock(&(card->lock));
+	usleep(1000);
+    	pthread_mutex_lock(&(card->lock));
+    }
+
+    /* ----
+     * Tell the io thread to terminate.
      * ----
      */
     card->ioTerminate = TRUE;
@@ -411,21 +413,13 @@ Open8055_Close(Open8055_handle handle)
     	SetError("pthread_join() failed - %s", ErrorString());
 	rc = -1;
     }
-    else
-    {
-    	if (card->ioError)
-	{
-	    SetError("%s", card->ioErrorMessage);
-	    rc = -1;
-	}
-    }
 
     /* ----
-     * Next before destroying all the other resources, make sure we
+     * Before destroying all the other resources, make sure we
      * no longer have any IO waiters.
      * ----
      */
-    card->ioError = 1;
+    card->ioError = TRUE;
     strcpy(card->ioErrorMessage, "card is closed");
     while (card->ioWaiters > 0)
     {
@@ -455,46 +449,19 @@ Open8055_Close(Open8055_handle handle)
 
 
 /* ----
- * Open8055_ReadDigialAll()
+ * Open8055_GetInputBits()
  *
- *  Read the 8 digital input ports
+ *  Read the 5 digital input ports
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_ReadDigitalAll(Open8055_handle handle)
+Open8055_GetInputBits(int handle)
 {
     Open8055_card_t	*card;
     int			rc = 0;
 
-    /* ----
-     * Ensure library initialization.
-     * ----
-     */
-    if (!initialized)
-    {
-    	if (Open8055_Init() < 0)
-	    return -1;
-    }
-
-    /* ----
-     * Check that the handle is valid.
-     * ----
-     */
-    pthread_mutex_lock(&openCardsLock);
-    if (handle < 0 || handle >= openCardsUsed || openCards[handle] == NULL)
-    {
-    	SetError("invalid Open8055 handle %d", handle);
-	pthread_mutex_unlock(&openCardsLock);
-    	return -1;
-    }
-
-    /* ----
-     * Obtain a lock on the specific card and release the global lock.
-     * ----
-     */
-    card = openCards[handle];
-    pthread_mutex_lock(&(card->lock));
-    pthread_mutex_unlock(&openCardsLock);
+    OPEN8055_INITIALIZED();
+    OPEN8055_LOCK_CARD(handle);
 
     /* ----
      * Wait until some unconsumed digital input data is available or
@@ -534,6 +501,88 @@ Open8055_ReadDigitalAll(Open8055_handle handle)
     return rc;
 }
 
+
+/* ----
+ * Open8055_SetOutputBits()
+ *
+ *  Schedule the 8 digital outputs to be changed on next IO cycle.
+ * ----
+ */
+OPEN8055_EXTERN int STDCALL
+Open8055_SetOutputBits(int handle, int bits)
+{
+    Open8055_card_t	*card;
+    int			rc = 0;
+
+    OPEN8055_INITIALIZED();
+    OPEN8055_LOCK_CARD(handle);
+
+    /* ----
+     * Just set those bits in the next output message and mark that we
+     * have some changes to be sent.
+     * ----
+     */
+    card->outputNext.outputBits = bits & 0xFF;
+    card->outputChanged = TRUE;
+
+    pthread_mutex_unlock(&(card->lock));
+    return rc;
+}
+
+
+
+/* ----
+ * Open8055_SetOutputBit()
+ *
+ *  Schedule one digital output to be set on next IO cycle.
+ * ----
+ */
+OPEN8055_EXTERN int STDCALL
+Open8055_SetOutputBit(int handle, int bit)
+{
+    Open8055_card_t	*card;
+    int			rc = 0;
+
+    OPEN8055_INITIALIZED();
+    OPEN8055_LOCK_CARD(handle);
+
+    /* ----
+     * Adjust the bit and mark output dirty.
+     * ----
+     */
+    card->outputNext.outputBits |= ((1 << bit) & 0xFF);
+    card->outputChanged = TRUE;
+
+    pthread_mutex_unlock(&(card->lock));
+    return rc;
+}
+
+
+/* ----
+ * Open8055_ClearOutputBit()
+ *
+ *  Schedule one digital output to be cleared on next IO cycle.
+ * ----
+ */
+OPEN8055_EXTERN int STDCALL
+Open8055_ClearOutputBit(int handle, int bit)
+{
+    Open8055_card_t	*card;
+    int			rc = 0;
+
+    OPEN8055_INITIALIZED();
+    OPEN8055_LOCK_CARD(handle);
+
+    /* ----
+     * Adjust the bit and mark output dirty.
+     * ----
+     */
+    card->outputNext.outputBits &= ~((1 << bit) & 0xFF);
+    card->outputChanged = TRUE;
+
+    pthread_mutex_unlock(&(card->lock));
+    return rc;
+}
 
 
 /* ----------------------------------------------------------------------
@@ -606,6 +655,7 @@ CardIOThread(void *cdata)
 {
     Open8055_card_t		*card = (Open8055_card_t *)cdata;
     Open8055_hidMessage_t	inputMessage;
+    Open8055_hidMessage_t	outputMessage;
     // int				isLocal;
     int				idLocal;
     int				rc;
@@ -672,6 +722,44 @@ CardIOThread(void *cdata)
 		pthread_cond_broadcast(&(card->cond));
 		pthread_mutex_unlock(&(card->lock));
 		return NULL;
+	}
+
+	if (card->outputChanged)
+	{
+	    /* ----
+	     * Something in the standard output has changed. Copy the outputNext
+	     * message to some local memory so that we can do the actual IO without
+	     * holding the card lock.
+	     * ----
+	     */
+	    memcpy(&outputMessage, &(card->outputNext), sizeof(outputMessage));
+	    card->outputChanged = FALSE;
+
+	    /* ----
+	     * Send the message to the card.
+	     * ----
+	     */
+	    pthread_mutex_unlock(&(card->lock));
+	    rc = DeviceWrite(idLocal, (unsigned char *)&outputMessage, sizeof(outputMessage));
+	    pthread_mutex_lock(&(card->lock));
+
+	    if (rc < 0)
+	    {
+		/* ----
+		 * In case of error we copy the current error message as quickly as
+		 * possible into the card status structure. We then set the ioError
+		 * flag, signal all possible IO waiters and terminate the IO thread.
+		 * ----
+		 */
+		pthread_mutex_lock(&lastErrorLock);
+		strcpy(card->ioErrorMessage, lastErrorMessage);
+		pthread_mutex_unlock(&lastErrorLock);
+
+		card->ioError = 1;
+		pthread_cond_broadcast(&(card->cond));
+		pthread_mutex_unlock(&(card->lock));
+		return NULL;
+	    }
 	}
     }
 

@@ -113,7 +113,6 @@
  * Declarations
  * ----
  */
-typedef int32_t Open8055_handle;
 
 
 /* ----
@@ -124,10 +123,15 @@ OPEN8055_EXTERN char *		STDCALL Open8055_LastError(void);
 OPEN8055_EXTERN char *		STDCALL Open8055_LastErrorCopy(void);
 OPEN8055_EXTERN int		STDCALL Open8055_CardPresent(int cardNumber);
 
-OPEN8055_EXTERN Open8055_handle	STDCALL Open8055_Connect(char *destination, char *password);
-OPEN8055_EXTERN int		STDCALL Open8055_Close(Open8055_handle h);
+OPEN8055_EXTERN int		STDCALL Open8055_Connect(char *destination, char *password);
+OPEN8055_EXTERN int		STDCALL Open8055_Close(int h);
 
-OPEN8055_EXTERN int		STDCALL Open8055_ReadDigitalAll(Open8055_handle h);
+OPEN8055_EXTERN int		STDCALL Open8055_GetInputBits(int h);
+
+OPEN8055_EXTERN int		STDCALL Open8055_GetOutputBits(int h);
+OPEN8055_EXTERN int		STDCALL Open8055_SetOutputBits(int h, int bits);
+OPEN8055_EXTERN int		STDCALL Open8055_SetOutputBit(int h, int bit);
+OPEN8055_EXTERN int		STDCALL Open8055_ClearOutputBit(int h, int bit);
 
 
 #ifdef __cplusplus

@@ -159,6 +159,12 @@ uint8_t		tickCounter = 0;
 uint8_t		tickMillisecond = 0;
 uint16_t	tickSecond = 0;
 
+
+struct Open8055_status_t {
+    uint8_t		outputBits;
+} status;	
+
+
 /** PRIVATE PROTOTYPES *********************************************/
 void highPriorityISRCode();
 void lowPriorityISRCode();
@@ -535,7 +541,20 @@ static void processIO(void)
     // Check if data was received from the host.
     if(cardConnected && !HIDRxHandleBusy(outputHandle))
     {   
-        // Process host message (by ignoring it)
+        // Process host message
+        switch (receivedDataBuffer.msgType)
+		{
+			// OUTPUT message containing digital output ports and
+			// PWM values.
+			case OPEN8055_HID_MESSAGE_OUTPUT:
+				status.outputBits = receivedDataBuffer.outputBits;
+				PORTB = status.outputBits;
+				break;
+			
+			// Ignore unknown message types.	
+			default:
+				break;
+		}	 
         
         //Re-arm the OUT endpoint for the next packet
         outputHandle = HIDRxPacket(HID_EP, (BYTE*)&receivedDataBuffer, sizeof(receivedDataBuffer));
