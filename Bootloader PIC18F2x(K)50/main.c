@@ -88,8 +88,8 @@ bootloader to use more program memory.
 // see the compiler documentation, and/or click "Help --> Topics..." and then 
 // select "PIC18 Config Settings" in the Language Tools section.
 
-#if defined(__18F2550)		// Configuration bits K8055 based PIC18F2550 board
-        #pragma config PLLDIV   = 5         // (20 MHz crystal on PICDEM FS USB board)
+#if defined(__18F2550) || defined (__18F25K50)
+        #pragma config PLLDIV   = OPEN8055_PLLDIV
         #pragma config CPUDIV   = OSC1_PLL2	
         #pragma config USBDIV   = 2         // Clock source from 96MHz PLL/2
         #pragma config FOSC     = HSPLL_HS
@@ -134,7 +134,7 @@ bootloader to use more program memory.
 //      #pragma config EBTR3    = OFF
         #pragma config EBTRB    = OFF
 #else
-	#error Not a supported board (yet), make sure the proper board is selected in usbcfg.h, and if so, set configuration bits in __FILE__, line __LINE__
+	#error Not a supported CPU type (yet), make sure the proper target CPU is selected in __FILE__, line __LINE__
 #endif
 
 /** V A R I A B L E S ********************************************************/

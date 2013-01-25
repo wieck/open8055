@@ -49,7 +49,7 @@
 #define INPUT_PIN           1
 #define OUTPUT_PIN          0
 
-#if defined(__18F2550)
+#if (OPEN8055_PCB == P8055-1)
     /** SELF POWER *****************************************************/
 
     #define tris_usb_bus_sense  

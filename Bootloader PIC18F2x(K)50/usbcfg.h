@@ -45,35 +45,27 @@
 #define UCFG_VAL                _PUEN|_TRINT|_FS|MODE_PP
 
 
-/* Make sure the proper hardware platform is being used*/
-#if defined(__18F4550) || defined(__18F4455) || defined(__18F4450) || defined(__18F2550) || defined(__18F2455) || defined(__18F2450) || defined(__18F2458) || defined(__18F2553) || defined(__18F4453) || defined(__18F4553)
-	#define PIC18F4550_PICDEM_FS_USB
+/* Make sure the required definitions are in the Project Build Options.
+ *
+ * These settings must be specified in the "Preprocessor Macros" area
+ * of the MPLAB C18 tab of the Project Build Options. 
+ *
+ * OPEN8055_PLLDIV=n		// Adjust this to the crystal frequency used
+ *							// on the board.
+ *							// 1 = 4 MHz as on the P8055N-2 PCB
+ *							// 5 = 20 MHz as on a converted P8055-1 PCB
+ *
+ * OPEN8055_PCB=type		// Type is
+ *							// P8055-1		An original K8055
+ *							// P8055N-2		A K8055N
+ */
+#ifndef OPEN8055_PLLDIV
+	#error OPEN8055_PLLDIV must be set in Project Build Options - see __FILE__, line __LINE__ for details
 #endif
-#if defined(__18F14K50) || defined(__18F13K50) || defined(__18LF14K50) || defined(__18LF13K50)
-	#define LOW_PIN_COUNT_USB_DEVELOPMENT_KIT
+#ifndef OPEN8055_PCB
+	#error OPEN8055_PLLPCB must be set in Project Build Options - see __FILE__, line __LINE__ for details
 #endif
-//#define YOUR_BOARD
 
-
-#if defined(PIC18F4550_PICDEM_FS_USB)
-//    #define USE_SELF_POWER_SENSE_IO
-//    #define USE_USB_BUS_SENSE_IO
-
-#elif defined(PIC18F87J50_FS_USB_PIM)
-    //#define USE_USB_BUS_SENSE_IO		//JP1 must be in R-U position to use this feature on this board		
-
-#elif defined(LOW_PIN_COUNT_USB_DEVELOPMENT_KIT)
-
-
-/*If using the YOUR_BOARD selection, uncomment below section as appropriate for your hardware*/
-//#elif defined(YOUR_BOARD)
-	//#define USE_SELF_POWER_SENSE_IO	//See MCHPFSUSB Firmware User's Guide
-   	//#define USE_USB_BUS_SENSE_IO		//(DS51679) for more details about these features.
-
-#else
-    #error Not a supported board (yet), See __FILE__, line __LINE__, or double click on this text.
-//See above commented section.  You need to select the features your hardware will be using.
-#endif
 
 /** D E V I C E  C L A S S  U S A G E *******************************/
 #define USB_USE_HID
