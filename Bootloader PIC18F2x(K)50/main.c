@@ -167,7 +167,10 @@ bootloader to use more program memory.
 /** V A R I A B L E S ********************************************************/
 #pragma udata
 
+unsigned char cardAddress;
+
 /** P R I V A T E  P R O T O T Y P E S ***************************************/
+static void ReadCardAddress(void);
 static void InitializeSystem(void);
 void USBTasks(void);
 void BlinkUSBStatus(void);
@@ -205,15 +208,14 @@ void interrupt_at_low_vector(void)
  *****************************************************************************/
 void main(void)
 {   
-    ADCON1 = 0x0F;			//Need to make sure RB4 can be used as a digital input pin
+    ADCON1 = 0x0F;
 	#if defined(__18F25K50)
     	ANSELA = 0x00;
     #endif
-    //	TRISBbits.TRISB4 = 1;	//No need to explicitly do this since reset state is = 1 already.
     
     //Check Bootload Mode Entry Condition
-    mInitAllJumpers();
-    if (sk5 != 1 || sk6 != 1)	// We use Card Address 3 to launch the boot loader
+    ReadCardAddress();
+    if (cardAddress != 3)	// We use Card Address 3 to launch the boot loader
     {
 		ADCON1 = 0x07;		//Restore "reset value" of the ADCON1 register
 		_asm
@@ -244,6 +246,46 @@ void main(void)
 
 
 
+/******************************************************************************
+ * Function:        static void ReadCardAddress(void)
+ *
+ * PreCondition:    None
+ *
+ * Input:           None
+ *
+ * Output:          None
+ *
+ * Side Effects:    Sets global variable cardAddress according to jumpers
+ *					sk5 and sk6
+ *
+ * Overview:		On the P8055N-2 board the card address jumpers sk5 and sk6
+ *                  are connected through a pull-up resistor to Vdd and if the
+ *					jumper is ON, signal pins RC1 or RC2. These pins are
+ *					normally used by the CCP module (PWM output). During
+ *					startup, the firmware briefly uses them as digital inputs
+ *					to detect the jumper configuration. After that, pin RA2
+ *					is used as an output to pull the power to sk5 and sk6 low.
+ *
+ *					On the P8055-1 board, the jumpers sk5 and sk6 are connected
+ *					to digital inputs RA2 and RA3.
+ *
+ * Note:            None
+ *****************************************************************************/
+static void ReadCardAddress(void)
+{
+	#if (OPEN8055_PCB == P8055-1)
+		cardAddress = ((sk6) ? 0 : 2) + ((sk5) ? 0 : 1);
+	#elif (OPEN8055_PCB == P8055N-2)
+		mInitAllJumpers();
+		sk56power = 1;				//Provide full power to sk5 and sk6
+		{int i = 100; while(--i);}
+		cardAddress = ((sk6) ? 0 : 2) + ((sk5) ? 0 : 1);
+		sk56power = 0;				//Pull sk5 and sk6 low
+	#else
+		#error "PCB type not supported (yet) in file __FILE__, line __LINE__"
+	#endif
+}
+	
 /******************************************************************************
  * Function:        static void InitializeSystem(void)
  *
