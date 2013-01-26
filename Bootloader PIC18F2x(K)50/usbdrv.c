@@ -366,9 +366,21 @@ void USBSuspend(void)
      */
 
     /* Modifiable Section */
+#if defined(__18F2550)
     PIR2bits.USBIF = 0;
+#elif defined(__18F25K50)
+    PIR3bits.USBIF = 0;
+#else
+	#error Unsupported CPU type in __FILE__, line __LINE__
+#endif
 //    INTCONbits.RBIF = 0;
+#if defined(__18F2550)
     PIE2bits.USBIE = 1;                     // Set USB wakeup source
+#elif defined(__18F25K50)
+    PIE3bits.USBIE = 1;                     // Set USB wakeup source
+#else
+	#error Unsupported CPU type in __FILE__, line __LINE__
+#endif
 //    INTCONbits.RBIE = 1;                    // Set sw2,3 wakeup source
     Sleep();                                // Goto sleep
 
@@ -376,7 +388,13 @@ void USBSuspend(void)
 //    {
 //        USBRemoteWakeup();                  // If yes, attempt RWU
 //    }
+#if defined(__18F2550)
     PIE2bits.USBIE = 0;
+#elif defined(__18F25K50)
+    PIE3bits.USBIE = 0;
+#else
+	#error Unsupported CPU type in __FILE__, line __LINE__
+#endif
 //    INTCONbits.RBIE = 0;
     /* End Modifiable Section */
 

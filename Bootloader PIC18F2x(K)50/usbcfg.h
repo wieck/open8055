@@ -6,14 +6,14 @@
  * FileName:        usbcfg.h
  * Dependencies:    See INCLUDES section below
  * Processor:       PIC18
- * Compiler:        C18 3.11+
+ * Compiler:        C18 3.42+
  * Company:         Microchip Technology, Inc.
  *
  * Software License Agreement
  *
  * The software supplied herewith by Microchip Technology Incorporated
- * (the “Company”) for its PICmicro® Microcontroller is intended and
- * supplied to you, the Company’s customer, for use solely and
+ * (the "Company") for its PICmicro® Microcontroller is intended and
+ * supplied to you, the Company's customer, for use solely and
  * exclusively on Microchip PICmicro Microcontroller products. The
  * software is owned by the Company and/or its supplier, and is
  * protected under applicable copyright laws. All rights are reserved.
@@ -22,7 +22,7 @@
  * civil liability for the breach of the terms and conditions of this
  * license.
  *
- * THIS SOFTWARE IS PROVIDED IN AN “AS IS” CONDITION. NO WARRANTIES,
+ * THIS SOFTWARE IS PROVIDED IN AN "AS IS" CONDITION. NO WARRANTIES,
  * WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED
  * TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
  * PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. THE COMPANY SHALL NOT,
@@ -45,27 +45,15 @@
 #define UCFG_VAL                _PUEN|_TRINT|_FS|MODE_PP
 
 
-/* Make sure the required definitions are in the Project Build Options.
- *
- * These settings must be specified in the "Preprocessor Macros" area
- * of the MPLAB C18 tab of the Project Build Options. 
- *
- * OPEN8055_PLLDIV=n		// Adjust this to the crystal frequency used
- *							// on the board.
- *							// 1 = 4 MHz as on the P8055N-2 PCB
- *							// 5 = 20 MHz as on a converted P8055-1 PCB
- *
- * OPEN8055_PCB=type		// Type is
- *							// P8055-1		An original K8055
- *							// P8055N-2		A K8055N
- */
-#ifndef OPEN8055_PLLDIV
-	#error OPEN8055_PLLDIV must be set in Project Build Options - see __FILE__, line __LINE__ for details
+/* Make sure the required definitions are in the Project Build Options
+#if defined(__18F2550)
+    #if !defined(OPEN8055_PLLDIV)
+    	#error OPEN8055_PLLDIV must be defined in Project Build Options
+    #endif
 #endif
-#ifndef OPEN8055_PCB
-	#error OPEN8055_PLLPCB must be set in Project Build Options - see __FILE__, line __LINE__ for details
+#if !defined(OPEN8055_PCB)
+    #error OPEN8055_PCB must be defined in Project Build Options
 #endif
-
 
 /** D E V I C E  C L A S S  U S A G E *******************************/
 #define USB_USE_HID

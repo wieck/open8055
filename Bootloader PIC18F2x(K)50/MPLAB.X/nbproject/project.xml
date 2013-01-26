@@ -3,12 +3,13 @@
     <type>com.microchip.mplab.nbide.embedded.makeproject</type>
     <configuration>
         <data xmlns="http://www.netbeans.org/ns/make-project/1">
-            <name>USB HID Bootloader for PIC18 Non-J Familes</name>
+            <name>HID Bootloader - PIC18 Non-J</name>
+            <creation-uuid>10ecf416-ca94-402f-a3ea-0a0beb0c5a13</creation-uuid>
             <make-project-type>0</make-project-type>
             <c-extensions>c</c-extensions>
             <cpp-extensions/>
             <header-extensions>h</header-extensions>
-            <sourceEncoding>UTF-8</sourceEncoding>
+            <sourceEncoding>ISO-8859-1</sourceEncoding>
             <make-dep-projects/>
         </data>
     </configuration>

@@ -26,10 +26,6 @@ echo Removing *.err files...
 del "%~dp0\*.err" /f /q /s 2>NUL
 echo.
 
-echo Removing *.hex files...
-@del "%~dp0\*.hex" /f /q /s 2>NUL
-echo.
-
 echo Removing *.i files...
 @del "%~dp0\*.i" /f /q /s 2>NUL
 echo.
