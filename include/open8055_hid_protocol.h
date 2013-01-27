@@ -32,9 +32,28 @@ typedef unsigned short uint16_t;
 
 #define OPEN8055_HID_MESSAGE_SIZE	32
 
+#define OPEN8055_HID_MESSAGE_OUTPUT	0x01	// Setting output values
+#define OPEN8055_HID_MESSAGE_SETCONFIG1	0x02	// Change configuration
+#define OPEN8055_HID_MESSAGE_GETCONFIG	0x03	// Request current config
+#define OPEN8055_HID_MESSAGE_SAVECONFIG	0x04	// Save current config to EEPROM
+#define OPEN8055_HID_MESSAGE_SAVEALL	0x05	// Save config and values to EEPROM
 
-#define OPEN8055_HID_MESSAGE_OUTPUT	0x01
-#define OPEN8055_HID_MESSAGE_INPUT	0x81
+#define OPEN8055_HID_MESSAGE_RESET	0x7F	// Restart PIC
+
+#define OPEN8055_HID_MESSAGE_INPUT	0x81	// Report current input values
+#define OPEN8055_HID_MESSAGE_CONFIG1	0x82	// Report current config
+
+
+#define OPEN8055_MODE_ADC		1	// A1,A2 - port is in ADC mode
+#define OPEN8055_MODE_INPUT		2	// I1..I5 - port is digital input
+#define OPEN8055_MODE_COUNTER1		3	// I1..I5 - counter auto-reset and report very second.
+#define OPEN8055_MODE_COUNTER10		4	// I1..I5 - counter auto-reset and report every 10 seconds.
+#define OPEN8055_MODE_EUSART		5	// I4&I5 - ports used as EUSART
+#define OPEN8055_MODE_OUTPUT		6	// O1..O8 - port is digital output
+#define OPEN8055_MODE_SERVO		7	// O1..O8 - port is in servo mode
+#define OPEN8055_MODE_ISERVO		8	// O1..O8 - port is in inverted servo mode
+#define OPEN8055_MODE_I2C		9	// O1&O2 - ports used as I2C bus.
+#define OPEN8055_MODE_PWM		10	// PWM1,PWM2 - port used as PWM output
 
 
 typedef union {
@@ -50,12 +69,25 @@ typedef union {
 	};
 	
 	struct {
-		uint8_t			_msgType;
+		uint8_t			_msgType_output;
 		
 		uint8_t			outputBits;
 		uint16_t		outputValue[8];
 		uint16_t		outputPwmValue[2];
+		uint8_t			resetCounter;
 	};	
+
+	struct {
+		uint8_t			_msgType_config;
+
+		uint8_t			modeADC[2];
+		uint8_t			modeInput[5];
+		uint8_t			modeOutput[8];
+		uint8_t			modePWM[2];
+
+		uint16_t		debounceValue[5];
+		uint8_t			cardAddress;
+	};
 	
 } Open8055_hidMessage_t;	
 
