@@ -466,7 +466,6 @@ static void userInit(void)
     PORTB = 0x00;
     CCPR1L = 0;
     CCPR2L = 0;
-OPEN8055d8 = 1;
     
 	//Configure ADC (definitions are in "HardwareProfile_PIC18F*.h")
 	#if defined(__18F2550) || defined(__18F25K50)
@@ -590,7 +589,6 @@ static void processIO(void)
 			if (++tickSecond >= 1000)
 			{
 				tickSecond = 0;
-OPEN8055d7 = ~OPEN8055d7;
 				
 				// Per 1 second code comes here
 			}	
