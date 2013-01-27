@@ -150,6 +150,21 @@ uint8_t		tickCounter = 0;
 uint8_t		tickMillisecond = 0;
 uint16_t	tickSecond = 0;
 
+uint8_t		analogValue_1_high = 0;
+uint8_t		analogValue_1_low = 0;
+uint8_t		analogValue_2_high = 0;
+uint8_t		analogValue_2_low = 0;
+uint8_t		analogInterrupted = 0;
+
+// Status data per digital input
+struct {
+	unsigned char	lastState;
+	unsigned char	currentState;
+	unsigned short	counter;
+	unsigned short	debounceConfig;				// Debounce time in ticks/ms
+	unsigned short	debounceCounter;
+} switchStatus[5];
+
 
 struct Open8055_status_t {
     uint8_t		outputBits;
@@ -442,9 +457,20 @@ static void initializeSystem(void)
  *****************************************************************************/
 static void userInit(void)
 {
+	uint8_t i;
+
 	#if defined(USB_USER_DEVICE_DESCRIPTOR_INCLUDE)
 		USB_USER_DEVICE_DESCRIPTOR_INCLUDE;
 	#endif
+
+	//Initialize global status data
+	for (i = 0; i < 5; i++)
+	{
+		switchStatus[i].lastState		= 0;
+		switchStatus[i].counter			= 0;
+		switchStatus[i].debounceConfig	= OPEN8055_COUNTER_DEBOUNCE_DEFAULT * OPEN8055_TICKS_PER_MS;
+		switchStatus[i].debounceCounter	= 0;
+	}	
 
     //initialize the variable holding the handle for the last
     // transmission
@@ -468,20 +494,16 @@ static void userInit(void)
     CCPR2L = 0;
     
 	//Configure ADC (definitions are in "HardwareProfile_PIC18F*.h")
-	#if defined(__18F2550) || defined(__18F25K50)
-		ADCON1 = OPEN8055_ADCON1;
-		ADCON2 = OPEN8055_ADCON2;
-		ADCON0 = OPEN8055_ADCON0;
-	#else
-		#error "Unsupported processor in file __FILE__, line __LINE__"
-	#endif
+	ADCON1 = OPEN8055_ADCON1;
+	ADCON2 = OPEN8055_ADCON2;
+	ADCON0 = OPEN8055_ADCON0;
 	
 
 	//Make sure that interrupt priotities and high priority interrupts
 	//are enabled.
 	RCONbits.IPEN	= 1;
 	INTCONbits.GIEH	= 1;
-/*
+
 	//Setup PWM configuration including timer2
 	T2CONbits.T2CKPS0 = OPEN8055_T2CKPS0;
 	T2CONbits.T2CKPS1 = OPEN8055_T2CKPS1;
@@ -493,7 +515,7 @@ static void userInit(void)
 	CCP2CON = OPEN8055_CCP2CON;
 
     T2CONbits.TMR2ON = 1;
-*/
+
 	//Enable Timer3 for our internal ticker
 	T3CON = 0x04;				//Timer3 is using internal 12 MHz clock
 	TMR3H = 0xFB;
@@ -542,13 +564,49 @@ static void userInit(void)
 static void processIO(void)
 {
 	uint8_t	ticksSeen;
+	uint8_t i;
 	
     // Check if we are USB connected
     if((USBDeviceState < CONFIGURED_STATE)||(USBSuspendControl==1))
     	cardConnected = 0;
 	else
     	cardConnected = 1;
+    	
+        // Get the current state of all switches we maintain counters for
+	switchStatus[0].currentState = OPEN8055sw1;
+	switchStatus[1].currentState = OPEN8055sw2;
+	switchStatus[2].currentState = OPEN8055sw3;
+	switchStatus[3].currentState = OPEN8055sw4;
+	switchStatus[4].currentState = OPEN8055sw5;
     
+    for (i = 0; i < 5; i++)
+    {
+		if (switchStatus[i].lastState == switchStatus[i].currentState)
+		{
+	        // If we see the same state that we remember, the input either did
+	        // not change at all, or it toggled back before the debounce counter
+	        // has elapsed. This cancels the debounce countdown.
+			switchStatus[i].debounceCounter = 0;
+		}
+		else
+		{
+			// We see a different state. If the debounce config of this switch is
+			// set to zero milliseconds, bump the counter right away. If not, start
+			// a debounce countdown.
+			if (switchStatus[i].debounceCounter == 0)
+			{
+				if (switchStatus[i].debounceConfig == 0)
+				{
+					switchStatus[i].lastState = switchStatus[i].currentState;
+					if (switchStatus[i].currentState)
+						switchStatus[i].counter++;
+				}
+				else
+					switchStatus[i].debounceCounter = switchStatus[i].debounceConfig;
+			}
+		}	
+	}
+
     // Check if data was received from the host.
     if(cardConnected && !HIDRxHandleBusy(outputHandle))
     {   
@@ -570,6 +628,47 @@ static void processIO(void)
         //Re-arm the OUT endpoint for the next packet
         outputHandle = HIDRxPacket(HID_EP, (BYTE*)&receivedDataBuffer, sizeof(receivedDataBuffer));
     }
+
+	// Handle ADC
+	// For precision reasons, we do it with a busy loop so we get the result
+	// the instant, the conversion is done. We need to throw away the result
+	// in case we got interrupted, because that can mean that our busy loop
+	// ended too late (after the ISR returned).
+	analogInterrupted = 0;
+	ADCON0bits.GO = 1;
+	while (ADCON0bits.GO && !analogInterrupted);
+	if (!analogInterrupted)
+	{
+		//Copy the conversion result to global memory
+		//and switch to the other analog input.
+		#if defined(__18F2550)
+			if(ADCON0bits.CHS0==1)
+			{
+				analogValue_2_high = ADRESH;
+				analogValue_2_low  = ADRESL;
+				ADCON0bits.CHS0=0;
+			}
+			else
+			{
+				analogValue_1_high = ADRESH;
+				analogValue_1_low  = ADRESL;
+				ADCON0bits.CHS0=1;
+			}
+		#elif defined(__18F25K50)
+			if(ADCON0bits.CHS==1)
+			{
+				analogValue_2_high = ADRESH;
+				analogValue_2_low  = ADRESL;
+				ADCON0bits.CHS=0;
+			}
+			else
+			{
+				analogValue_1_high = ADRESH;
+				analogValue_1_low  = ADRESL;
+				ADCON0bits.CHS=1;
+			}
+		#endif
+	}
 
 	// Count timer ticks
 	ticksSeen = tickCounter;
