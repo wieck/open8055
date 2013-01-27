@@ -2,14 +2,14 @@
   File Information:
     FileName:     	usb_function_hid.h
     Dependencies:   See INCLUDES section
-    Processor:      PIC18 or PIC24 USB Microcontrollers
+    Processor:      Microchip USB Microcontrollers
     Hardware:       The code is natively intended to be used on the following
-    				hardware platforms: PICDEM™ FS USB Demo Board, 
+    				hardware platforms: PICDEM FS USB Demo Board, 
     				PIC18F87J50 FS USB Plug-In Module, or
     				Explorer 16 + PIC24 USB PIM.  The firmware may be
     				modified for use on other USB platforms by editing the
     				HardwareProfile.h file.
-    Complier:  	    Microchip C18 (for PIC18) or C30 (for PIC24)
+    Complier:  	    Microchip C18, C30, C32
     Company:        Microchip Technology, Inc.
     
     Software License Agreement:
@@ -376,8 +376,6 @@ typedef struct _USB_HID_DSC
 } USB_HID_DSC;
 
 /** Section: EXTERNS ********************************************************/
-extern volatile unsigned char hid_report_in[HID_INT_IN_EP_SIZE];
-extern volatile unsigned char hid_report_out[HID_INT_OUT_EP_SIZE];
 extern volatile CTRL_TRF_SETUP SetupPkt;
 extern ROM BYTE configDescriptor1[];
 extern volatile BYTE CtrlTrfData[USB_EP0_BUFF_SIZE];

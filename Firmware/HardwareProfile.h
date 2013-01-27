@@ -84,10 +84,10 @@
  * Include the Processor specific Hardware Profile
  * ----
  */
-#if defined(OPEN8055_PIC18F2550)
+#if defined(__18F2550)
     #include "HardwareProfile_PIC18F2550.h"
-#elif defined(OPEN8055_PIC18F24J50)
-    #include "HardwareProfile_PIC18F24J50.h"
+#elif defined(__18F25K50)
+    #include "HardwareProfile_PIC18F25K50.h"
 #else
     #error "Unsupported Processor for Open8055 Project file __FILE__, line __LINE__"
 #endif
@@ -100,10 +100,10 @@
  * BOARD2 is the K8055N-2
  * ----
  */
-#if defined(OPEN8055_BOARD1)
-    #include "HardwareProfile_Board1.h"
-#elif defined(OPEN8055_BOARD2)
-    #include "HardwareProfile_Board2.h"
+#if (OPEN8055_PCB == P8055-1)
+    #include "HardwareProfile_P8055-1.h"
+#elif (OPEN8055_PCB == P8055N-2)
+    #include "HardwareProfile_P8055N-2.h"
 #else
     #error "Unsupported Board Type for Open8055 Project file __FILE__, line __LINE__"
 #endif

@@ -1,0 +1,46 @@
+// File: PIC18F25K50_HID_Bootload.lkr
+
+// Use this linker script for the USB application that will be self programmed by the 
+// Open8055 HID Bootloader
+
+// THIS LINKER SCRIPT HAS BEEN MODIFIED...  This version is intended to be used
+// with the "PROGRAMMABLE_WITH_USB_HID_BOOTLOADER" bootloader for modified
+// Velleman K8055 USB Experiment Interface Boards.
+//
+// The bootloader occupies memory ranges 0x0000-0x10FF.  In order for the code generated
+// by this project to work with the bootloader, the linker must not put any code
+// in the 0x0000-0x11FF address range.
+
+// This linker script was derived from the "rm18f4550 - HID Bootload.lkr" file provided by
+// Microchip Application Libraries.
+
+LIBPATH .
+
+FILES c018i.o
+FILES clib.lib
+FILES p18F25k50.lib
+
+CODEPAGE   NAME=bootloader START=0x0          	   END=0x11FF         PROTECTED
+CODEPAGE   NAME=vectors    START=0x1200       	   END=0x1229	      PROTECTED
+CODEPAGE   NAME=page       START=0x122A            END=0x7FFF
+CODEPAGE   NAME=idlocs     START=0x200000          END=0x200007       PROTECTED
+CODEPAGE   NAME=config     START=0x300000          END=0x30000D       PROTECTED
+CODEPAGE   NAME=devid      START=0x3FFFFE          END=0x3FFFFF       PROTECTED
+CODEPAGE   NAME=eedata     START=0xF00000          END=0xF000FF       PROTECTED
+
+ACCESSBANK NAME=accessram  START=0x0            END=0x5F
+DATABANK   NAME=gpr0       START=0x60           END=0xFF
+DATABANK   NAME=gpr1       START=0x100          END=0x1FF
+DATABANK   NAME=gpr2       START=0x200          END=0x2FF
+DATABANK   NAME=gpr3       START=0x300          END=0x3FF
+DATABANK   NAME=gpr4       START=0x400             END=0x4FF
+DATABANK   NAME=gpr5       START=0x500             END=0x5FF
+DATABANK   NAME=gpr6       START=0x600             END=0x6FF
+DATABANK   NAME=gpr7       START=0x700             END=0x7FF
+DATABANK   NAME=sfr15      START=0xF53             END=0xF5F          PROTECTED
+ACCESSBANK NAME=accesssfr  START=0xF60          END=0xFFF          PROTECTED
+
+SECTION    NAME=CONFIG     ROM=config
+
+STACK SIZE=0x100 RAM=gpr3
+

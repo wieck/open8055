@@ -1,8 +1,8 @@
 /********************************************************************
- FileName:     	HardwareProfile_Board2.h
+ FileName:     	HardwareProfile_Board1.h
  Dependencies:  See INCLUDES section
  Processor:     PIC18F type USB Microcontroller
- Hardware:      Open8055 based on Vellaman K8055N-2
+ Hardware:      Open8055 based on Vellaman K8055-1
  Compiler:      Microchip C18
  Company:       Microchip Technology, Inc.
 
@@ -43,13 +43,13 @@
   					K8055 board
 ********************************************************************/
 
-#ifndef HARDWARE_PROFILE_BOARD2_H
-#define HARDWARE_PROFILE_BOARD2_H
+#ifndef HARDWARE_PROFILE_BOARD1_H
+#define HARDWARE_PROFILE_BOARD1_H
 
     /** SELF POWER *****************************************************/
 
     #define tris_usb_bus_sense  
-    #define usb_bus_sense       1
+    #define USB_BUS_SENSE       1
     #define tris_self_power     
     #define self_power          1
     
@@ -57,9 +57,9 @@
 
     //Port A
     //	RA0, RA1 are analog inputs
-    //	RA2 is the pull up/low for address jumpers
-    //	RA3, RA5 are digital inputs I1, I2
-    #define OPEN8055_TRISA 0xEB
+    //	RA2, RA3 are the board addres jumpers sk5, sk6
+    //	RA4, RA5 are digital inputs I1, I2
+    #define OPEN8055_TRISA 0x3F
     
     //Port B
     //	RB0..RB7 are digital outputs D1..D8
@@ -68,26 +68,21 @@
     //Port C
     //	RC0 is digital input I3
     //	RC1, RC2 are PWM outputs
-    //  RC4, RC5 are the USB data pins
     //	RC6, RC7 are digital inputs I4, I5
-    //  During boot however we use RC1, RC2 as inputs
-    //  to detect the state of the card address jumpers
-    #define OPEN8055_TRISC 0xCF
-    #define OPEN8055_TRISC_2 0xC9
+    #define OPEN8055_TRISC 0xC9
 
     /** SWITCHES *******************************************************/
 
-    #define OPEN8055sw1	PORTAbits.RA3
+    #define OPEN8055sw1	PORTAbits.RA4
     #define OPEN8055sw2	PORTAbits.RA5
     #define OPEN8055sw3	PORTCbits.RC0
-    #define OPEN8055sw4	PORTCbits.RC7
-    #define OPEN8055sw5	PORTCbits.RC6
+    #define OPEN8055sw4	PORTCbits.RC6
+    #define OPEN8055sw5	PORTCbits.RC7
 
     /** ADDRESS JUMPER *************************************************/
 
-    #define OPEN8055sk56power PORTAbits.RA2
-    #define OPEN8055sk5	PORTCbits.RC1
-    #define OPEN8055sk6	PORTCbits.RC2
+    #define OPEN8055sk5	PORTAbits.RA2
+    #define OPEN8055sk6	PORTAbits.RA3
     
     /** OUPUT PORTS ****************************************************/
 
@@ -106,8 +101,12 @@
     // 2us = 8*Tcy (at 4MHz bus clock)
 	
     // ADCON1
-    // bit 7 ADFM
-    // bit 6 ADCAL
+    // bit7..6 	- Unimplemented
+    // bit5..4	- VCFG1..0, 00 = supply rails
+    // bit3..0	- PCGG3..0, 1101 = AIN1..0 only
+    #define OPEN8055_ADCON1 0x0D
+
+    // ADCON2
     // bit 5-3 ACQT2:ACQT0: A/D Acquisition Time Select bits
     //		111 = 20 TAD
     //		110 = 16 TAD
@@ -126,20 +125,16 @@
     //		010 = FOSC/32
     //		001 = FOSC/8
     //		000 = FOSC/2
-    #define OPEN8055_ADCON1 0b10101010 // 20TAD,FOSC/32
+    #define OPEN8055_ADCON2 0b10101010 // 20TAD,FOSC/32
 
 
     //ADCON0
-    // bit7..6 	- Reference voltage (00 = use rails)
+    // bit7..6 	- Unimplemented
     // bit5..2 	- CHS3:0, channel select
     // bit1	- GO/DONE
     // bit1	- ADON
     #define OPEN8055_ADCON0 0x01
 
-    //ANCON0/1
-    #define OPEN8055_ANCON0 0xFC
-    #define OPEN8055_ANCON1 0x1F
-    
     /** PWM CONFIG *****************************************************/
 	
     //The original K8055 PWM runs at 23.43 kHz. 
@@ -150,5 +145,5 @@
     #define OPEN8055_PWMPR2	127
     #define OPEN8055_CCP1CON	0x0C
     #define OPEN8055_CCP2CON	0x0C
-
-#endif  //HARDWARE_PROFILE_PIC18F2550_H
+    
+#endif  //HARDWARE_PROFILE_BOARD1_H

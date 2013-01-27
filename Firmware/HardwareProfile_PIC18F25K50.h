@@ -1,8 +1,8 @@
 /********************************************************************
- FileName:     	HardwareProfile_PIC18F24J50.h
+ FileName:     	HardwareProfile_PIC18F2550.h
  Dependencies:  See INCLUDES section
- Processor:     PIC18F24J50 USB Microcontroller
- Hardware:      Open8055 based on Vellaman K8055N
+ Processor:     PIC18F2550 USB Microcontroller
+ Hardware:      Open8055 based on Vellaman K8055(N)
  Compiler:      Microchip C18
  Company:       Microchip Technology, Inc.
 
@@ -43,11 +43,13 @@
   					K8055 board
 ********************************************************************/
 
-#ifndef HARDWARE_PROFILE_PIC18F24J50_H
-#define HARDWARE_PROFILE_PIC18F24J50_H
+#ifndef HARDWARE_PROFILE_PIC18F2550_H
+#define HARDWARE_PROFILE_PIC18F2550_H
 
-    //ANCON0/1 for all digital configuration
-    #define OPEN8055_ANCON0 0xFC
-    #define OPEN8055_ANCON1 0x1F
+    /** IO PORT SETTINGS ***********************************************/
+
+    //ADCON1
+    //	Setting these bits in ADCON1 configures all ports to digital.
+    #define OPEN8055_ADCON1_ALL_DIGITAL_MASK	0x0F
     
-#endif  //HARDWARE_PROFILE_PIC18F24J50_H
+#endif  //HARDWARE_PROFILE_PIC18F2550_H
