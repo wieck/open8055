@@ -358,7 +358,6 @@ Open8055_Connect(char *destination, char *password)
     while (card->currentConfig1.msgType == 0x00 || card->currentOutput.msgType == 0x00
     	|| card->currentInput.msgType == 0x00)
     {
-printf("waiting for current config from card\n");
     	if (DeviceRead(cardNumber, &inputMessage, sizeof(inputMessage)) < 0)
 	{
 	    SetError("DeviceRead failed - %s", ErrorString);
@@ -372,17 +371,14 @@ printf("waiting for current config from card\n");
 	switch(inputMessage.msgType)
 	{
 	    case OPEN8055_HID_MESSAGE_SETCONFIG1:
-printf("  got CONFIG1\n");
 	    	memcpy(&(card->currentConfig1), &inputMessage, sizeof(card->currentConfig1));
 	    	break;
 
 	    case OPEN8055_HID_MESSAGE_OUTPUT:
-printf("  got OUTPUT\n");
 	    	memcpy(&(card->currentOutput), &inputMessage, sizeof(card->currentOutput));
 	    	break;
 
 	    case OPEN8055_HID_MESSAGE_INPUT:
-printf("  got INPUT\n");
 	    	memcpy(&(card->currentInput), &inputMessage, sizeof(card->currentInput));
 		card->currentInputUnconsumed = OPEN8055_INPUT_ANY;
 	    	break;
@@ -403,7 +399,6 @@ printf("  got INPUT\n");
 	pthread_mutex_unlock(&openCardsLock);
 	return -1;
     }
-printf("ioThread created\n");
 
     /* ----
      * Success.
@@ -448,13 +443,11 @@ Open8055_Close(int handle)
      */
     card->ioTerminate = TRUE;
     pthread_mutex_unlock(&(card->lock));
-printf("ioThread signaled to exit - trying to join\n");
     if (pthread_join(card->ioThread, NULL) != 0)
     {
     	SetError("pthread_join() failed - %s", ErrorString());
 	rc = -1;
     }
-printf("ioThread joined\n");
 
     /* ----
      * Before destroying all the other resources, make sure we
