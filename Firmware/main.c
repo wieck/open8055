@@ -156,6 +156,15 @@ uint8_t		analogValue_2_high = 0;
 uint8_t		analogValue_2_low = 0;
 uint8_t		analogInterrupted = 0;
 
+Open8055_hidMessage_t currentConfig1;
+Open8055_hidMessage_t currentOutput;
+Open8055_hidMessage_t currentInput;
+
+uint8_t		currentConfig1Requested = FALSE;
+uint8_t		currentOutputRequested = FALSE;
+
+uint16_t	inputSendTimeout = 100;
+
 // Status data per digital input
 struct {
 	unsigned char	lastState;
@@ -463,15 +472,38 @@ static void userInit(void)
 		USB_USER_DEVICE_DESCRIPTOR_INCLUDE;
 	#endif
 
-	//Initialize global status data
+	// Initialize global status data.
+	currentConfig1.msgType			= OPEN8055_HID_MESSAGE_SETCONFIG1;
+	currentConfig1.modeADC[0]		= OPEN8055_MODE_ADC;
+	currentConfig1.modeADC[1]		= OPEN8055_MODE_ADC;
+	currentConfig1.modeInput[0]		= OPEN8055_MODE_INPUT;
+	currentConfig1.modeInput[1]		= OPEN8055_MODE_INPUT;
+	currentConfig1.modeInput[2]		= OPEN8055_MODE_INPUT;
+	currentConfig1.modeInput[3]		= OPEN8055_MODE_INPUT;
+	currentConfig1.modeInput[4]		= OPEN8055_MODE_INPUT;
+	currentConfig1.modeOutput[0]	= OPEN8055_MODE_OUTPUT;
+	currentConfig1.modeOutput[1]	= OPEN8055_MODE_OUTPUT;
+	currentConfig1.modeOutput[2]	= OPEN8055_MODE_OUTPUT;
+	currentConfig1.modeOutput[3]	= OPEN8055_MODE_OUTPUT;
+	currentConfig1.modeOutput[4]	= OPEN8055_MODE_OUTPUT;
+	currentConfig1.modeOutput[5]	= OPEN8055_MODE_OUTPUT;
+	currentConfig1.modeOutput[6]	= OPEN8055_MODE_OUTPUT;
+	currentConfig1.modeOutput[7]	= OPEN8055_MODE_OUTPUT;
+	currentConfig1.modePWM[0]		= OPEN8055_MODE_PWM;
+	currentConfig1.modePWM[1]		= OPEN8055_MODE_PWM;
+	
+	currentOutput.msgType			= OPEN8055_HID_MESSAGE_OUTPUT;
+
 	for (i = 0; i < 5; i++)
 	{
 		switchStatus[i].lastState		= 0;
 		switchStatus[i].counter			= 0;
 		switchStatus[i].debounceConfig	= OPEN8055_COUNTER_DEBOUNCE_DEFAULT * OPEN8055_TICKS_PER_MS;
 		switchStatus[i].debounceCounter	= 0;
-	}	
-
+		
+		currentConfig1.debounceValue[i] = OPEN8055_COUNTER_DEBOUNCE_DEFAULT * OPEN8055_TICKS_PER_MS;
+	}
+	
     //initialize the variable holding the handle for the last
     // transmission
     outputHandle = 0;
@@ -525,7 +557,6 @@ static void userInit(void)
 	PIE2bits.TMR3IE = 1;
 	
 	T3CONbits.TMR3ON = 1;		//and turn it on.
-
 
 	//Determine the cardAddress depending on sk5 and sk6.
 	#if (OPEN8055_PCB == P8055-1)
@@ -613,11 +644,23 @@ static void processIO(void)
         // Process host message
         switch (receivedDataBuffer.msgType)
 		{
-			// OUTPUT message containing digital output ports and
-			// PWM values.
+			// OUTPUT message containing digital output ports,
+			// PWM values and counter reset flags.
 			case OPEN8055_HID_MESSAGE_OUTPUT:
+			    memcpy((void *)&currentOutput, (void *)&receivedDataBuffer, sizeof(currentOutput));
 				status.outputBits = receivedDataBuffer.outputBits;
 				PORTB = status.outputBits;
+				break;
+			
+			// SETCONFIG1 message containing configuration settings.
+			case OPEN8055_HID_MESSAGE_SETCONFIG1:
+			    memcpy((void *)&currentConfig1, (void *)&receivedDataBuffer, sizeof(currentConfig1));
+				break;
+			
+			// GETCONFIG message instructing us to send our current status.
+			case OPEN8055_HID_MESSAGE_GETCONFIG:
+				currentConfig1Requested = TRUE;
+				currentOutputRequested = TRUE;
 				break;
 			
 			// Ignore unknown message types.	
@@ -684,6 +727,8 @@ static void processIO(void)
 			tickMillisecond = 0;
 			
 			// Per 1 millisecond code comes here
+			if (inputSendTimeout > 0)
+				inputSendTimeout--;
 
 			if (++tickSecond >= 1000)
 			{
@@ -697,17 +742,39 @@ static void processIO(void)
 	if (cardConnected && !HIDTxHandleBusy(inputHandle))
 	{
 		// Time to send a report.
+		if (currentConfig1Requested)
+		{
+			currentConfig1Requested = FALSE;
+			memcpy((void *)&toSendDataBuffer, (void *)&currentConfig1, sizeof(toSendDataBuffer));
+			inputHandle = HIDTxPacket(HID_EP, (BYTE*)&toSendDataBuffer, sizeof(toSendDataBuffer));
+			return;
+		}	
+		
+		if (currentOutputRequested)
+		{
+			currentOutputRequested = FALSE;
+			memcpy((void *)&toSendDataBuffer, (void *)&currentOutput, sizeof(toSendDataBuffer));
+			inputHandle = HIDTxPacket(HID_EP, (BYTE*)&toSendDataBuffer, sizeof(toSendDataBuffer));
+			return;
+		}
 		
 		// Construct a standard input state report.
-		memset(&toSendDataBuffer, 0, sizeof(toSendDataBuffer));
-		toSendDataBuffer.msgType		= OPEN8055_HID_MESSAGE_INPUT;
-		toSendDataBuffer.inputBits		= OPEN8055sw1 |
+		memset(&currentInput, 0, sizeof(currentInput));
+		currentInput.msgType			= OPEN8055_HID_MESSAGE_INPUT;
+		currentInput.inputBits			= OPEN8055sw1 |
 										  (OPEN8055sw2 << 1) |
 										  (OPEN8055sw3 << 2) |
 										  (OPEN8055sw4 << 3) |
 										  (OPEN8055sw5 << 4);
-		
-		inputHandle = HIDTxPacket(HID_EP, (BYTE*)&toSendDataBuffer, sizeof(toSendDataBuffer));	
+										  
+		// Suppress this report if nothing has changed and 100 ms didn't elapse.
+		if (inputSendTimeout > 0 && memcmp((void *)&currentInput, (void *)&toSendDataBuffer, sizeof(currentInput)) == 0)
+			return;
+			
+		// Send this report
+		memcpy((void *)&toSendDataBuffer, (void *)&currentInput, sizeof(toSendDataBuffer));
+		inputHandle = HIDTxPacket(HID_EP, (BYTE*)&toSendDataBuffer, sizeof(toSendDataBuffer));
+		inputSendTimeout = 50;
 	}
 
 }//end processIO

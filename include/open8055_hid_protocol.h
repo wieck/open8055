@@ -41,7 +41,6 @@ typedef unsigned short uint16_t;
 #define OPEN8055_HID_MESSAGE_RESET	0x7F	// Restart PIC
 
 #define OPEN8055_HID_MESSAGE_INPUT	0x81	// Report current input values
-#define OPEN8055_HID_MESSAGE_CONFIG1	0x82	// Report current config
 
 
 #define OPEN8055_MODE_ADC		1	// A1,A2 - port is in ADC mode
