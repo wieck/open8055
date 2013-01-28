@@ -448,6 +448,7 @@ Open8055_Close(int handle)
     	SetError("pthread_join() failed - %s", ErrorString());
 	rc = -1;
     }
+    DeviceClose(card->idLocal);
 
     /* ----
      * Before destroying all the other resources, make sure we
@@ -524,7 +525,7 @@ Open8055_GetInputBits(int handle)
      * Make sure we have current input data.
      * ----
      */
-    Open8055_WaitForInput(card, OPEN8055_INPUT_I_ANY, 1000);
+    Open8055_WaitForInput(card, OPEN8055_INPUT_I_ANY, OPEN8055_WAITFOR_US);
 
     /* ----
      * If the card is in error state, just copy it's error message and 
@@ -813,11 +814,14 @@ CardIOThread(void *cdata)
 	switch (inputMessage.msgType)
 	{
 	    case OPEN8055_HID_MESSAGE_INPUT:
-	    	memcpy(&(card->currentInput), &inputMessage, sizeof(card->currentInput));
-		card->currentInputUnconsumed = OPEN8055_INPUT_ANY;
-		if (card->ioWaiters > 0)
+		if (memcmp(&(card->currentInput), &inputMessage, sizeof(card->currentInput)) != 0)
 		{
-		    pthread_cond_broadcast(&(card->cond));
+		    memcpy(&(card->currentInput), &inputMessage, sizeof(card->currentInput));
+		    card->currentInputUnconsumed = OPEN8055_INPUT_ANY;
+		    if (card->ioWaiters > 0)
+		    {
+			pthread_cond_broadcast(&(card->cond));
+		    }
 		}
 		break;
 

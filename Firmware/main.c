@@ -672,55 +672,62 @@ static void processIO(void)
         outputHandle = HIDRxPacket(HID_EP, (BYTE*)&receivedDataBuffer, sizeof(receivedDataBuffer));
     }
 
-	// Handle ADC
-	// For precision reasons, we do it with a busy loop so we get the result
-	// the instant, the conversion is done. We need to throw away the result
-	// in case we got interrupted, because that can mean that our busy loop
-	// ended too late (after the ISR returned).
-	analogInterrupted = 0;
-	ADCON0bits.GO = 1;
-	while (ADCON0bits.GO && !analogInterrupted);
-	if (!analogInterrupted)
-	{
-		//Copy the conversion result to global memory
-		//and switch to the other analog input.
-		#if defined(__18F2550)
-			if(ADCON0bits.CHS0==1)
-			{
-				analogValue_2_high = ADRESH;
-				analogValue_2_low  = ADRESL;
-				ADCON0bits.CHS0=0;
-			}
-			else
-			{
-				analogValue_1_high = ADRESH;
-				analogValue_1_low  = ADRESL;
-				ADCON0bits.CHS0=1;
-			}
-		#elif defined(__18F25K50)
-			if(ADCON0bits.CHS==1)
-			{
-				analogValue_2_high = ADRESH;
-				analogValue_2_low  = ADRESL;
-				ADCON0bits.CHS=0;
-			}
-			else
-			{
-				analogValue_1_high = ADRESH;
-				analogValue_1_low  = ADRESL;
-				ADCON0bits.CHS=1;
-			}
-		#endif
-	}
-
 	// Count timer ticks
 	ticksSeen = tickCounter;
 	tickCounter -= ticksSeen;
 	
-	// Timer related code
+	// Process timer ticks.
 	while (ticksSeen-- > 0)
 	{
 		// Per 100 microsecond code comes here
+
+		// Handle ADC. We toggle between ADC inputs and query one of them every
+		// time, the 100ns ticker is 0 or 5. This means that we do measure ADC
+		// once per millisecond. We can't report any faster anyway, so what's 
+		// the rush?
+		// For precision reasons, we do it with a busy loop so we get the result
+		// the instant, the conversion is done. We need to throw away the result
+		// in case we got interrupted, because that can mean that our busy loop
+		// ended too late (after the ISR returned).
+		if ((tickMillisecond % 5) == 0)
+		{
+			analogInterrupted = 0;
+			ADCON0bits.GO = 1;
+			while (ADCON0bits.GO && !analogInterrupted);
+			if (!analogInterrupted)
+			{
+				//Copy the conversion result to global memory
+				//and switch to the other analog input.
+				#if defined(__18F2550)
+					if(ADCON0bits.CHS0==1)
+					{
+						analogValue_2_high = ADRESH;
+						analogValue_2_low  = ADRESL;
+						ADCON0bits.CHS0=0;
+					}
+					else
+					{
+						analogValue_1_high = ADRESH;
+						analogValue_1_low  = ADRESL;
+						ADCON0bits.CHS0=1;
+					}
+				#elif defined(__18F25K50)
+					if(ADCON0bits.CHS==1)
+					{
+						analogValue_2_high = ADRESH;
+						analogValue_2_low  = ADRESL;
+						ADCON0bits.CHS=0;
+					}
+					else
+					{
+						analogValue_1_high = ADRESH;
+						analogValue_1_low  = ADRESL;
+						ADCON0bits.CHS=1;
+					}
+				#endif
+			}
+		}
+	
 		
 		if (++tickMillisecond >= OPEN8055_TICKS_PER_MS)
 		{
@@ -739,6 +746,7 @@ static void processIO(void)
 		}	
 	}	
 	
+	OPEN8055d8 = 0;
 	if (cardConnected && !HIDTxHandleBusy(inputHandle))
 	{
 		// Time to send a report.
@@ -774,7 +782,9 @@ static void processIO(void)
 		// Send this report
 		memcpy((void *)&toSendDataBuffer, (void *)&currentInput, sizeof(toSendDataBuffer));
 		inputHandle = HIDTxPacket(HID_EP, (BYTE*)&toSendDataBuffer, sizeof(toSendDataBuffer));
-		inputSendTimeout = 50;
+		inputSendTimeout = 100;
+		
+		OPEN8055d8 = 1;
 	}
 
 }//end processIO

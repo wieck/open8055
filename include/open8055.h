@@ -83,6 +83,7 @@
  */
 
 #define OPEN8055_MAX_CARDS	3
+#define OPEN8055_WAITFOR_US	1000
 
 /* ----
  * The following bits define unique input items in the reports.
@@ -126,7 +127,8 @@ OPEN8055_EXTERN int		STDCALL Open8055_CardPresent(int cardNumber);
 OPEN8055_EXTERN int		STDCALL Open8055_Connect(char *destination, char *password);
 OPEN8055_EXTERN int		STDCALL Open8055_Close(int h);
 
-OPEN8055_EXTERN int		STDCALL Open8055_Wait(int h, uint32_t mask, long us);
+OPEN8055_EXTERN int		STDCALL Open8055_WaitMask(int h, uint32_t mask, long us);
+#define Open8055_Wait(_h,_us)	Open8055_WaitMask((_h), OPEN8055_INPUT_ANY, (_us))
 
 OPEN8055_EXTERN int		STDCALL Open8055_GetInputBits(int h);
 
