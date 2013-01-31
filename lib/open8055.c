@@ -80,10 +80,11 @@ static int Open8055_WaitForInput(Open8055_card_t *card, uint32_t mask, long us);
 
 static int DeviceInit(void);
 static int DevicePresent(int cardNumber);
-static int DeviceOpen(int cardNumber);
-static int DeviceClose(int cardNumber);
-static int DeviceRead(int cardNumber, void *buffer, int len);
-static int DeviceWrite(int cardNumber, void *buffer, int len);
+static int DeviceOpen(Open8055_card_t *card);
+static int DeviceClose(Open8055_card_t *card);
+static int DeviceRead(Open8055_card_t *card, void *buffer, int len);
+static int DeviceCancelRead(Open8055_card_t *card);
+static int DeviceWrite(Open8055_card_t *card, void *buffer, int len);
 static char *ErrorString(void);
 
 
@@ -239,10 +240,25 @@ Open8055_Connect(char *destination, char *password)
     }
 
     /* ----
+     * Allocate the card status data.
+     * ----
+     */
+    card = (Open8055_card_t *)malloc(sizeof(Open8055_card_t));
+    if (card == NULL)
+    {
+    	SetError("out of memory");
+	pthread_mutex_unlock(&openCardsLock);
+	return -1;
+    }
+    memset(card, 0, sizeof(Open8055_card_t));
+    card->isLocal = TRUE;
+    card->idLocal = cardNumber;
+
+    /* ----
      * Try to open the actual local card.
      * ----
      */
-    if (DeviceOpen(cardNumber) < 0)
+    if (DeviceOpen(card) < 0)
     {
     	return -1;
     }
@@ -262,7 +278,8 @@ Open8055_Connect(char *destination, char *password)
 	if (openCards == NULL)
 	{
 	    SetError("out of memory");
-	    DeviceClose(cardNumber);
+	    DeviceClose(card);
+	    free(card);
 	    pthread_mutex_unlock(&openCardsLock);
 	    return -1;
 	}
@@ -288,7 +305,8 @@ Open8055_Connect(char *destination, char *password)
 	    if (openCards == NULL)
 	    {
 	        SetError("out of memory");
-		DeviceClose(cardNumber);
+		DeviceClose(card);
+		free(card);
 		pthread_mutex_unlock(&openCardsLock);
 		return -1;
 	    }
@@ -301,30 +319,16 @@ Open8055_Connect(char *destination, char *password)
 	 */
 	openCardsUsed++;
     }
+    openCards[handle] = card;
 
     /* ----
-     * Allocate the card status data.
+     * Initialize the remaining data
      * ----
      */
-    card = openCards[handle] = (Open8055_card_t *)malloc(sizeof(Open8055_card_t));
-    if (card == NULL)
-    {
-    	SetError("out of memory");
-	DeviceClose(cardNumber);
-	pthread_mutex_unlock(&openCardsLock);
-	return -1;
-    }
-    memset(card, 0, sizeof(Open8055_card_t));
-
-    /* ----
-     * Initialize the data
-     * ----
-     */
-    card->isLocal = TRUE;
-    card->idLocal = cardNumber;
     if (pthread_mutex_init(&(card->cardLock), NULL) != 0)
     {
     	SetError("pthread_mutex_init() failed - %s", ErrorString());
+	DeviceClose(card);
 	free(card);
 	openCards[handle] = NULL;
 	pthread_mutex_unlock(&openCardsLock);
@@ -334,6 +338,7 @@ Open8055_Connect(char *destination, char *password)
     {
     	SetError("pthread_cond_init() failed - %s", ErrorString());
 	pthread_mutex_destroy(&(card->cardLock));
+	DeviceClose(card);
 	free(card);
 	openCards[handle] = NULL;
 	pthread_mutex_unlock(&openCardsLock);
@@ -346,11 +351,12 @@ Open8055_Connect(char *destination, char *password)
      */
     memset(&outputMessage, 0, sizeof(outputMessage));
     outputMessage.msgType = OPEN8055_HID_MESSAGE_GETCONFIG;
-    if (DeviceWrite(cardNumber, &outputMessage, sizeof(outputMessage)) < 0)
+    if (DeviceWrite(card, &outputMessage, sizeof(outputMessage)) < 0)
     {
     	SetError("Sending of GETCONFIG failed - %s", ErrorString);
 	pthread_cond_destroy(&(card->ioWaiterCond));
 	pthread_mutex_destroy(&(card->cardLock));
+	DeviceClose(card);
 	free(card);
 	openCards[handle] = NULL;
 	pthread_mutex_unlock(&openCardsLock);
@@ -359,11 +365,12 @@ Open8055_Connect(char *destination, char *password)
     while (card->currentConfig1.msgType == 0x00 || card->currentOutput.msgType == 0x00
     	|| card->currentInput.msgType == 0x00)
     {
-    	if (DeviceRead(cardNumber, &inputMessage, sizeof(inputMessage)) < 0)
+    	if (DeviceRead(card, &inputMessage, sizeof(inputMessage)) < 0)
 	{
 	    SetError("DeviceRead failed - %s", ErrorString);
 	    pthread_cond_destroy(&(card->ioWaiterCond));
 	    pthread_mutex_destroy(&(card->cardLock));
+	    DeviceClose(card);
 	    free(card);
 	    openCards[handle] = NULL;
 	    pthread_mutex_unlock(&openCardsLock);
@@ -395,6 +402,7 @@ Open8055_Connect(char *destination, char *password)
     	SetError("pthread_create() failed - %s", ErrorString);
 	pthread_cond_destroy(&(card->ioWaiterCond));
 	pthread_mutex_destroy(&(card->cardLock));
+	DeviceClose(card);
 	free(card);
 	openCards[handle] = NULL;
 	pthread_mutex_unlock(&openCardsLock);
@@ -449,7 +457,7 @@ Open8055_Close(int handle)
     	SetError("pthread_join() failed - %s", ErrorString());
 	rc = -1;
     }
-    DeviceClose(card->idLocal);
+    DeviceClose(card);
 
     /* ----
      * Before destroying all the other resources, make sure we
@@ -622,7 +630,7 @@ Open8055_SetOutputDigitalAll(int handle, int bits)
      * ----
      */
     card->currentOutput.outputBits = bits;
-    if (DeviceWrite(card->idLocal, &(card->currentOutput), sizeof(card->currentOutput)) != 32)
+    if (DeviceWrite(card, &(card->currentOutput), sizeof(card->currentOutput)) != 32)
     	rc = -1;
 
     OPEN8055_UNLOCK_CARD(card);
@@ -762,11 +770,9 @@ CardIOThread(void *cdata)
 {
     Open8055_card_t		*card = (Open8055_card_t *)cdata;
     Open8055_hidMessage_t	inputMessage;
-    int				idLocal;
     int				rc;
 
     pthread_mutex_lock(&(card->cardLock));
-    idLocal = card->idLocal;
 
     while(TRUE)
     {
@@ -786,7 +792,7 @@ CardIOThread(void *cdata)
 	 * ----
 	 */
 	pthread_mutex_unlock(&(card->cardLock));
-	rc = DeviceRead(idLocal, &inputMessage, sizeof(inputMessage));
+	rc = DeviceRead(card, &inputMessage, sizeof(inputMessage));
 	pthread_mutex_lock(&(card->cardLock));
 
 	/* ----
@@ -916,7 +922,7 @@ DevicePresent(int cardNumber)
  * ----
  */
 static int
-DeviceOpen(int cardNumber)
+DeviceOpen(Open8055_card_t *card)
 {
     char           *path;
 
@@ -924,10 +930,10 @@ DeviceOpen(int cardNumber)
      * Lookup the device path for the requested card.
      * ----
      */
-    path = DeviceFindPath(cardNumber);
+    path = DeviceFindPath(card->idLocal);
     if (path == NULL)
     {
-	SetError("Open8055 card number %d not present", cardNumber);
+	SetError("Open8055 card number %d not present", card->idLocal);
 	return -1;
     }
 
@@ -935,15 +941,15 @@ DeviceOpen(int cardNumber)
      * Try to open the device.
      * ----
      */
-    cardHandleRecv[cardNumber] = CreateFile(path, GENERIC_READ, 
+    cardHandleRecv[card->idLocal] = CreateFile(path, GENERIC_READ, 
 	    FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, 0);
-    cardHandleSend[cardNumber] = CreateFile(path, GENERIC_WRITE, 
+    cardHandleSend[card->idLocal] = CreateFile(path, GENERIC_WRITE, 
 	    FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, 0);
     free(path);
-    if (cardHandleRecv[cardNumber] == INVALID_HANDLE_VALUE ||
-    	cardHandleSend[cardNumber] == INVALID_HANDLE_VALUE)
+    if (cardHandleRecv[card->idLocal] == INVALID_HANDLE_VALUE ||
+    	cardHandleSend[card->idLocal] == INVALID_HANDLE_VALUE)
     {
-	SetError("Cannot open Open8055 card number %d - %s", cardNumber, ErrorString());
+	SetError("Cannot open Open8055 card number %d - %s", card->idLocal, ErrorString());
 	free(path);
 	return -1;
     }
@@ -963,7 +969,7 @@ DeviceOpen(int cardNumber)
  * ----
  */
 static int
-DeviceClose(int cardNumber)
+DeviceClose(Open8055_card_t *card)
 {
     int     rc = 0;
 
@@ -971,15 +977,15 @@ DeviceClose(int cardNumber)
      * Close the handle.
      * ----
      */
-    if (!CloseHandle(cardHandleRecv[cardNumber]))
+    if (!CloseHandle(cardHandleRecv[card->idLocal]))
     {
-	CloseHandle(cardHandleSend[cardNumber]);
-	SetError("Cannot close Open8055 card number %d - %s", cardNumber, ErrorString());
+	CloseHandle(cardHandleSend[card->idLocal]);
+	SetError("Cannot close Open8055 card number %d - %s", card->idLocal, ErrorString());
 	rc = -1;
     }
-    if (!CloseHandle(cardHandleSend[cardNumber]))
+    if (!CloseHandle(cardHandleSend[card->idLocal]))
     {
-	SetError("Cannot close Open8055 card number %d - %s", cardNumber, ErrorString());
+	SetError("Cannot close Open8055 card number %d - %s", card->idLocal, ErrorString());
 	rc = -1;
     }
 
@@ -994,7 +1000,7 @@ DeviceClose(int cardNumber)
  * ----
  */
 static int
-DeviceRead(int cardNumber, void *buffer, int len)
+DeviceRead(Open8055_card_t *card, void *buffer, int len)
 {
     unsigned char      *ioBuf;
     DWORD       	bytesRead;
@@ -1005,16 +1011,16 @@ DeviceRead(int cardNumber, void *buffer, int len)
 	return -1;
     }
 
-    if (!ReadFile(cardHandleRecv[cardNumber], ioBuf, len + 1, &bytesRead, NULL))
+    if (!ReadFile(cardHandleRecv[card->idLocal], ioBuf, len + 1, &bytesRead, NULL))
     {
-	SetError("ReadFile() failed for card %d - %s", cardNumber, ErrorString());
+	SetError("ReadFile() failed for card %d - %s", card->idLocal, ErrorString());
 	free(ioBuf);
 	return -1;
     }
 
     if (bytesRead != len + 1)
     {
-	SetError("Short read from card %d - expected %d but got %d", cardNumber, len + 1, bytesRead);
+	SetError("Short read from card %d - expected %d but got %d", card->idLocal, len + 1, bytesRead);
 	free(ioBuf);
 	return -1;
     }
@@ -1033,7 +1039,7 @@ DeviceRead(int cardNumber, void *buffer, int len)
  * ----
  */
 static int
-DeviceWrite(int cardNumber, void *buffer, int len)
+DeviceWrite(Open8055_card_t *card, void *buffer, int len)
 {
     unsigned char      *ioBuf;
     DWORD       	bytesWritten;
@@ -1047,9 +1053,9 @@ DeviceWrite(int cardNumber, void *buffer, int len)
     ioBuf[0] = '\0';
     memcpy(&ioBuf[1], buffer, len);
 
-    if (!WriteFile(cardHandleSend[cardNumber], ioBuf, len + 1, &bytesWritten, NULL))
+    if (!WriteFile(cardHandleSend[card->idLocal], ioBuf, len + 1, &bytesWritten, NULL))
     {
-	SetError("WriteFile() failed for card %d - %s", cardNumber, ErrorString());
+	SetError("WriteFile() failed for card %d - %s", card->idLocal, ErrorString());
 	free(ioBuf);
 	return -1;
     }
@@ -1058,7 +1064,7 @@ DeviceWrite(int cardNumber, void *buffer, int len)
 
     if (bytesWritten != len + 1)
     {
-	SetError("Short write to card %d - expected %d but wrote %d", cardNumber, len + 1, bytesWritten);
+	SetError("Short write to card %d - expected %d but wrote %d", card->idLocal, len + 1, bytesWritten);
 	return -1;
     }
 
