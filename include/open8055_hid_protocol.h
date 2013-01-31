@@ -77,7 +77,7 @@ typedef union {
 	};	
 
 	struct {
-		uint8_t			_msgType_config;
+		uint8_t			_msgType_config1;
 
 		uint8_t			modeADC[2];
 		uint8_t			modeInput[5];

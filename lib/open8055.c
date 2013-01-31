@@ -485,13 +485,35 @@ Open8055_Close(int handle)
 
 
 /* ----
- * Open8055_WaitMask()
+ * Open8055_Wait()
+ *
+ *  Wait until any new input becomes available
+ * ----
+ */
+OPEN8055_EXTERN int STDCALL
+Open8055_Wait(int handle, long us)
+{
+    Open8055_card_t	*card;
+    int			rc = 0;
+
+    OPEN8055_INIT();
+    OPEN8055_LOCK_CARD(handle, card);
+
+    rc = Open8055_WaitForInput(card, OPEN8055_INPUT_ANY, us);
+
+    OPEN8055_UNLOCK_CARD(card);
+    return rc;
+}
+
+
+/* ----
+ * Open8055_WaitFor()
  *
  *  Wait until specific input ports have changed.
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_WaitMask(int handle, uint32_t mask, long us)
+Open8055_WaitFor(int handle, uint32_t mask, long us)
 {
     Open8055_card_t	*card;
     int			rc = 0;
@@ -507,13 +529,13 @@ Open8055_WaitMask(int handle, uint32_t mask, long us)
 
 
 /* ----
- * Open8055_GetInputBits()
+ * Open8055_GetInputDigitalAll()
  *
  *  Read the 5 digital input ports
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_GetInputBits(int handle)
+Open8055_GetInputDigitalAll(int handle)
 {
     Open8055_card_t	*card;
     int			rc = 0;
@@ -552,13 +574,40 @@ Open8055_GetInputBits(int handle)
 
 
 /* ----
- * Open8055_SetOutputBits()
+ * Open8055_GetOutputDigitalAll()
+ *
+ *  Return the current digital output settings.
+ * ----
+ */
+OPEN8055_EXTERN int STDCALL
+Open8055_GetOutputDigitalAll(int handle)
+{
+    Open8055_card_t	*card;
+    int			rc = 0;
+
+    OPEN8055_INIT();
+    OPEN8055_LOCK_CARD(handle, card);
+
+    /* ----
+     * We have queried them at Connect and tracked them all the time.
+     * ----
+     */
+    rc = card->currentOutput.outputBits;
+
+    OPEN8055_UNLOCK_CARD(card);
+    return rc;
+}
+
+
+
+/* ----
+ * Open8055_SetOutputDigitalAll()
  *
  *  Schedule the 8 digital outputs to be changed on next IO cycle.
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_SetOutputBits(int handle, int bits)
+Open8055_SetOutputDigitalAll(int handle, int bits)
 {
     Open8055_card_t	*card;
     int			rc = 0;
@@ -571,64 +620,14 @@ Open8055_SetOutputBits(int handle, int bits)
      * have some changes to be sent.
      * ----
      */
-// XXX actually need to do something here
-    // card->outputNext.outputBits = bits & 0xFF;
-    // card->outputChanged = TRUE;
+    card->currentOutput.outputBits = bits;
+    if (DeviceWrite(card->idLocal, &(card->currentOutput), sizeof(card->currentOutput)) != 32)
+    	rc = -1;
 
     OPEN8055_UNLOCK_CARD(card);
     return rc;
 }
 
-
-
-/* ----
- * Open8055_SetOutputBit()
- *
- *  Schedule one digital output to be set on next IO cycle.
- * ----
- */
-OPEN8055_EXTERN int STDCALL
-Open8055_SetOutputBit(int handle, int bit)
-{
-    Open8055_card_t	*card;
-    int			rc = 0;
-
-    OPEN8055_INIT();
-    OPEN8055_LOCK_CARD(handle, card);
-
-    /* ----
-     * Adjust the bit and mark output dirty.
-     * ----
-     */
-// XXX actually need to do something here
-    // card->outputNext.outputBits |= ((1 << bit) & 0xFF);
-    // card->outputChanged = TRUE;
-
-    OPEN8055_UNLOCK_CARD(card);
-    return rc;
-}
-
-
-/* ----
- * Open8055_ClearOutputBit()
- *
- *  Schedule one digital output to be cleared on next IO cycle.
- * ----
- */
-OPEN8055_EXTERN int STDCALL
-Open8055_ClearOutputBit(int handle, int bit)
-{
-    Open8055_card_t	*card;
-    int			rc = 0;
-
-    OPEN8055_INIT();
-    OPEN8055_LOCK_CARD(handle, card);
-
-// XXX actually need to do something here
-
-    OPEN8055_UNLOCK_CARD(card);
-    return rc;
-}
 
 
 /* ----------------------------------------------------------------------
