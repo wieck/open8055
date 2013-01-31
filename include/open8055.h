@@ -127,15 +127,26 @@ OPEN8055_EXTERN int		STDCALL Open8055_CardPresent(int cardNumber);
 OPEN8055_EXTERN int		STDCALL Open8055_Connect(char *destination, char *password);
 OPEN8055_EXTERN int		STDCALL Open8055_Close(int h);
 
-OPEN8055_EXTERN int		STDCALL Open8055_WaitMask(int h, uint32_t mask, long us);
-#define Open8055_Wait(_h,_us)	Open8055_WaitMask((_h), OPEN8055_INPUT_ANY, (_us))
+OPEN8055_EXTERN int		STDCALL Open8055_Wait(int h, long us);
+OPEN8055_EXTERN int		STDCALL Open8055_WaitFor(int h, uint32_t mask, long us);
+OPEN8055_EXTERN int		STDCALL Open8055_OutputBuffering(int h, int flag);
+OPEN8055_EXTERN int		STDCALL Open8055_OutputFlush(int h);
 
-OPEN8055_EXTERN int		STDCALL Open8055_GetInputBits(int h);
+OPEN8055_EXTERN int		STDCALL Open8055_GetInputDigital(int h, int port);
+OPEN8055_EXTERN int		STDCALL Open8055_GetInputDigitalAll(int h);
+OPEN8055_EXTERN int		STDCALL Open8055_GetInputADC(int h, int port);
+OPEN8055_EXTERN int		STDCALL Open8055_GetInputCounter(int h, int port);
+OPEN8055_EXTERN int		STDCALL Open8055_ResetInputCounter(int h, int port);
+OPEN8055_EXTERN int		STDCALL Open8055_ResetInputCounters(int h);
 
-OPEN8055_EXTERN int		STDCALL Open8055_GetOutputBits(int h);
-OPEN8055_EXTERN int		STDCALL Open8055_SetOutputBits(int h, int bits);
-OPEN8055_EXTERN int		STDCALL Open8055_SetOutputBit(int h, int bit);
-OPEN8055_EXTERN int		STDCALL Open8055_ClearOutputBit(int h, int bit);
+OPEN8055_EXTERN int		STDCALL Open8055_GetOutputDigital(int h, int port);
+OPEN8055_EXTERN int		STDCALL Open8055_GetOutputDigitalAll(int h);
+OPEN8055_EXTERN int		STDCALL Open8055_GetOutputValue(int h, int port);
+OPEN8055_EXTERN int		STDCALL Open8055_GetOutputPWM(int h, int port);
+OPEN8055_EXTERN int		STDCALL Open8055_SetOutputDigital(int h, int port, int val);
+OPEN8055_EXTERN int		STDCALL Open8055_SetOutputDigitalAll(int h, int val);
+OPEN8055_EXTERN int		STDCALL Open8055_SetOutputValue(int h, int port, int val);
+OPEN8055_EXTERN int		STDCALL Open8055_SetOutputPWM(int h, int port, int val);
 
 
 #ifdef __cplusplus
