@@ -131,6 +131,15 @@
 	    #error "Unsupported Processor type file __FILE__ line __LINE__"
 #endif
 
+/** Definitions ****************************************************/
+
+#ifndef htons
+#define htons(_val) ((((_val) & 0xff00) >> 8) | (((_val) & 0x00ff) << 8))
+#endif
+#ifndef ntohs
+#define ntohs(_val) ((((_val) & 0xff00) >> 8) | (((_val) & 0x00ff) << 8))
+#endif
+
 /** USB IO Buffers *************************************************/
 #pragma udata USB_VARIABLES=0x500
 
@@ -173,11 +182,6 @@ struct {
 	unsigned short	debounceConfig;				// Debounce time in ticks/ms
 	unsigned short	debounceCounter;
 } switchStatus[5];
-
-
-struct Open8055_status_t {
-    uint8_t		outputBits;
-} status;	
 
 
 /** PRIVATE PROTOTYPES *********************************************/
@@ -473,6 +477,7 @@ static void userInit(void)
 	#endif
 
 	// Initialize global status data.
+	memset(&currentConfig1, 0, sizeof(currentConfig1));
 	currentConfig1.msgType			= OPEN8055_HID_MESSAGE_SETCONFIG1;
 	currentConfig1.modeADC[0]		= OPEN8055_MODE_ADC;
 	currentConfig1.modeADC[1]		= OPEN8055_MODE_ADC;
@@ -492,6 +497,7 @@ static void userInit(void)
 	currentConfig1.modePWM[0]		= OPEN8055_MODE_PWM;
 	currentConfig1.modePWM[1]		= OPEN8055_MODE_PWM;
 	
+	memset(&currentOutput, 0, sizeof(currentOutput));
 	currentOutput.msgType			= OPEN8055_HID_MESSAGE_OUTPUT;
 
 	for (i = 0; i < 5; i++)
@@ -647,9 +653,12 @@ static void processIO(void)
 			// OUTPUT message containing digital output ports,
 			// PWM values and counter reset flags.
 			case OPEN8055_HID_MESSAGE_OUTPUT:
+				currentOutput.outputBits			= receivedDataBuffer.outputBits;
+				for (i = 0; i < 8; i++)
+					currentOutput.outputValue[i]	= ntohs(receivedDataBuffer.outputValue[i]);
+				
 			    memcpy((void *)&currentOutput, (void *)&receivedDataBuffer, sizeof(currentOutput));
-				status.outputBits = receivedDataBuffer.outputBits;
-				PORTB = status.outputBits;
+				PORTB = currentOutput.outputBits;
 				break;
 			
 			// SETCONFIG1 message containing configuration settings.
@@ -746,7 +755,6 @@ static void processIO(void)
 		}	
 	}	
 	
-	OPEN8055d8 = 0;
 	if (cardConnected && !HIDTxHandleBusy(inputHandle))
 	{
 		// Time to send a report.
@@ -783,8 +791,6 @@ static void processIO(void)
 		memcpy((void *)&toSendDataBuffer, (void *)&currentInput, sizeof(toSendDataBuffer));
 		inputHandle = HIDTxPacket(HID_EP, (BYTE*)&toSendDataBuffer, sizeof(toSendDataBuffer));
 		inputSendTimeout = 100;
-		
-		OPEN8055d8 = 1;
 	}
 
 }//end processIO
