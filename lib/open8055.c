@@ -56,11 +56,11 @@ typedef struct {
     pthread_mutex_t		cardLock;
 
     pthread_t			readerThread;
-    int				ioTerminate;
+    int				readerTerminate;
     int				ioError;
     char			ioErrorMessage[1024];
-    int				ioWaiters;
-    pthread_cond_t		ioWaiterCond;
+    int				readWaiters;
+    pthread_cond_t		readWaiterCond;
 
     Open8055_hidMessage_t	currentConfig1;
     Open8055_hidMessage_t	currentOutput;
@@ -333,7 +333,7 @@ Open8055_Connect(char *destination, char *password)
 	pthread_mutex_unlock(&openCardsLock);
 	return -1;
     }
-    if (pthread_cond_init(&(card->ioWaiterCond), NULL) != 0)
+    if (pthread_cond_init(&(card->readWaiterCond), NULL) != 0)
     {
     	SetError("pthread_cond_init() failed - %s", ErrorString());
 	pthread_mutex_destroy(&(card->cardLock));
@@ -353,7 +353,7 @@ Open8055_Connect(char *destination, char *password)
     if (DeviceWrite(card, &outputMessage, sizeof(outputMessage)) < 0)
     {
     	SetError("Sending of GETCONFIG failed - %s", ErrorString);
-	pthread_cond_destroy(&(card->ioWaiterCond));
+	pthread_cond_destroy(&(card->readWaiterCond));
 	pthread_mutex_destroy(&(card->cardLock));
 	DeviceClose(card);
 	free(card);
@@ -367,7 +367,7 @@ Open8055_Connect(char *destination, char *password)
     	if (DeviceRead(card, &inputMessage, sizeof(inputMessage)) < 0)
 	{
 	    SetError("DeviceRead failed - %s", ErrorString);
-	    pthread_cond_destroy(&(card->ioWaiterCond));
+	    pthread_cond_destroy(&(card->readWaiterCond));
 	    pthread_mutex_destroy(&(card->cardLock));
 	    DeviceClose(card);
 	    free(card);
@@ -399,7 +399,7 @@ Open8055_Connect(char *destination, char *password)
     if (pthread_create(&(card->readerThread), NULL, CardIOThread, (void *)card) != 0)
     {
     	SetError("pthread_create() failed - %s", ErrorString);
-	pthread_cond_destroy(&(card->ioWaiterCond));
+	pthread_cond_destroy(&(card->readWaiterCond));
 	pthread_mutex_destroy(&(card->cardLock));
 	DeviceClose(card);
 	free(card);
@@ -434,11 +434,11 @@ Open8055_Close(int handle)
     OPEN8055_LOCK_CARD(handle, card);
 
     /* ----
-     * If the ioTerminate flag is set some other thread is already
+     * If the readerTerminate flag is set some other thread is already
      * performing a close operation.
      * ----
      */
-    if (card->ioTerminate)
+    if (card->readerTerminate)
     {
     	SetError("Concurrent duplicate Open8055_Close() calls for card %d, handle %d",
 			card->idLocal, handle);
@@ -447,11 +447,11 @@ Open8055_Close(int handle)
     }
 
     /* ----
-     * Tell the io thread to terminate then force an input report so the
+     * Tell the reader thread to terminate then force an input report so the
      * reader thread will wake up.
      * ----
      */
-    card->ioTerminate = TRUE;
+    card->readerTerminate = TRUE;
     pthread_mutex_unlock(&(card->cardLock));
     memset(&message, 0, sizeof(message));
     message.msgType = OPEN8055_HID_MESSAGE_GETINPUT;
@@ -477,9 +477,9 @@ Open8055_Close(int handle)
      */
     card->ioError = TRUE;
     strcpy(card->ioErrorMessage, "card is closed");
-    while (card->ioWaiters > 0)
+    while (card->readWaiters > 0)
     {
-	pthread_cond_broadcast(&(card->ioWaiterCond));
+	pthread_cond_broadcast(&(card->readWaiterCond));
 	pthread_mutex_unlock(&(card->cardLock));
 	usleep(1000);
 	pthread_mutex_lock(&(card->cardLock));
@@ -494,7 +494,7 @@ Open8055_Close(int handle)
 
     pthread_mutex_unlock(&(card->cardLock));
     pthread_mutex_destroy(&(card->cardLock));
-    pthread_cond_destroy(&(card->ioWaiterCond));
+    pthread_cond_destroy(&(card->readWaiterCond));
     free(card);
     openCards[handle] = NULL;
 
@@ -712,7 +712,7 @@ Open8055_WaitForInput(Open8055_card_t *card, uint32_t mask, long us)
      * to wait for another HID report to arrive or until timeout.
      * ----
      */
-    card->ioWaiters++;
+    card->readWaiters++;
     if (us > 0)
     {
     	gettimeofday(&now, NULL);
@@ -723,7 +723,7 @@ Open8055_WaitForInput(Open8055_card_t *card, uint32_t mask, long us)
 	    ts.tv_sec++;
 	    ts.tv_nsec -= 1000000000;
 	}
-	rc = pthread_cond_timedwait(&(card->ioWaiterCond), &(card->cardLock), &ts);
+	rc = pthread_cond_timedwait(&(card->readWaiterCond), &(card->cardLock), &ts);
 	if (rc == ETIMEDOUT)
 	    rc = 1;
 	else if(rc != 0)
@@ -731,11 +731,11 @@ Open8055_WaitForInput(Open8055_card_t *card, uint32_t mask, long us)
     }
     else
     {
-        rc = pthread_cond_wait(&(card->ioWaiterCond), &(card->cardLock));
+        rc = pthread_cond_wait(&(card->readWaiterCond), &(card->cardLock));
 	if (rc != 0)
 	    rc = -1;
     }
-    card->ioWaiters--;
+    card->readWaiters--;
 
     if (rc < 0)
     {
@@ -791,7 +791,7 @@ CardIOThread(void *cdata)
 	 * Check for card terminate flag
 	 * ----
 	 */
-	if (card->ioTerminate)
+	if (card->readerTerminate)
 	{
 	    OPEN8055_UNLOCK_CARD(card);
 	    return NULL;
@@ -823,7 +823,7 @@ CardIOThread(void *cdata)
 	    pthread_mutex_unlock(&lastErrorLock);
 
 	    card->ioError = 1;
-	    pthread_cond_broadcast(&(card->ioWaiterCond));
+	    pthread_cond_broadcast(&(card->readWaiterCond));
 	    pthread_mutex_unlock(&(card->cardLock));
 	    return NULL;
 	}
@@ -835,9 +835,9 @@ CardIOThread(void *cdata)
 		{
 		    memcpy(&(card->currentInput), &inputMessage, sizeof(card->currentInput));
 		    card->currentInputUnconsumed = OPEN8055_INPUT_ANY;
-		    if (card->ioWaiters > 0)
+		    if (card->readWaiters > 0)
 		    {
-			pthread_cond_broadcast(&(card->ioWaiterCond));
+			pthread_cond_broadcast(&(card->readWaiterCond));
 		    }
 		}
 		break;
@@ -850,7 +850,7 @@ CardIOThread(void *cdata)
 		card->ioError = TRUE;
 	    	snprintf(card->ioErrorMessage, sizeof(card->ioErrorMessage),
 			"Received unknown message type 0x%02x", inputMessage.msgType);
-		pthread_cond_broadcast(&(card->ioWaiterCond));
+		pthread_cond_broadcast(&(card->readWaiterCond));
 		pthread_mutex_unlock(&(card->cardLock));
 		return NULL;
 	}
