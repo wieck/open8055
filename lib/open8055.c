@@ -594,6 +594,108 @@ Open8055_GetInputDigitalAll(int handle)
 
 
 /* ----
+ * Open8055_GetInputCounter()
+ *
+ *  Read the current value of a counter.
+ * ----
+ */
+OPEN8055_EXTERN int STDCALL
+Open8055_GetInputCounter(int handle, int port)
+{
+    Open8055_card_t	*card;
+    int			rc = 0;
+
+    if (port < 0 || port > 5)
+    {
+    	SetError("invalid port number %d", port);
+	return -1;
+    }
+
+    OPEN8055_INIT();
+    OPEN8055_LOCK_CARD(handle, card);
+
+    /* ----
+     * Make sure we have current input data.
+     * ----
+     */
+    Open8055_WaitForInput(card, OPEN8055_INPUT_COUNT1 << port, OPEN8055_WAITFOR_US);
+
+    /* ----
+     * If the card is in error state, just copy it's error message and 
+     * return with error.
+     * ----
+     */
+    if (card->ioError)
+    {
+    	SetError("%s", card->ioErrorMessage);
+	OPEN8055_UNLOCK_CARD(card);
+	return -1;
+    }
+
+    /* ----
+     * Mark the counter consumed.
+     * ----
+     */
+    card->currentInputUnconsumed &= ~(OPEN8055_INPUT_COUNT1 << port);
+    rc = card->currentInput.inputCounter[port];
+
+    OPEN8055_UNLOCK_CARD(card);
+    return rc;
+}
+
+
+/* ----
+ * Open8055_GetInputADC()
+ *
+ *  Read the current value of an ADC
+ * ----
+ */
+OPEN8055_EXTERN int STDCALL
+Open8055_GetInputADC(int handle, int port)
+{
+    Open8055_card_t	*card;
+    int			rc = 0;
+
+    if (port < 0 || port > 2)
+    {
+    	SetError("invalid port number %d", port);
+	return -1;
+    }
+
+    OPEN8055_INIT();
+    OPEN8055_LOCK_CARD(handle, card);
+
+    /* ----
+     * Make sure we have current input data.
+     * ----
+     */
+    Open8055_WaitForInput(card, OPEN8055_INPUT_ADC1 << port, OPEN8055_WAITFOR_US);
+
+    /* ----
+     * If the card is in error state, just copy it's error message and 
+     * return with error.
+     * ----
+     */
+    if (card->ioError)
+    {
+    	SetError("%s", card->ioErrorMessage);
+	OPEN8055_UNLOCK_CARD(card);
+	return -1;
+    }
+
+    /* ----
+     * Mark the counter consumed.
+     * ----
+     */
+    card->currentInputUnconsumed &= ~(OPEN8055_INPUT_ADC1 << port);
+    rc = card->currentInput.inputAdcValue[port];
+
+    OPEN8055_UNLOCK_CARD(card);
+    return rc;
+}
+
+
+/* ----
  * Open8055_GetOutputDigitalAll()
  *
  *  Return the current digital output settings.
@@ -833,8 +935,35 @@ CardIOThread(void *cdata)
 	    case OPEN8055_HID_MESSAGE_INPUT:
 		if (memcmp(&(card->currentInput), &inputMessage, sizeof(card->currentInput)) != 0)
 		{
-		    memcpy(&(card->currentInput), &inputMessage, sizeof(card->currentInput));
-		    card->currentInputUnconsumed = OPEN8055_INPUT_ANY;
+		    int		i;
+		    uint16_t	newValue;
+
+		    /* ----
+		     * Convert the message into host byte order and set unconsumed flags
+		     * for things that have actually changed.
+		     * ----
+		     */
+		    for (i = 0; i < 5; i++)
+		    {
+		    	if ((inputMessage.inputBits & (1 << i)) != (card->currentInput.inputBits & (1 << i)))
+			    card->currentInputUnconsumed |= (OPEN8055_INPUT_I1 << i);
+		        if ((newValue = ntohs(inputMessage.inputCounter[i])) != card->currentInput.inputCounter[i])
+			{
+			    card->currentInput.inputCounter[i] = newValue;
+			    card->currentInputUnconsumed |= (OPEN8055_INPUT_COUNT1 << i);
+			}
+		    }
+		    card->currentInput.inputBits = inputMessage.inputBits;
+
+		    for (i = 0; i < 2; i++)
+		    {
+		        if ((newValue = ntohs(inputMessage.inputAdcValue[i])) != card->currentInput.inputAdcValue[i])
+			{
+			    card->currentInput.inputAdcValue[i] = newValue;
+			    card->currentInputUnconsumed |= (OPEN8055_INPUT_ADC1 << i);
+			}
+		    }
+
 		    if (card->readWaiters > 0)
 		    {
 			pthread_cond_broadcast(&(card->readWaiterCond));

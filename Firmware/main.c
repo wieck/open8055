@@ -608,18 +608,18 @@ static void processIO(void)
 	else
     	cardConnected = 1;
     	
-        // Get the current state of all switches we maintain counters for
+    // Get the current state of all switches we maintain counters for
 	switchStatus[0].currentState = OPEN8055sw1;
 	switchStatus[1].currentState = OPEN8055sw2;
 	switchStatus[2].currentState = OPEN8055sw3;
 	switchStatus[3].currentState = OPEN8055sw4;
 	switchStatus[4].currentState = OPEN8055sw5;
-    
+
     for (i = 0; i < 5; i++)
     {
 		if (switchStatus[i].lastState == switchStatus[i].currentState)
 		{
-	        // If we see the same state that we remember, the input either did
+	        // We see the same state that we remember, so the input either did
 	        // not change at all, or it toggled back before the debounce counter
 	        // has elapsed. This cancels the debounce countdown.
 			switchStatus[i].debounceCounter = 0;
@@ -685,11 +685,32 @@ static void processIO(void)
         outputHandle = HIDRxPacket(HID_EP, (BYTE*)&receivedDataBuffer, sizeof(receivedDataBuffer));
     }
 
-	// Count timer ticks
+	// Get and process timer ticks
 	ticksSeen = tickCounter;
 	tickCounter -= ticksSeen;
-	
-	// Process timer ticks.
+
+	// Handle counters
+	if (ticksSeen > 0)
+	{	
+	    for (i = 0; i < 5; i++)
+	    {
+			if (switchStatus[i].debounceCounter > 0)
+			{
+				if (switchStatus[i].debounceCounter <= ticksSeen)
+				{
+					switchStatus[i].lastState = switchStatus[i].currentState;
+					if (switchStatus[i].currentState)
+					    switchStatus[i].counter++;
+					switchStatus[i].debounceCounter = 0;
+				}
+				else
+				{
+					switchStatus[i].debounceCounter -= ticksSeen;
+				}		
+			}
+		}
+	}	
+
 	while (ticksSeen-- > 0)
 	{
 		// Per 100 microsecond code comes here
@@ -784,6 +805,14 @@ static void processIO(void)
 										  (OPEN8055sw3 << 2) |
 										  (OPEN8055sw4 << 3) |
 										  (OPEN8055sw5 << 4);
+		for (i = 0; i < 5; i++)
+		{
+			currentInput.inputCounter[i] = htons(switchStatus[i].counter);
+		}
+		currentInput.raw[12] = analogValue_1_high;
+		currentInput.raw[13] = analogValue_1_low;
+		currentInput.raw[14] = analogValue_2_high;
+		currentInput.raw[15] = analogValue_2_low;
 										  
 		// Suppress this report if nothing has changed and 100 ms didn't elapse.
 		if (!currentInputRequested && memcmp((void *)&currentInput, (void *)&toSendDataBuffer, sizeof(currentInput)) == 0)

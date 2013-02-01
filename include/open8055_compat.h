@@ -12,6 +12,14 @@
 
 typedef int		socklen_t;
 
+#ifndef htons
+#define htons(_val) ((((_val) & 0xff00) >> 8) | (((_val) & 0x00ff) << 8))
+#endif
+#ifndef ntohs
+#define ntohs(_val) ((((_val) & 0xff00) >> 8) | (((_val) & 0x00ff) << 8))
+#endif
+
+
 #else /* !_WIN32 */
 
 #include <unistd.h>
