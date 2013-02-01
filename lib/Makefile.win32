@@ -37,7 +37,7 @@
 # Global compiler and loader settings
 # ----
 CC=		gcc
-CFLAGS+=	-O2 -Wall -I../firmware
+CFLAGS+=	-O2 -Wall -I../include
 LDFLAGS+=	
 AR=		ar
 
@@ -49,7 +49,6 @@ LIBPTHREAD=	$(MINGW_PATH)/lib/libpthreadGC2.dll.a
 # ----
 OPEN8055_A=		open8055.a
 OPEN8055_A_OBJS=	open8055.o
-OPEN8055_A_EXTRA=	$(LIBPTHREAD)
 OPEN8055_A_LIBS=	-L. -lsetupapi -lrpcrt4 -lws2_32
 
 
@@ -58,7 +57,7 @@ OPEN8055_A_LIBS=	-L. -lsetupapi -lrpcrt4 -lws2_32
 # ----
 OPEN8055_DLL=		open8055.dll
 OPEN8055_DLL_OBJS=	open8055.so
-OPEN8055_DLL_EXTRA=	$(LIBPTHREAD)
+OPEN8055_DLL_STATICLIBS=$(LIBPTHREAD)
 OPEN8055_DLL_LIBS=	-L. -lsetupapi -lrpcrt4 -lws2_32
 
 
@@ -87,7 +86,7 @@ clean:
 # Put here whatever is needed to screw up your system
 # ----
 install:	all
-#	cp *.dll C:/bin
+	cp *.dll ../Examples/Open8055Demo_VC2008/Open8055Demo/Debug
 
 # ----
 # Individual toplevel target dependencies and build instructions
@@ -95,17 +94,17 @@ install:	all
 $(OPEN8055_A):	$(OPEN8055_A_OBJS)
 	$(AR) -rs $@ $^
 
-$(OPEN8055_DLL):	$(OPEN8055_DLL_OBJS) $(OPEN8055_DLL_EXTRA)
-	$(CC) $(CFLAGS) -shared -o $@ $^ $(OPEN8055_DLL_LIBS) -Wl,--add-stdcall-alias
+$(OPEN8055_DLL):	$(OPEN8055_DLL_OBJS)
+	$(CC) $(CFLAGS) -shared -o $@ $^ $(OPEN8055_DLL_STATICLIBS) $(OPEN8055_DLL_LIBS) -Wl,--add-stdcall-alias
 
 
 # ----
 # Component dependencies that can be resolved by default
 # GNUmake rules.
 # ----
-open8055.o:	open8055.c open8055.h open8055_compat.h ../include/open8055_hid_protocol.h
+open8055.o:	open8055.c ../include/open8055.h ../include/open8055_compat.h ../include/open8055_hid_protocol.h
 	$(CC) -DOPEN8055_STATIC $(CFLAGS) -c -o $@ $<
 
-open8055.so:	open8055.c open8055.h open8055_compat.h ../include/open8055_hid_protocol.h
+open8055.so:	open8055.c ../include/open8055.h ../include/open8055_compat.h ../include/open8055_hid_protocol.h
 	$(CC) -DOPEN8055_BUILD_DLL $(CFLAGS) -c -o $@ $<
 

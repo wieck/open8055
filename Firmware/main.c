@@ -169,10 +169,9 @@ Open8055_hidMessage_t currentConfig1;
 Open8055_hidMessage_t currentOutput;
 Open8055_hidMessage_t currentInput;
 
+uint8_t		currentInputRequested = FALSE;
 uint8_t		currentConfig1Requested = FALSE;
 uint8_t		currentOutputRequested = FALSE;
-
-uint16_t	inputSendTimeout = 100;
 
 // Status data per digital input
 struct {
@@ -666,7 +665,12 @@ static void processIO(void)
 			    memcpy((void *)&currentConfig1, (void *)&receivedDataBuffer, sizeof(currentConfig1));
 				break;
 			
-			// GETCONFIG message instructing us to send our current status.
+			// GETINPUT message instructing us to forcefully send the current input.
+			case OPEN8055_HID_MESSAGE_GETINPUT:
+				currentInputRequested = TRUE;
+				break;
+			
+			// GETCONFIG message instructing us to send our current configuration.
 			case OPEN8055_HID_MESSAGE_GETCONFIG:
 				currentConfig1Requested = TRUE;
 				currentOutputRequested = TRUE;
@@ -743,8 +747,6 @@ static void processIO(void)
 			tickMillisecond = 0;
 			
 			// Per 1 millisecond code comes here
-			if (inputSendTimeout > 0)
-				inputSendTimeout--;
 
 			if (++tickSecond >= 1000)
 			{
@@ -755,7 +757,7 @@ static void processIO(void)
 		}	
 	}	
 	
-	if (cardConnected && !HIDTxHandleBusy(inputHandle))
+	while (cardConnected && !HIDTxHandleBusy(inputHandle))
 	{
 		// Time to send a report.
 		if (currentConfig1Requested)
@@ -763,7 +765,7 @@ static void processIO(void)
 			currentConfig1Requested = FALSE;
 			memcpy((void *)&toSendDataBuffer, (void *)&currentConfig1, sizeof(toSendDataBuffer));
 			inputHandle = HIDTxPacket(HID_EP, (BYTE*)&toSendDataBuffer, sizeof(toSendDataBuffer));
-			return;
+			break;
 		}	
 		
 		if (currentOutputRequested)
@@ -771,7 +773,7 @@ static void processIO(void)
 			currentOutputRequested = FALSE;
 			memcpy((void *)&toSendDataBuffer, (void *)&currentOutput, sizeof(toSendDataBuffer));
 			inputHandle = HIDTxPacket(HID_EP, (BYTE*)&toSendDataBuffer, sizeof(toSendDataBuffer));
-			return;
+			break;
 		}
 		
 		// Construct a standard input state report.
@@ -784,15 +786,16 @@ static void processIO(void)
 										  (OPEN8055sw5 << 4);
 										  
 		// Suppress this report if nothing has changed and 100 ms didn't elapse.
-		if (inputSendTimeout > 0 && memcmp((void *)&currentInput, (void *)&toSendDataBuffer, sizeof(currentInput)) == 0)
-			return;
+		if (!currentInputRequested && memcmp((void *)&currentInput, (void *)&toSendDataBuffer, sizeof(currentInput)) == 0)
+			break;
 			
 		// Send this report
+		currentInputRequested = FALSE;
 		memcpy((void *)&toSendDataBuffer, (void *)&currentInput, sizeof(toSendDataBuffer));
 		inputHandle = HIDTxPacket(HID_EP, (BYTE*)&toSendDataBuffer, sizeof(toSendDataBuffer));
-		inputSendTimeout = 100;
+		break;
 	}
-
+	
 }//end processIO
 
 

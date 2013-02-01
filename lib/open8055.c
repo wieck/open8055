@@ -83,7 +83,6 @@ static int DevicePresent(int cardNumber);
 static int DeviceOpen(Open8055_card_t *card);
 static int DeviceClose(Open8055_card_t *card);
 static int DeviceRead(Open8055_card_t *card, void *buffer, int len);
-static int DeviceCancelRead(Open8055_card_t *card);
 static int DeviceWrite(Open8055_card_t *card, void *buffer, int len);
 static char *ErrorString(void);
 
@@ -427,8 +426,9 @@ Open8055_Connect(char *destination, char *password)
 OPEN8055_EXTERN int STDCALL
 Open8055_Close(int handle)
 {
-    Open8055_card_t	*card;
-    int			rc = 0;
+    Open8055_card_t		*card;
+    int				rc = 0;
+    Open8055_hidMessage_t	message;
 
     OPEN8055_INIT();
     OPEN8055_LOCK_CARD(handle, card);
@@ -447,16 +447,27 @@ Open8055_Close(int handle)
     }
 
     /* ----
-     * Tell the io thread to terminate.
+     * Tell the io thread to terminate then force an input report so the
+     * reader thread will wake up.
      * ----
      */
     card->ioTerminate = TRUE;
     pthread_mutex_unlock(&(card->cardLock));
-    if (pthread_join(card->readerThread, NULL) != 0)
+    memset(&message, 0, sizeof(message));
+    message.msgType = OPEN8055_HID_MESSAGE_GETINPUT;
+    if (DeviceWrite(card, &message, sizeof(message)) != sizeof(message))
     {
-    	SetError("pthread_join() failed - %s", ErrorString());
-	rc = -1;
+    	rc = -1;
     }
+    else
+    {
+	if (pthread_join(card->readerThread, NULL) != 0)
+	{
+	    SetError("pthread_join() failed - %s", ErrorString());
+	    rc = -1;
+	}
+    }
+    pthread_mutex_lock(&(card->cardLock));
     DeviceClose(card);
 
     /* ----
@@ -630,10 +641,10 @@ Open8055_SetOutputDigitalAll(int handle, int bits)
      * ----
      */
     card->currentOutput.outputBits = bits;
-    if (DeviceWrite(card, &(card->currentOutput), sizeof(card->currentOutput)) != 32)
+    OPEN8055_UNLOCK_CARD(card);
+    if (DeviceWrite(card, &(card->currentOutput), sizeof(card->currentOutput)) != sizeof(card->currentOutput))
     	rc = -1;
 
-    OPEN8055_UNLOCK_CARD(card);
     return rc;
 }
 

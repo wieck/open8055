@@ -33,10 +33,11 @@ typedef unsigned short uint16_t;
 #define OPEN8055_HID_MESSAGE_SIZE	32
 
 #define OPEN8055_HID_MESSAGE_OUTPUT	0x01	// Setting output values
-#define OPEN8055_HID_MESSAGE_SETCONFIG1	0x02	// Change configuration
-#define OPEN8055_HID_MESSAGE_GETCONFIG	0x03	// Request current config
-#define OPEN8055_HID_MESSAGE_SAVECONFIG	0x04	// Save current config to EEPROM
-#define OPEN8055_HID_MESSAGE_SAVEALL	0x05	// Save config and values to EEPROM
+#define OPEN8055_HID_MESSAGE_GETINPUT	0x02	// Request a forced input report
+#define OPEN8055_HID_MESSAGE_SETCONFIG1	0x03	// Change configuration
+#define OPEN8055_HID_MESSAGE_GETCONFIG	0x04	// Request current config
+#define OPEN8055_HID_MESSAGE_SAVECONFIG	0x05	// Save current config to EEPROM
+#define OPEN8055_HID_MESSAGE_SAVEALL	0x06	// Save config and values to EEPROM
 
 #define OPEN8055_HID_MESSAGE_RESET	0x7F	// Restart PIC
 
