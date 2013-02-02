@@ -137,7 +137,7 @@ OPEN8055_EXTERN int		STDCALL Open8055_GetInputDigitalAll(int h);
 OPEN8055_EXTERN int		STDCALL Open8055_GetInputADC(int h, int port);
 OPEN8055_EXTERN int		STDCALL Open8055_GetInputCounter(int h, int port);
 OPEN8055_EXTERN int		STDCALL Open8055_ResetInputCounter(int h, int port);
-OPEN8055_EXTERN int		STDCALL Open8055_ResetInputCounters(int h);
+OPEN8055_EXTERN int		STDCALL Open8055_ResetInputCounterAll(int h);
 
 OPEN8055_EXTERN int		STDCALL Open8055_GetOutputDigital(int h, int port);
 OPEN8055_EXTERN int		STDCALL Open8055_GetOutputDigitalAll(int h);

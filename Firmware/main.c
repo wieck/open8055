@@ -657,6 +657,7 @@ static void processIO(void)
 {
 	uint8_t	ticksSeen;
 	uint8_t i;
+	uint16_t value;
 	
     // Check if we are USB connected
     if((USBDeviceState < CONFIGURED_STATE)||(USBSuspendControl==1))
@@ -708,12 +709,19 @@ static void processIO(void)
 			// OUTPUT message containing digital output ports,
 			// PWM values and counter reset flags.
 			case OPEN8055_HID_MESSAGE_OUTPUT:
-				currentOutput.outputBits			= receivedDataBuffer.outputBits;
-				for (i = 0; i < 8; i++)
-					currentOutput.outputValue[i]	= ntohs(receivedDataBuffer.outputValue[i]);
-				
-			    memcpy((void *)&currentOutput, (void *)&receivedDataBuffer, sizeof(currentOutput));
+			    memcpy((void *)&currentOutput, (void *)&receivedDataBuffer, sizeof(currentConfig1));
+								
 				PORTB = currentOutput.outputBits;
+				
+				value = ntohs(currentOutput.outputPwmValue[0]);
+				CCPR1L = value >> 2;
+				CCP1CON = (CCP1CON & 0xCF) | 
+					    ((value & 0x03) << 4);
+
+				value = ntohs(currentOutput.outputPwmValue[1]);
+				CCPR2L = value >> 2;
+				CCP2CON = (CCP2CON & 0xCF) | 
+					    ((value & 0x03) << 4);
 				break;
 			
 			// SETCONFIG1 message containing configuration settings.
@@ -730,6 +738,7 @@ static void processIO(void)
 			case OPEN8055_HID_MESSAGE_GETCONFIG:
 				currentConfig1Requested = TRUE;
 				currentOutputRequested = TRUE;
+				currentInputRequested = TRUE;
 				break;
 			
 			// Ignore unknown message types.	

@@ -208,7 +208,6 @@ Open8055_Connect(char *destination, char *password)
     Open8055_card_t	       *card;
     Open8055_hidMessage_t	outputMessage;
     Open8055_hidMessage_t	inputMessage;
-    int				i;
 
     OPEN8055_INIT();
 
@@ -387,23 +386,8 @@ Open8055_Connect(char *destination, char *password)
 	    	break;
 
 	    case OPEN8055_HID_MESSAGE_INPUT:
-		/* ----
-		 * Convert the INPUT message into host byte order.
-		 * ----
-		 */
-		card->currentInput.msgType = OPEN8055_HID_MESSAGE_INPUT;
-		card->currentInput.inputBits = inputMessage.inputBits;
-		for (i = 0; i < 5; i++)
-		{
-		    card->currentInput.inputCounter[i] = ntohs(inputMessage.inputCounter[i]);
-		}
-		for (i = 0; i < 2; i++)
-		{
-		    card->currentInput.inputAdcValue[i] = ntohs(inputMessage.inputAdcValue[i]);
-		}
-
-		card->currentInputUnconsumed = OPEN8055_INPUT_ANY;
-
+	    	card->currentInputUnconsumed = OPEN8055_INPUT_ANY;
+	    	memcpy(&(card->currentInput), &inputMessage, sizeof(card->currentInput));
 	    	break;
 	}
     }
@@ -653,7 +637,7 @@ Open8055_GetInputCounter(int handle, int port)
      * ----
      */
     card->currentInputUnconsumed &= ~(OPEN8055_INPUT_COUNT1 << port);
-    rc = card->currentInput.inputCounter[port];
+    rc = ntohs(card->currentInput.inputCounter[port]);
 
     OPEN8055_UNLOCK_CARD(card);
     return rc;
@@ -704,7 +688,7 @@ Open8055_GetInputADC(int handle, int port)
      * ----
      */
     card->currentInputUnconsumed &= ~(OPEN8055_INPUT_ADC1 << port);
-    rc = card->currentInput.inputAdcValue[port];
+    rc = ntohs(card->currentInput.inputAdcValue[port]);
 
     OPEN8055_UNLOCK_CARD(card);
     return rc;
@@ -739,9 +723,42 @@ Open8055_GetOutputDigitalAll(int handle)
 
 
 /* ----
+ * Open8055_GetOutputPWM()
+ *
+ *  Return the current setting of a PWM output
+ * ----
+ */
+OPEN8055_EXTERN int STDCALL
+Open8055_GetOutputPWM(int handle, int port)
+{
+    Open8055_card_t	*card;
+    int			rc = 0;
+
+    if (port < 0 || port > 1)
+    {
+    	SetError("invalid value for port");
+	return -1;
+    }
+
+    OPEN8055_INIT();
+    OPEN8055_LOCK_CARD(handle, card);
+
+    /* ----
+     * We have queried them at Connect and tracked them all the time.
+     * ----
+     */
+    rc = ntohs(card->currentOutput.outputPwmValue[port]);
+
+    OPEN8055_UNLOCK_CARD(card);
+    return rc;
+}
+
+
+
+/* ----
  * Open8055_SetOutputDigitalAll()
  *
- *  Schedule the 8 digital outputs to be changed on next IO cycle.
+ *  Change all 8 digital outputs.
  * ----
  */
 OPEN8055_EXTERN int STDCALL
@@ -749,6 +766,12 @@ Open8055_SetOutputDigitalAll(int handle, int bits)
 {
     Open8055_card_t	*card;
     int			rc = 0;
+
+    if (bits < 0 || bits > 255)
+    {
+    	SetError("invalid value for bits");
+	return -1;
+    }
 
     OPEN8055_INIT();
     OPEN8055_LOCK_CARD(handle, card);
@@ -759,6 +782,46 @@ Open8055_SetOutputDigitalAll(int handle, int bits)
      * ----
      */
     card->currentOutput.outputBits = bits;
+    OPEN8055_UNLOCK_CARD(card);
+    if (DeviceWrite(card, &(card->currentOutput), sizeof(card->currentOutput)) != sizeof(card->currentOutput))
+    	rc = -1;
+
+    return rc;
+}
+
+
+/* ----
+ * Open8055_SetOutputPWM()
+ *
+ *  Change one of the PWM outputs.
+ * ----
+ */
+OPEN8055_EXTERN int STDCALL
+Open8055_SetOutputPWM(int handle, int port, int value)
+{
+    Open8055_card_t	*card;
+    int			rc = 0;
+
+    if (port < 0 || port > 1)
+    {
+    	SetError("invalid value for port");
+	return -1;
+    }
+    if (value < 0 || value > 1023)
+    {
+    	SetError("invalid value for value");
+	return -1;
+    }
+
+    OPEN8055_INIT();
+    OPEN8055_LOCK_CARD(handle, card);
+
+    /* ----
+     * Just set those bits in the next output message and mark that we
+     * have some changes to be sent.
+     * ----
+     */
+    card->currentOutput.outputPwmValue[port] = htons(value);
     OPEN8055_UNLOCK_CARD(card);
     if (DeviceWrite(card, &(card->currentOutput), sizeof(card->currentOutput)) != sizeof(card->currentOutput))
     	rc = -1;
@@ -949,31 +1012,10 @@ CardIOThread(void *cdata)
 	switch (inputMessage.msgType)
 	{
 	    case OPEN8055_HID_MESSAGE_INPUT:
-		if (memcmp(&(card->currentInput), &inputMessage, sizeof(card->currentInput)) != 0)
-		{
-		    int		i;
-
-		    /* ----
-		     * Convert the message into host byte order.
-		     * ----
-		     */
-		    card->currentInput.inputBits = inputMessage.inputBits;
-		    for (i = 0; i < 5; i++)
-		    {
-		        card->currentInput.inputCounter[i] = ntohs(inputMessage.inputCounter[i]);
-		    }
-		    for (i = 0; i < 2; i++)
-		    {
-		        card->currentInput.inputAdcValue[i] = ntohs(inputMessage.inputAdcValue[i]);
-		    }
-
-		    card->currentInputUnconsumed = OPEN8055_INPUT_ANY;
-
-		    if (card->readWaiters > 0)
-		    {
-			pthread_cond_broadcast(&(card->readWaiterCond));
-		    }
-		}
+		memcpy(&(card->currentInput), &inputMessage, sizeof(card->currentInput));
+		card->currentInputUnconsumed = OPEN8055_INPUT_ANY;
+		if (card->readWaiters > 0)
+		    pthread_cond_broadcast(&(card->readWaiterCond));
 		break;
 
 	    case OPEN8055_HID_MESSAGE_SETCONFIG1:
