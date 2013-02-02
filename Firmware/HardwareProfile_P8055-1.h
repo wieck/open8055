@@ -107,6 +107,9 @@
     #define OPEN8055_ADCON1 0x0D
 
     // ADCON2
+    // bit 7
+    //		1 = Right justified
+    //		0 = Left justified
     // bit 5-3 ACQT2:ACQT0: A/D Acquisition Time Select bits
     //		111 = 20 TAD
     //		110 = 16 TAD
@@ -125,7 +128,7 @@
     //		010 = FOSC/32
     //		001 = FOSC/8
     //		000 = FOSC/2
-    #define OPEN8055_ADCON2 0b10101010 // 20TAD,FOSC/32
+    #define OPEN8055_ADCON2 0b10111111 // Right,20TACQ,FRC
 
 
     //ADCON0

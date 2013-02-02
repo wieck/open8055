@@ -133,8 +133,7 @@
     //		010 = FOSC/32
     //		001 = FOSC/8
     //		000 = FOSC/2
-//    #define OPEN8055_ADCON2 0b10101010 // 20TAD,FOSC/32
-    #define OPEN8055_ADCON2 0b10110111 // Right,12TAD,FRC
+    #define OPEN8055_ADCON2 0b10111111 // Right,20TACQ,FRC
 
 
     //ADCON0

@@ -163,6 +163,7 @@ uint8_t		analogValue_1_high = 0;
 uint8_t		analogValue_1_low = 0;
 uint8_t		analogValue_2_high = 0;
 uint8_t		analogValue_2_low = 0;
+uint8_t		analogGoDelay = 2;
 uint8_t		analogInterrupted = 0;
 
 Open8055_hidMessage_t currentConfig1;
@@ -278,6 +279,7 @@ void highPriorityISRCode()
 	//Service the interrupt
 	//Clear the interrupt flag
 	//Etc.
+	analogInterrupted = 1;
 	
 	if (PIR2bits.TMR3IF)
 	{
@@ -309,6 +311,57 @@ void lowPriorityISRCode()
 	//Service the interrupt
 	//Clear the interrupt flag
 	//Etc.
+
+	// Handle ADC. We toggle between the two ADC inputs.
+	if (PIR1bits.ADIF)
+	{
+		// We ignore this ADC result if there was another
+		// interrupt happening while we were sampling. For
+		// some reason, the value has a little drop if this
+		// happens.
+		if (!analogInterrupted)
+		{
+			//Copy the conversion result to global memory
+			//and switch to the other analog input.
+			#if defined(__18F2550)
+				if(ADCON0bits.CHS0==1)
+				{
+					analogValue_2_high = ADRESH;
+					analogValue_2_low  = ADRESL;
+					ADCON0bits.CHS0=0;
+				}
+				else
+				{
+					analogValue_1_high = ADRESH;
+					analogValue_1_low  = ADRESL;
+					ADCON0bits.CHS0=1;
+				}
+			#elif defined(__18F25K50)
+				if(ADCON0bits.CHS==1)
+				{
+					analogValue_2_high = ADRESH;
+					analogValue_2_low  = ADRESL;
+					ADCON0bits.CHS=0;
+				}
+				else
+				{
+					analogValue_1_high = ADRESH;
+					analogValue_1_low  = ADRESL;
+					ADCON0bits.CHS=1;
+				}
+			#endif
+			}
+		
+		// Clear the interrupt flag. We do not hit go right away. 
+		// Let the ticker code do that after 200us.
+		PIR1bits.ADIF = 0;
+		analogGoDelay = 2;
+	}
+	else
+	{
+		analogInterrupted = 1;
+	}	
+	
 
     #if defined(USB_INTERRUPT)
     	USBDeviceTasks();
@@ -536,10 +589,13 @@ static void userInit(void)
 	ADCON0 = OPEN8055_ADCON0;
 	
 
-	//Make sure that interrupt priotities and high priority interrupts
-	//are enabled.
+	//Make sure that interrupt priotities and high/low priority interrupts
+	//are enabled. Configure ADC for low priority.
 	RCONbits.IPEN	= 1;
 	INTCONbits.GIEH	= 1;
+	INTCONbits.GIEL	= 1;
+	IPR1bits.ADIP   = 0;
+	PIE1bits.ADIE   = 1;
 
 	//Setup PWM configuration including timer2
 	T2CONbits.T2CKPS0 = OPEN8055_T2CKPS0;
@@ -714,55 +770,17 @@ static void processIO(void)
 	while (ticksSeen-- > 0)
 	{
 		// Per 100 microsecond code comes here
-
-		// Handle ADC. We toggle between ADC inputs and query one of them every
-		// time, the 100ns ticker is 0 or 5. This means that we do measure ADC
-		// once per millisecond. We can't report any faster anyway, so what's 
-		// the rush?
-		// For precision reasons, we do it with a busy loop so we get the result
-		// the instant, the conversion is done. We need to throw away the result
-		// in case we got interrupted, because that can mean that our busy loop
-		// ended too late (after the ISR returned).
-		if ((tickMillisecond % 5) == 0)
-		{
-			analogInterrupted = 0;
-			ADCON0bits.GO = 1;
-			while (ADCON0bits.GO && !analogInterrupted);
-			if (!analogInterrupted)
-			{
-				//Copy the conversion result to global memory
-				//and switch to the other analog input.
-				#if defined(__18F2550)
-					if(ADCON0bits.CHS0==1)
-					{
-						analogValue_2_high = ADRESH;
-						analogValue_2_low  = ADRESL;
-						ADCON0bits.CHS0=0;
-					}
-					else
-					{
-						analogValue_1_high = ADRESH;
-						analogValue_1_low  = ADRESL;
-						ADCON0bits.CHS0=1;
-					}
-				#elif defined(__18F25K50)
-					if(ADCON0bits.CHS==1)
-					{
-						analogValue_2_high = ADRESH;
-						analogValue_2_low  = ADRESL;
-						ADCON0bits.CHS=0;
-					}
-					else
-					{
-						analogValue_1_high = ADRESH;
-						analogValue_1_low  = ADRESL;
-						ADCON0bits.CHS=1;
-					}
-				#endif
-			}
-		}
-	
 		
+		// Check if we need to kick off an ADC.
+		if (analogGoDelay > 0)
+		{
+			if (--analogGoDelay == 0)
+			{
+				analogInterrupted = 0;
+				ADCON0bits.GO = 1;
+			}
+		}	
+
 		if (++tickMillisecond >= OPEN8055_TICKS_PER_MS)
 		{
 			tickMillisecond = 0;
