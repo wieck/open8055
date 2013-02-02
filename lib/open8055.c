@@ -208,6 +208,7 @@ Open8055_Connect(char *destination, char *password)
     Open8055_card_t	       *card;
     Open8055_hidMessage_t	outputMessage;
     Open8055_hidMessage_t	inputMessage;
+    int				i;
 
     OPEN8055_INIT();
 
@@ -386,8 +387,23 @@ Open8055_Connect(char *destination, char *password)
 	    	break;
 
 	    case OPEN8055_HID_MESSAGE_INPUT:
-	    	memcpy(&(card->currentInput), &inputMessage, sizeof(card->currentInput));
+		/* ----
+		 * Convert the INPUT message into host byte order.
+		 * ----
+		 */
+		card->currentInput.msgType = OPEN8055_HID_MESSAGE_INPUT;
+		card->currentInput.inputBits = inputMessage.inputBits;
+		for (i = 0; i < 5; i++)
+		{
+		    card->currentInput.inputCounter[i] = ntohs(inputMessage.inputCounter[i]);
+		}
+		for (i = 0; i < 2; i++)
+		{
+		    card->currentInput.inputAdcValue[i] = ntohs(inputMessage.inputAdcValue[i]);
+		}
+
 		card->currentInputUnconsumed = OPEN8055_INPUT_ANY;
+
 	    	break;
 	}
     }
@@ -936,33 +952,22 @@ CardIOThread(void *cdata)
 		if (memcmp(&(card->currentInput), &inputMessage, sizeof(card->currentInput)) != 0)
 		{
 		    int		i;
-		    uint16_t	newValue;
 
 		    /* ----
-		     * Convert the message into host byte order and set unconsumed flags
-		     * for things that have actually changed.
+		     * Convert the message into host byte order.
 		     * ----
 		     */
+		    card->currentInput.inputBits = inputMessage.inputBits;
 		    for (i = 0; i < 5; i++)
 		    {
-		    	if ((inputMessage.inputBits & (1 << i)) != (card->currentInput.inputBits & (1 << i)))
-			    card->currentInputUnconsumed |= (OPEN8055_INPUT_I1 << i);
-		        if ((newValue = ntohs(inputMessage.inputCounter[i])) != card->currentInput.inputCounter[i])
-			{
-			    card->currentInput.inputCounter[i] = newValue;
-			    card->currentInputUnconsumed |= (OPEN8055_INPUT_COUNT1 << i);
-			}
+		        card->currentInput.inputCounter[i] = ntohs(inputMessage.inputCounter[i]);
 		    }
-		    card->currentInput.inputBits = inputMessage.inputBits;
-
 		    for (i = 0; i < 2; i++)
 		    {
-		        if ((newValue = ntohs(inputMessage.inputAdcValue[i])) != card->currentInput.inputAdcValue[i])
-			{
-			    card->currentInput.inputAdcValue[i] = newValue;
-			    card->currentInputUnconsumed |= (OPEN8055_INPUT_ADC1 << i);
-			}
+		        card->currentInput.inputAdcValue[i] = ntohs(inputMessage.inputAdcValue[i]);
 		    }
+
+		    card->currentInputUnconsumed = OPEN8055_INPUT_ANY;
 
 		    if (card->readWaiters > 0)
 		    {

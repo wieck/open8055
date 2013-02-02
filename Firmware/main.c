@@ -818,11 +818,11 @@ static void processIO(void)
 		// Construct a standard input state report.
 		memset(&currentInput, 0, sizeof(currentInput));
 		currentInput.msgType			= OPEN8055_HID_MESSAGE_INPUT;
-		currentInput.inputBits			= OPEN8055sw1 |
-										  (OPEN8055sw2 << 1) |
-										  (OPEN8055sw3 << 2) |
-										  (OPEN8055sw4 << 3) |
-										  (OPEN8055sw5 << 4);
+		currentInput.inputBits			= switchStatus[0].lastState |
+										  (switchStatus[1].lastState << 1) |
+										  (switchStatus[2].lastState << 2) |
+										  (switchStatus[3].lastState << 3) |
+										  (switchStatus[4].lastState << 4);
 		for (i = 0; i < 5; i++)
 		{
 			currentInput.inputCounter[i] = htons(switchStatus[i].counter);
