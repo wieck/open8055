@@ -66,6 +66,10 @@ typedef struct {
     Open8055_hidMessage_t	currentOutput;
     Open8055_hidMessage_t	currentInput;
     uint32_t			currentInputUnconsumed;
+
+    int				autoFlush;
+    int				pendingConfig1;
+    int				pendingOutput;
 } Open8055_card_t;
 
 
@@ -343,6 +347,7 @@ Open8055_Connect(char *destination, char *password)
 	pthread_mutex_unlock(&openCardsLock);
 	return -1;
     }
+    card->autoFlush = TRUE;
 
     /* ----
      * Query current card status.
@@ -542,6 +547,96 @@ Open8055_WaitFor(int handle, uint32_t mask, long us)
     OPEN8055_LOCK_CARD(handle, card);
 
     rc = Open8055_WaitForInput(card, mask, us);
+
+    OPEN8055_UNLOCK_CARD(card);
+    return rc;
+}
+
+
+/* ----
+ * Open8055_GetAutoFlush()
+ *
+ *  Return the current autoFlush setting.
+ * ----
+ */
+OPEN8055_EXTERN int STDCALL
+Open8055_GetAutoFlush(int handle)
+{
+    Open8055_card_t	*card;
+    int			rc = 0;
+
+    OPEN8055_INIT();
+    OPEN8055_LOCK_CARD(handle, card);
+
+    if(card->autoFlush)
+    	rc = 1;
+
+    OPEN8055_UNLOCK_CARD(card);
+    return rc;
+}
+
+
+/* ----
+ * Open8055_SetAutoFlush()
+ *
+ *  Set the auto flush feature.
+ * ----
+ */
+OPEN8055_EXTERN int STDCALL
+Open8055_SetAutoFlush(int handle, int flag)
+{
+    Open8055_card_t	*card;
+    int			rc = 0;
+
+    OPEN8055_INIT();
+    OPEN8055_LOCK_CARD(handle, card);
+
+    card->autoFlush = (flag == TRUE);
+
+    OPEN8055_UNLOCK_CARD(card);
+    if (card->autoFlush)
+    	return Open8055_Flush(handle);
+
+    return rc;
+}
+
+
+/* ----
+ * Open8055_Flush()
+ *
+ *  Send pending changes to the card.
+ * ----
+ */
+OPEN8055_EXTERN int STDCALL
+Open8055_Flush(int handle)
+{
+    Open8055_card_t	*card;
+    int			rc = 0;
+
+    OPEN8055_INIT();
+    OPEN8055_LOCK_CARD(handle, card);
+
+    if (card->pendingConfig1)
+    {
+    	if (DeviceWrite(card, &(card->currentConfig1), sizeof(card->currentConfig1)) 
+		!= sizeof(card->currentConfig1))
+	{
+	    OPEN8055_UNLOCK_CARD(card);
+	    return -1;
+	}
+	card->pendingConfig1 = FALSE;
+    }
+
+    if (card->pendingOutput)
+    {
+    	if (DeviceWrite(card, &(card->currentOutput), sizeof(card->currentOutput)) 
+		!= sizeof(card->currentOutput))
+	{
+	    OPEN8055_UNLOCK_CARD(card);
+	    return -1;
+	}
+	card->pendingOutput = FALSE;
+    }
 
     OPEN8055_UNLOCK_CARD(card);
     return rc;
@@ -777,14 +872,21 @@ Open8055_SetOutputDigitalAll(int handle, int bits)
     OPEN8055_LOCK_CARD(handle, card);
 
     /* ----
-     * Just set those bits in the next output message and mark that we
-     * have some changes to be sent.
+     * Set the bits and send them if in autoFlush mode.
      * ----
      */
     card->currentOutput.outputBits = bits;
     OPEN8055_UNLOCK_CARD(card);
-    if (DeviceWrite(card, &(card->currentOutput), sizeof(card->currentOutput)) != sizeof(card->currentOutput))
-    	rc = -1;
+    if (card->autoFlush)
+    {
+	if (DeviceWrite(card, &(card->currentOutput), sizeof(card->currentOutput)) != sizeof(card->currentOutput))
+	    rc = -1;
+    	card->pendingOutput = FALSE;
+    }
+    else
+    {
+	card->pendingOutput = TRUE;
+    }
 
     return rc;
 }
@@ -817,14 +919,21 @@ Open8055_SetOutputPWM(int handle, int port, int value)
     OPEN8055_LOCK_CARD(handle, card);
 
     /* ----
-     * Just set those bits in the next output message and mark that we
-     * have some changes to be sent.
+     * Set the new PWM value and send it if in autoFlush mode.
      * ----
      */
     card->currentOutput.outputPwmValue[port] = htons(value);
     OPEN8055_UNLOCK_CARD(card);
-    if (DeviceWrite(card, &(card->currentOutput), sizeof(card->currentOutput)) != sizeof(card->currentOutput))
-    	rc = -1;
+    if (card->autoFlush)
+    {
+	if (DeviceWrite(card, &(card->currentOutput), sizeof(card->currentOutput)) != sizeof(card->currentOutput))
+	    rc = -1;
+    	card->pendingOutput = FALSE;
+    }
+    else
+    {
+	card->pendingOutput = TRUE;
+    }
 
     return rc;
 }

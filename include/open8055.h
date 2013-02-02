@@ -129,8 +129,9 @@ OPEN8055_EXTERN int		STDCALL Open8055_Close(int h);
 
 OPEN8055_EXTERN int		STDCALL Open8055_Wait(int h, long us);
 OPEN8055_EXTERN int		STDCALL Open8055_WaitFor(int h, uint32_t mask, long us);
-OPEN8055_EXTERN int		STDCALL Open8055_OutputBuffering(int h, int flag);
-OPEN8055_EXTERN int		STDCALL Open8055_OutputFlush(int h);
+OPEN8055_EXTERN int		STDCALL Open8055_GetAutoFlush(int h);
+OPEN8055_EXTERN int		STDCALL Open8055_SetAutoFlush(int h, int flag);
+OPEN8055_EXTERN int		STDCALL Open8055_Flush(int h);
 
 OPEN8055_EXTERN int		STDCALL Open8055_GetInputDigital(int h, int port);
 OPEN8055_EXTERN int		STDCALL Open8055_GetInputDigitalAll(int h);
