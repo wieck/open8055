@@ -85,6 +85,8 @@
 #define OPEN8055_MAX_CARDS	3
 #define OPEN8055_WAITFOR_US	1000
 
+typedef void *OPEN8055_HANDLE;
+
 /* ----
  * The following bits define unique input items in the reports.
  * These can be used as a bitmask when waiting for status changes.
@@ -120,37 +122,36 @@
  * Public functions in open8055.c
  * ----
  */
-OPEN8055_EXTERN char *		STDCALL Open8055_LastError(void);
-OPEN8055_EXTERN char *		STDCALL Open8055_LastErrorCopy(void);
+OPEN8055_EXTERN char *		STDCALL Open8055_LastError(HANDLE h);
 OPEN8055_EXTERN int		STDCALL Open8055_CardPresent(int cardNumber);
 
-OPEN8055_EXTERN int		STDCALL Open8055_Connect(char *destination, char *password);
-OPEN8055_EXTERN int		STDCALL Open8055_Close(int h);
-OPEN8055_EXTERN int		STDCALL Open8055_Reset(int h);
+OPEN8055_EXTERN OPEN8055_HANDLE	STDCALL Open8055_Connect(char *destination, char *password);
+OPEN8055_EXTERN int		STDCALL Open8055_Close(OPEN8055_HANDLE h);
+OPEN8055_EXTERN int		STDCALL Open8055_Reset(OPEN8055_HANDLE h);
 
-OPEN8055_EXTERN int		STDCALL Open8055_Wait(int h, long us);
-OPEN8055_EXTERN int		STDCALL Open8055_WaitFor(int h, uint32_t mask, long us);
-OPEN8055_EXTERN int		STDCALL Open8055_GetAutoFlush(int h);
-OPEN8055_EXTERN int		STDCALL Open8055_SetAutoFlush(int h, int flag);
-OPEN8055_EXTERN int		STDCALL Open8055_Flush(int h);
+OPEN8055_EXTERN int		STDCALL Open8055_Wait(OPEN8055_HANDLE h, long us);
+OPEN8055_EXTERN int		STDCALL Open8055_WaitFor(OPEN8055_HANDLE h, uint32_t mask, long us);
+OPEN8055_EXTERN int		STDCALL Open8055_GetAutoFlush(OPEN8055_HANDLE h);
+OPEN8055_EXTERN int		STDCALL Open8055_SetAutoFlush(OPEN8055_HANDLE h, int flag);
+OPEN8055_EXTERN int		STDCALL Open8055_Flush(OPEN8055_HANDLE h);
 
-OPEN8055_EXTERN int		STDCALL Open8055_GetInputDigital(int h, int port);
-OPEN8055_EXTERN int		STDCALL Open8055_GetInputDigitalAll(int h);
-OPEN8055_EXTERN int		STDCALL Open8055_GetInputADC(int h, int port);
-OPEN8055_EXTERN int		STDCALL Open8055_GetInputCounter(int h, int port);
-OPEN8055_EXTERN int		STDCALL Open8055_ResetInputCounter(int h, int port);
-OPEN8055_EXTERN int		STDCALL Open8055_ResetInputCounterAll(int h);
-OPEN8055_EXTERN double		STDCALL Open8055_GetInputDebounce(int h, int port);
-OPEN8055_EXTERN int		STDCALL Open8055_SetInputDebounce(int h, int port, double value);
+OPEN8055_EXTERN int		STDCALL Open8055_GetInputDigital(OPEN8055_HANDLE h, int port);
+OPEN8055_EXTERN int		STDCALL Open8055_GetInputDigitalAll(OPEN8055_HANDLE h);
+OPEN8055_EXTERN int		STDCALL Open8055_GetInputADC(OPEN8055_HANDLE h, int port);
+OPEN8055_EXTERN int		STDCALL Open8055_GetInputCounter(OPEN8055_HANDLE h, int port);
+OPEN8055_EXTERN int		STDCALL Open8055_ResetInputCounter(OPEN8055_HANDLE h, int port);
+OPEN8055_EXTERN int		STDCALL Open8055_ResetInputCounterAll(OPEN8055_HANDLE h);
+OPEN8055_EXTERN double		STDCALL Open8055_GetInputDebounce(OPEN8055_HANDLE h, int port);
+OPEN8055_EXTERN int		STDCALL Open8055_SetInputDebounce(OPEN8055_HANDLE h, int port, double value);
 
-OPEN8055_EXTERN int		STDCALL Open8055_GetOutputDigital(int h, int port);
-OPEN8055_EXTERN int		STDCALL Open8055_GetOutputDigitalAll(int h);
-OPEN8055_EXTERN int		STDCALL Open8055_GetOutputValue(int h, int port);
-OPEN8055_EXTERN int		STDCALL Open8055_GetOutputPWM(int h, int port);
-OPEN8055_EXTERN int		STDCALL Open8055_SetOutputDigital(int h, int port, int val);
-OPEN8055_EXTERN int		STDCALL Open8055_SetOutputDigitalAll(int h, int val);
-OPEN8055_EXTERN int		STDCALL Open8055_SetOutputValue(int h, int port, int val);
-OPEN8055_EXTERN int		STDCALL Open8055_SetOutputPWM(int h, int port, int val);
+OPEN8055_EXTERN int		STDCALL Open8055_GetOutputDigital(OPEN8055_HANDLE h, int port);
+OPEN8055_EXTERN int		STDCALL Open8055_GetOutputDigitalAll(OPEN8055_HANDLE h);
+OPEN8055_EXTERN int		STDCALL Open8055_GetOutputValue(OPEN8055_HANDLE h, int port);
+OPEN8055_EXTERN int		STDCALL Open8055_GetOutputPWM(OPEN8055_HANDLE h, int port);
+OPEN8055_EXTERN int		STDCALL Open8055_SetOutputDigital(OPEN8055_HANDLE h, int port, int val);
+OPEN8055_EXTERN int		STDCALL Open8055_SetOutputDigitalAll(OPEN8055_HANDLE h, int val);
+OPEN8055_EXTERN int		STDCALL Open8055_SetOutputValue(OPEN8055_HANDLE h, int port, int val);
+OPEN8055_EXTERN int		STDCALL Open8055_SetOutputPWM(OPEN8055_HANDLE h, int port, int val);
 
 
 #ifdef __cplusplus

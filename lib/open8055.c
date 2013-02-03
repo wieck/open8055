@@ -52,13 +52,14 @@
 typedef struct {
     int				isLocal;
     int				idLocal;
+    char			destination[1024];
 
     pthread_mutex_t		cardLock;
 
     pthread_t			readerThread;
     int				readerTerminate;
-    int				ioError;
-    char			ioErrorMessage[1024];
+    int				error;
+    char			errorMessage[1024];
     int				readWaiters;
     pthread_cond_t		readWaiterCond;
 
@@ -78,7 +79,7 @@ typedef struct {
  * ----------------------------------------------------------------------
  */
 static int Open8055_Init(void);
-static void SetError(char *fmt, ...);
+static void SetError(Open8055_card_t *card, char *fmt, ...);
 static void *CardIOThread(void *cdata);
 static int Open8055_WaitForInput(Open8055_card_t *card, uint32_t mask, long us);
 
@@ -96,40 +97,21 @@ static char *ErrorString(void);
  * ----------------------------------------------------------------------
  */
 static char     		lastErrorMessage[1024] = {'\0'};
-static pthread_mutex_t		lastErrorLock;
 static int      		initialized = FALSE;
 
-static Open8055_card_t	      **openCards = NULL;
-static int			openCardsAlloc = 0;
-static int			openCardsUsed = 0;
 static int			openLocalCards[OPEN8055_MAX_CARDS];
-static pthread_mutex_t		openCardsLock;
 
 
 /* ----------------------------------------------------------------------
  * Macros
  * ----------------------------------------------------------------------
  */
-#define OPEN8055_INIT()							\
-	if (!initialized)						\
+#define CARD_VALID(_c)							\
+	if ((_c) == NULL)						\
 	{								\
-	    if (Open8055_Init() < 0)					\
-	        return -1;						\
-	}
-
-#define OPEN8055_LOCK_CARD(_h, _c)					\
-	pthread_mutex_lock(&openCardsLock);				\
-	if ((_h) < 0 || (_h) >= openCardsUsed || openCards[(_h)] == NULL) \
-	{								\
-	    SetError("Invalid card handle %d", (_h));			\
+	    SetError(NULL, "Invalid card handle");			\
 	    return -1;							\
-	}								\
-	card = openCards[(_h)];						\
-	pthread_mutex_lock(&(card->cardLock));				\
-	pthread_mutex_unlock(&openCardsLock);
-
-#define OPEN8055_UNLOCK_CARD(_c)					\
-	pthread_mutex_unlock(&((_c)->cardLock));
+	}
 
 
 /* ----------------------------------------------------------------------
@@ -146,33 +128,14 @@ static pthread_mutex_t		openCardsLock;
  * ----
  */
 OPEN8055_EXTERN char * STDCALL
-Open8055_LastError(void)
+Open8055_LastError(OPEN8055_HANDLE h)
 {
-    return lastErrorMessage;
-}
+    Open8055_card_t	*card = (Open8055_card_t *)h;
 
+    if (card == NULL)
+    	return lastErrorMessage;
 
-/* ----
- * Open8055_LastErrorCopy()
- *
- *  Returns the last error message in allocated memory.
- *  This is thread safe but the caller is responsible to
- *  free the memory.
- * ----
- */
-OPEN8055_EXTERN char * STDCALL
-Open8055_LastErrorCopy(void)
-{
-    char *dup;
-
-    if (!initialized)
-    	return strdup(lastErrorMessage);
-
-    pthread_mutex_lock(&lastErrorLock);
-    dup = strdup(lastErrorMessage);
-    pthread_mutex_unlock(&lastErrorLock);
-
-    return dup;
+    return card->errorMessage;
 }
 
 
@@ -186,7 +149,6 @@ Open8055_LastErrorCopy(void)
 OPEN8055_EXTERN int STDCALL
 Open8055_CardPresent(int cardNumber)
 {
-    OPEN8055_INIT();
     if (!initialized)
     {
     	if (Open8055_Init() < 0)
@@ -204,16 +166,23 @@ Open8055_CardPresent(int cardNumber)
  *  Returns -1 on error or the ID of the new card.
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN OPEN8055_HANDLE STDCALL
 Open8055_Connect(char *destination, char *password)
 {
     int				cardNumber;
-    int				handle;
     Open8055_card_t	       *card;
     Open8055_hidMessage_t	outputMessage;
     Open8055_hidMessage_t	inputMessage;
 
-    OPEN8055_INIT();
+    /* ----
+     * Make sure the library is initialized.
+     * ----
+     */
+    if (!initialized)
+    {
+    	if (Open8055_Init() < 0)
+	    return NULL;
+    }
 
     /* ----
      * Parse the destination. At some point in the future this string
@@ -223,8 +192,8 @@ Open8055_Connect(char *destination, char *password)
      */
     if (sscanf(destination, "card%d", &cardNumber) != 1)
     {
-    	SetError("Syntax error in local card address '%s'", destination);
-	return -1;
+    	SetError(NULL, "Syntax error in local card address '%s'", destination);
+	return NULL;
     }
 
     /* ----
@@ -233,13 +202,13 @@ Open8055_Connect(char *destination, char *password)
      */
     if (cardNumber < 0 || cardNumber >= OPEN8055_MAX_CARDS)
     {
-    	SetError("Card number %d out of bounds", cardNumber);
-	return -1;
+    	SetError(NULL, "Card number %d out of bounds", cardNumber);
+	return NULL;
     }
     if (openLocalCards[cardNumber] != 0)
     {
-    	SetError("Local card %d already open", cardNumber);
-	return -1;
+    	SetError(NULL, "Local card %d already open", cardNumber);
+	return NULL;
     }
 
     /* ----
@@ -249,11 +218,11 @@ Open8055_Connect(char *destination, char *password)
     card = (Open8055_card_t *)malloc(sizeof(Open8055_card_t));
     if (card == NULL)
     {
-    	SetError("out of memory");
-	pthread_mutex_unlock(&openCardsLock);
-	return -1;
+    	SetError(NULL, "out of memory");
+	return NULL;
     }
     memset(card, 0, sizeof(Open8055_card_t));
+    strncpy(card->destination, destination, sizeof(card->destination));
     card->isLocal = TRUE;
     card->idLocal = cardNumber;
 
@@ -263,66 +232,10 @@ Open8055_Connect(char *destination, char *password)
      */
     if (DeviceOpen(card) < 0)
     {
-    	return -1;
+	strncpy(lastErrorMessage, card->errorMessage, sizeof(lastErrorMessage));
+	free(card);
+    	return NULL;
     }
-
-    /* ----
-     * Find an unused handle slot.
-     * ----
-     */
-    pthread_mutex_lock(&openCardsLock);
-    if (openCardsAlloc == 0)
-    {
-	/* ----
-	 * On first call allocate an initial 16 slots.
-	 * ----
-	 */
-    	openCards = (Open8055_card_t **)malloc(sizeof(Open8055_card_t*) * 16);
-	if (openCards == NULL)
-	{
-	    SetError("out of memory");
-	    DeviceClose(card);
-	    free(card);
-	    pthread_mutex_unlock(&openCardsLock);
-	    return -1;
-	}
-	openCardsAlloc = 16;
-    }
-    for (handle = 0; handle < openCardsUsed; handle++)
-    	if (openCards[handle] == NULL) break;
-
-    if (handle == openCardsUsed)
-    {
-    	/* ----
-	 * No previously free'd slot found. See if we have spare
-	 * allocated slots.
-	 * ----
-	 */
-    	if (openCardsUsed == openCardsAlloc)
-	{
-	    /* ----
-	     * Ran out of slots. Double the table size.
-	     * ----
-	     */
-	    openCards = (Open8055_card_t **)realloc(openCards, sizeof(Open8055_card_t*) * openCardsAlloc * 2);
-	    if (openCards == NULL)
-	    {
-	        SetError("out of memory");
-		DeviceClose(card);
-		free(card);
-		pthread_mutex_unlock(&openCardsLock);
-		return -1;
-	    }
-	    openCardsAlloc *= 2;
-	}
-
-	/* ----
-	 * handle is now going to use the next slot.
-	 * ----
-	 */
-	openCardsUsed++;
-    }
-    openCards[handle] = card;
 
     /* ----
      * Initialize the remaining data
@@ -330,22 +243,18 @@ Open8055_Connect(char *destination, char *password)
      */
     if (pthread_mutex_init(&(card->cardLock), NULL) != 0)
     {
-    	SetError("pthread_mutex_init() failed - %s", ErrorString());
+    	SetError(NULL, "pthread_mutex_init() failed - %s", ErrorString());
 	DeviceClose(card);
 	free(card);
-	openCards[handle] = NULL;
-	pthread_mutex_unlock(&openCardsLock);
-	return -1;
+	return NULL;
     }
     if (pthread_cond_init(&(card->readWaiterCond), NULL) != 0)
     {
-    	SetError("pthread_cond_init() failed - %s", ErrorString());
+    	SetError(NULL, "pthread_cond_init() failed - %s", ErrorString());
 	pthread_mutex_destroy(&(card->cardLock));
 	DeviceClose(card);
 	free(card);
-	openCards[handle] = NULL;
-	pthread_mutex_unlock(&openCardsLock);
-	return -1;
+	return NULL;
     }
     card->autoFlush = TRUE;
 
@@ -357,28 +266,24 @@ Open8055_Connect(char *destination, char *password)
     outputMessage.msgType = OPEN8055_HID_MESSAGE_GETCONFIG;
     if (DeviceWrite(card, &outputMessage, sizeof(outputMessage)) < 0)
     {
-    	SetError("Sending of GETCONFIG failed - %s", ErrorString);
+    	SetError(NULL, "Sending of GETCONFIG failed - %s", ErrorString());
 	pthread_cond_destroy(&(card->readWaiterCond));
 	pthread_mutex_destroy(&(card->cardLock));
 	DeviceClose(card);
 	free(card);
-	openCards[handle] = NULL;
-	pthread_mutex_unlock(&openCardsLock);
-	return -1;
+	return NULL;
     }
     while (card->currentConfig1.msgType == 0x00 || card->currentOutput.msgType == 0x00
     	|| card->currentInput.msgType == 0x00)
     {
     	if (DeviceRead(card, &inputMessage, sizeof(inputMessage)) < 0)
 	{
-	    SetError("DeviceRead failed - %s", ErrorString);
+	    SetError(NULL, "DeviceRead failed - %s", ErrorString());
 	    pthread_cond_destroy(&(card->readWaiterCond));
 	    pthread_mutex_destroy(&(card->cardLock));
 	    DeviceClose(card);
 	    free(card);
-	    openCards[handle] = NULL;
-	    pthread_mutex_unlock(&openCardsLock);
-	    return -1;
+	    return NULL;
 	}
 	switch(inputMessage.msgType)
 	{
@@ -403,22 +308,19 @@ Open8055_Connect(char *destination, char *password)
      */
     if (pthread_create(&(card->readerThread), NULL, CardIOThread, (void *)card) != 0)
     {
-    	SetError("pthread_create() failed - %s", ErrorString);
+    	SetError(NULL, "pthread_create() failed - %s", ErrorString());
 	pthread_cond_destroy(&(card->readWaiterCond));
 	pthread_mutex_destroy(&(card->cardLock));
 	DeviceClose(card);
 	free(card);
-	openCards[handle] = NULL;
-	pthread_mutex_unlock(&openCardsLock);
-	return -1;
+	return NULL;
     }
 
     /* ----
      * Success.
      * ----
      */
-    pthread_mutex_unlock(&openCardsLock);
-    return handle;
+    return (OPEN8055_HANDLE)card;
 }
 
 
@@ -429,14 +331,14 @@ Open8055_Connect(char *destination, char *password)
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_Close(int handle)
+Open8055_Close(OPEN8055_HANDLE h)
 {
-    Open8055_card_t		*card;
+    Open8055_card_t		*card = (Open8055_card_t *)h;
     int				rc = 0;
     Open8055_hidMessage_t	message;
 
-    OPEN8055_INIT();
-    OPEN8055_LOCK_CARD(handle, card);
+    CARD_VALID(card);
+    pthread_mutex_lock(&(card->cardLock));
 
     /* ----
      * If the readerTerminate flag is set some other thread is already
@@ -445,9 +347,9 @@ Open8055_Close(int handle)
      */
     if (card->readerTerminate)
     {
-    	SetError("Concurrent duplicate Open8055_Close() calls for card %d, handle %d",
-			card->idLocal, handle);
-	OPEN8055_UNLOCK_CARD(card);
+    	SetError(card, "Concurrent duplicate Open8055_Close() calls for card %s",
+			card->destination);
+	pthread_mutex_unlock(&(card->cardLock));
 	return -1;
     }
 
@@ -468,7 +370,7 @@ Open8055_Close(int handle)
     {
 	if (pthread_join(card->readerThread, NULL) != 0)
 	{
-	    SetError("pthread_join() failed - %s", ErrorString());
+	    SetError(card, "pthread_join() failed - %s", ErrorString());
 	    rc = -1;
 	}
     }
@@ -480,8 +382,8 @@ Open8055_Close(int handle)
      * no longer have any IO waiters.
      * ----
      */
-    card->ioError = TRUE;
-    strcpy(card->ioErrorMessage, "card is closed");
+    card->error = TRUE;
+    strcpy(card->errorMessage, "card is closed");
     while (card->readWaiters > 0)
     {
 	pthread_cond_broadcast(&(card->readWaiterCond));
@@ -491,19 +393,13 @@ Open8055_Close(int handle)
     }
 
     /* ----
-     * Free the card structure and all its resources. Then mark the
-     * slot empty.
+     * Free the card structure and all its resources.
      * ----
      */
-    pthread_mutex_lock(&openCardsLock);
-
     pthread_mutex_unlock(&(card->cardLock));
     pthread_mutex_destroy(&(card->cardLock));
     pthread_cond_destroy(&(card->readWaiterCond));
     free(card);
-    openCards[handle] = NULL;
-
-    pthread_mutex_unlock(&openCardsLock);
 
     return rc;
 }
@@ -517,14 +413,14 @@ Open8055_Close(int handle)
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_Reset(int handle)
+Open8055_Reset(OPEN8055_HANDLE h)
 {
-    Open8055_card_t		*card;
+    Open8055_card_t		*card = (Open8055_card_t *)h;
     int				rc = 0;
     Open8055_hidMessage_t	message;
 
-    OPEN8055_INIT();
-    OPEN8055_LOCK_CARD(handle, card);
+    CARD_VALID(card);
+    pthread_mutex_lock(&(card->cardLock));
 
     /* ----
      * If the readerTerminate flag is set some other thread is already
@@ -533,9 +429,9 @@ Open8055_Reset(int handle)
      */
     if (card->readerTerminate)
     {
-    	SetError("Concurrent duplicate Open8055_Close() calls for card %d, handle %d",
-			card->idLocal, handle);
-	OPEN8055_UNLOCK_CARD(card);
+    	SetError(card, "Concurrent duplicate Open8055_Close() calls for card %s",
+			card->destination);
+	pthread_mutex_unlock(&(card->cardLock));
 	return -1;
     }
 
@@ -556,7 +452,7 @@ Open8055_Reset(int handle)
     {
 	if (pthread_join(card->readerThread, NULL) != 0)
 	{
-	    SetError("pthread_join() failed - %s", ErrorString());
+	    SetError(card, "pthread_join() failed - %s", ErrorString());
 	    rc = -1;
 	}
     }
@@ -587,8 +483,8 @@ Open8055_Reset(int handle)
      * no longer have any IO waiters.
      * ----
      */
-    card->ioError = TRUE;
-    strcpy(card->ioErrorMessage, "card is closed");
+    card->error = TRUE;
+    strcpy(card->errorMessage, "card is closed");
     while (card->readWaiters > 0)
     {
 	pthread_cond_broadcast(&(card->readWaiterCond));
@@ -602,15 +498,10 @@ Open8055_Reset(int handle)
      * slot empty.
      * ----
      */
-    pthread_mutex_lock(&openCardsLock);
-
     pthread_mutex_unlock(&(card->cardLock));
     pthread_mutex_destroy(&(card->cardLock));
     pthread_cond_destroy(&(card->readWaiterCond));
     free(card);
-    openCards[handle] = NULL;
-
-    pthread_mutex_unlock(&openCardsLock);
 
     return rc;
 }
@@ -623,17 +514,16 @@ Open8055_Reset(int handle)
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_Wait(int handle, long us)
+Open8055_Wait(OPEN8055_HANDLE h, long us)
 {
-    Open8055_card_t	*card;
+    Open8055_card_t	*card = (Open8055_card_t *)h;
     int			rc = 0;
 
-    OPEN8055_INIT();
-    OPEN8055_LOCK_CARD(handle, card);
+    pthread_mutex_lock(&(card->cardLock));
 
     rc = Open8055_WaitForInput(card, OPEN8055_INPUT_ANY, us);
 
-    OPEN8055_UNLOCK_CARD(card);
+    pthread_mutex_unlock(&(card->cardLock));
     return rc;
 }
 
@@ -645,17 +535,16 @@ Open8055_Wait(int handle, long us)
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_WaitFor(int handle, uint32_t mask, long us)
+Open8055_WaitFor(OPEN8055_HANDLE h, uint32_t mask, long us)
 {
-    Open8055_card_t	*card;
+    Open8055_card_t	*card = (Open8055_card_t *)h;
     int			rc = 0;
 
-    OPEN8055_INIT();
-    OPEN8055_LOCK_CARD(handle, card);
+    pthread_mutex_lock(&(card->cardLock));
 
     rc = Open8055_WaitForInput(card, mask, us);
 
-    OPEN8055_UNLOCK_CARD(card);
+    pthread_mutex_unlock(&(card->cardLock));
     return rc;
 }
 
@@ -667,18 +556,17 @@ Open8055_WaitFor(int handle, uint32_t mask, long us)
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_GetAutoFlush(int handle)
+Open8055_GetAutoFlush(OPEN8055_HANDLE h)
 {
-    Open8055_card_t	*card;
+    Open8055_card_t	*card = (Open8055_card_t *)h;
     int			rc = 0;
 
-    OPEN8055_INIT();
-    OPEN8055_LOCK_CARD(handle, card);
+    pthread_mutex_lock(&(card->cardLock));
 
     if(card->autoFlush)
     	rc = 1;
 
-    OPEN8055_UNLOCK_CARD(card);
+    pthread_mutex_unlock(&(card->cardLock));
     return rc;
 }
 
@@ -690,19 +578,18 @@ Open8055_GetAutoFlush(int handle)
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_SetAutoFlush(int handle, int flag)
+Open8055_SetAutoFlush(OPEN8055_HANDLE h, int flag)
 {
-    Open8055_card_t	*card;
+    Open8055_card_t	*card = (Open8055_card_t *)h;
     int			rc = 0;
 
-    OPEN8055_INIT();
-    OPEN8055_LOCK_CARD(handle, card);
+    pthread_mutex_lock(&(card->cardLock));
 
     card->autoFlush = (flag == TRUE);
 
-    OPEN8055_UNLOCK_CARD(card);
+    pthread_mutex_unlock(&(card->cardLock));
     if (card->autoFlush)
-    	return Open8055_Flush(handle);
+    	return Open8055_Flush(h);
 
     return rc;
 }
@@ -715,20 +602,19 @@ Open8055_SetAutoFlush(int handle, int flag)
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_Flush(int handle)
+Open8055_Flush(OPEN8055_HANDLE h)
 {
-    Open8055_card_t	*card;
+    Open8055_card_t	*card = (Open8055_card_t *)h;
     int			rc = 0;
 
-    OPEN8055_INIT();
-    OPEN8055_LOCK_CARD(handle, card);
+    pthread_mutex_lock(&(card->cardLock));
 
     if (card->pendingConfig1)
     {
     	if (DeviceWrite(card, &(card->currentConfig1), sizeof(card->currentConfig1)) 
 		!= sizeof(card->currentConfig1))
 	{
-	    OPEN8055_UNLOCK_CARD(card);
+	    pthread_mutex_unlock(&(card->cardLock));
 	    return -1;
 	}
 	card->pendingConfig1 = FALSE;
@@ -739,14 +625,14 @@ Open8055_Flush(int handle)
     	if (DeviceWrite(card, &(card->currentOutput), sizeof(card->currentOutput)) 
 		!= sizeof(card->currentOutput))
 	{
-	    OPEN8055_UNLOCK_CARD(card);
+	    pthread_mutex_unlock(&(card->cardLock));
 	    return -1;
 	}
 	card->pendingOutput = FALSE;
 	card->currentOutput.resetCounter = 0x00;
     }
 
-    OPEN8055_UNLOCK_CARD(card);
+    pthread_mutex_unlock(&(card->cardLock));
     return rc;
 }
 
@@ -758,13 +644,12 @@ Open8055_Flush(int handle)
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_GetInputDigitalAll(int handle)
+Open8055_GetInputDigitalAll(OPEN8055_HANDLE h)
 {
-    Open8055_card_t	*card;
+    Open8055_card_t	*card = (Open8055_card_t *)h;
     int			rc = 0;
 
-    OPEN8055_INIT();
-    OPEN8055_LOCK_CARD(handle, card);
+    pthread_mutex_lock(&(card->cardLock));
 
     /* ----
      * Make sure we have current input data.
@@ -773,14 +658,12 @@ Open8055_GetInputDigitalAll(int handle)
     Open8055_WaitForInput(card, OPEN8055_INPUT_I_ANY, OPEN8055_WAITFOR_US);
 
     /* ----
-     * If the card is in error state, just copy it's error message and 
-     * return with error.
+     * Stop here on error.
      * ----
      */
-    if (card->ioError)
+    if (card->error)
     {
-    	SetError("%s", card->ioErrorMessage);
-	OPEN8055_UNLOCK_CARD(card);
+	pthread_mutex_unlock(&(card->cardLock));
 	return -1;
     }
 
@@ -791,7 +674,7 @@ Open8055_GetInputDigitalAll(int handle)
     card->currentInputUnconsumed &= ~OPEN8055_INPUT_I_ANY;
     rc = card->currentInput.inputBits;
 
-    OPEN8055_UNLOCK_CARD(card);
+    pthread_mutex_unlock(&(card->cardLock));
     return rc;
 }
 
@@ -803,19 +686,18 @@ Open8055_GetInputDigitalAll(int handle)
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_GetInputADC(int handle, int port)
+Open8055_GetInputADC(OPEN8055_HANDLE h, int port)
 {
-    Open8055_card_t	*card;
+    Open8055_card_t	*card = (Open8055_card_t *)h;
     int			rc = 0;
 
     if (port < 0 || port > 2)
     {
-    	SetError("invalid port number %d", port);
+    	SetError(card, "invalid port number %d", port);
 	return -1;
     }
 
-    OPEN8055_INIT();
-    OPEN8055_LOCK_CARD(handle, card);
+    pthread_mutex_lock(&(card->cardLock));
 
     /* ----
      * Make sure we have current input data.
@@ -828,10 +710,9 @@ Open8055_GetInputADC(int handle, int port)
      * return with error.
      * ----
      */
-    if (card->ioError)
+    if (card->error)
     {
-    	SetError("%s", card->ioErrorMessage);
-	OPEN8055_UNLOCK_CARD(card);
+	pthread_mutex_unlock(&(card->cardLock));
 	return -1;
     }
 
@@ -842,7 +723,7 @@ Open8055_GetInputADC(int handle, int port)
     card->currentInputUnconsumed &= ~(OPEN8055_INPUT_ADC1 << port);
     rc = ntohs(card->currentInput.inputAdcValue[port]);
 
-    OPEN8055_UNLOCK_CARD(card);
+    pthread_mutex_unlock(&(card->cardLock));
     return rc;
 }
 
@@ -854,19 +735,18 @@ Open8055_GetInputADC(int handle, int port)
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_GetInputCounter(int handle, int port)
+Open8055_GetInputCounter(OPEN8055_HANDLE h, int port)
 {
-    Open8055_card_t	*card;
+    Open8055_card_t	*card = (Open8055_card_t *)h;
     int			rc = 0;
 
     if (port < 0 || port > 5)
     {
-    	SetError("invalid port number %d", port);
+    	SetError(card, "invalid port number %d", port);
 	return -1;
     }
 
-    OPEN8055_INIT();
-    OPEN8055_LOCK_CARD(handle, card);
+    pthread_mutex_lock(&(card->cardLock));
 
     /* ----
      * Make sure we have current input data.
@@ -875,14 +755,12 @@ Open8055_GetInputCounter(int handle, int port)
     Open8055_WaitForInput(card, OPEN8055_INPUT_COUNT1 << port, OPEN8055_WAITFOR_US);
 
     /* ----
-     * If the card is in error state, just copy it's error message and 
-     * return with error.
+     * If the card is in error state stop here.
      * ----
      */
-    if (card->ioError)
+    if (card->error)
     {
-    	SetError("%s", card->ioErrorMessage);
-	OPEN8055_UNLOCK_CARD(card);
+	pthread_mutex_unlock(&(card->cardLock));
 	return -1;
     }
 
@@ -893,7 +771,7 @@ Open8055_GetInputCounter(int handle, int port)
     card->currentInputUnconsumed &= ~(OPEN8055_INPUT_COUNT1 << port);
     rc = ntohs(card->currentInput.inputCounter[port]);
 
-    OPEN8055_UNLOCK_CARD(card);
+    pthread_mutex_unlock(&(card->cardLock));
     return rc;
 }
 
@@ -905,26 +783,25 @@ Open8055_GetInputCounter(int handle, int port)
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_ResetInputCounter(int handle, int port)
+Open8055_ResetInputCounter(OPEN8055_HANDLE h, int port)
 {
-    Open8055_card_t	*card;
+    Open8055_card_t	*card = (Open8055_card_t *)h;
     int			rc = 0;
 
     if (port < 0 || port > 5)
     {
-    	SetError("invalid value for port");
+    	SetError(card, "invalid value for port");
 	return -1;
     }
 
-    OPEN8055_INIT();
-    OPEN8055_LOCK_CARD(handle, card);
+    pthread_mutex_lock(&(card->cardLock));
 
     /* ----
      * Set the value and send it if in autoFlush mode.
      * ----
      */
     card->currentOutput.resetCounter |= (1 << port);
-    OPEN8055_UNLOCK_CARD(card);
+    pthread_mutex_unlock(&(card->cardLock));
     if (card->autoFlush)
     {
 	if (DeviceWrite(card, &(card->currentOutput), sizeof(card->currentOutput)) != sizeof(card->currentOutput))
@@ -947,23 +824,22 @@ Open8055_ResetInputCounter(int handle, int port)
  * ----
  */
 OPEN8055_EXTERN double STDCALL
-Open8055_GetInputDebounce(int handle, int port)
+Open8055_GetInputDebounce(OPEN8055_HANDLE h, int port)
 {
-    Open8055_card_t	*card;
+    Open8055_card_t	*card = (Open8055_card_t *)h;
     double		rc;
 
     if (port < 0 || port > 5)
     {
-    	SetError("invalid value for port");
+    	SetError(card, "invalid value for port");
 	return -1;
     }
 
-    OPEN8055_INIT();
-    OPEN8055_LOCK_CARD(handle, card);
+    pthread_mutex_lock(&(card->cardLock));
 
     rc = (double)ntohs(card->currentConfig1.debounceValue[port]) / 10.0;
 
-    OPEN8055_UNLOCK_CARD(card);
+    pthread_mutex_unlock(&(card->cardLock));
 
     return rc;
 }
@@ -976,31 +852,30 @@ Open8055_GetInputDebounce(int handle, int port)
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_SetInputDebounce(int handle, int port, double ms)
+Open8055_SetInputDebounce(OPEN8055_HANDLE h, int port, double ms)
 {
-    Open8055_card_t	*card;
+    Open8055_card_t	*card = (Open8055_card_t *)h;
     int			rc = 0;
 
     if (port < 0 || port > 5)
     {
-    	SetError("invalid value for port");
+    	SetError(card, "invalid value for port");
 	return -1;
     }
     if (ms < 0.0 || ms > 5000.0)
     {
-    	SetError("invalid value for ms");
+    	SetError(card, "invalid value for ms");
 	return -1;
     }
 
-    OPEN8055_INIT();
-    OPEN8055_LOCK_CARD(handle, card);
+    pthread_mutex_lock(&(card->cardLock));
 
     /* ----
      * Set the value and send it if in autoFlush mode.
      * ----
      */
     card->currentConfig1.debounceValue[port] = htons((uint16_t)floor(ms * 10.0));
-    OPEN8055_UNLOCK_CARD(card);
+    pthread_mutex_unlock(&(card->cardLock));
     if (card->autoFlush)
     {
 	if (DeviceWrite(card, &(card->currentConfig1), sizeof(card->currentConfig1)) != sizeof(card->currentConfig1))
@@ -1023,20 +898,19 @@ Open8055_SetInputDebounce(int handle, int port, double ms)
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_ResetInputCounterAll(int handle)
+Open8055_ResetInputCounterAll(OPEN8055_HANDLE h)
 {
-    Open8055_card_t	*card;
+    Open8055_card_t	*card = (Open8055_card_t *)h;
     int			rc = 0;
 
-    OPEN8055_INIT();
-    OPEN8055_LOCK_CARD(handle, card);
+    pthread_mutex_lock(&(card->cardLock));
 
     /* ----
      * Set the value and send it if in autoFlush mode.
      * ----
      */
     card->currentOutput.resetCounter = 0x1F;
-    OPEN8055_UNLOCK_CARD(card);
+    pthread_mutex_unlock(&(card->cardLock));
     if (card->autoFlush)
     {
 	if (DeviceWrite(card, &(card->currentOutput), sizeof(card->currentOutput)) != sizeof(card->currentOutput))
@@ -1060,13 +934,12 @@ Open8055_ResetInputCounterAll(int handle)
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_GetOutputDigitalAll(int handle)
+Open8055_GetOutputDigitalAll(OPEN8055_HANDLE h)
 {
-    Open8055_card_t	*card;
+    Open8055_card_t	*card = (Open8055_card_t *)h;
     int			rc = 0;
 
-    OPEN8055_INIT();
-    OPEN8055_LOCK_CARD(handle, card);
+    pthread_mutex_lock(&(card->cardLock));
 
     /* ----
      * We have queried them at Connect and tracked them all the time.
@@ -1074,7 +947,7 @@ Open8055_GetOutputDigitalAll(int handle)
      */
     rc = card->currentOutput.outputBits;
 
-    OPEN8055_UNLOCK_CARD(card);
+    pthread_mutex_unlock(&(card->cardLock));
     return rc;
 }
 
@@ -1087,19 +960,18 @@ Open8055_GetOutputDigitalAll(int handle)
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_GetOutputPWM(int handle, int port)
+Open8055_GetOutputPWM(OPEN8055_HANDLE h, int port)
 {
-    Open8055_card_t	*card;
+    Open8055_card_t	*card = (Open8055_card_t *)h;
     int			rc = 0;
 
     if (port < 0 || port > 1)
     {
-    	SetError("invalid value for port");
+    	SetError(card, "invalid value for port");
 	return -1;
     }
 
-    OPEN8055_INIT();
-    OPEN8055_LOCK_CARD(handle, card);
+    pthread_mutex_lock(&(card->cardLock));
 
     /* ----
      * We have queried them at Connect and tracked them all the time.
@@ -1107,7 +979,7 @@ Open8055_GetOutputPWM(int handle, int port)
      */
     rc = ntohs(card->currentOutput.outputPwmValue[port]);
 
-    OPEN8055_UNLOCK_CARD(card);
+    pthread_mutex_unlock(&(card->cardLock));
     return rc;
 }
 
@@ -1119,26 +991,25 @@ Open8055_GetOutputPWM(int handle, int port)
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_SetOutputDigitalAll(int handle, int bits)
+Open8055_SetOutputDigitalAll(OPEN8055_HANDLE h, int bits)
 {
-    Open8055_card_t	*card;
+    Open8055_card_t	*card = (Open8055_card_t *)h;
     int			rc = 0;
 
     if (bits < 0 || bits > 255)
     {
-    	SetError("invalid value for bits");
+    	SetError(card, "invalid value for bits");
 	return -1;
     }
 
-    OPEN8055_INIT();
-    OPEN8055_LOCK_CARD(handle, card);
+    pthread_mutex_lock(&(card->cardLock));
 
     /* ----
      * Set the bits and send them if in autoFlush mode.
      * ----
      */
     card->currentOutput.outputBits = bits;
-    OPEN8055_UNLOCK_CARD(card);
+    pthread_mutex_unlock(&(card->cardLock));
     if (card->autoFlush)
     {
 	if (DeviceWrite(card, &(card->currentOutput), sizeof(card->currentOutput)) != sizeof(card->currentOutput))
@@ -1161,31 +1032,30 @@ Open8055_SetOutputDigitalAll(int handle, int bits)
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_SetOutputPWM(int handle, int port, int value)
+Open8055_SetOutputPWM(OPEN8055_HANDLE h, int port, int value)
 {
-    Open8055_card_t	*card;
+    Open8055_card_t	*card = (Open8055_card_t *)h;
     int			rc = 0;
 
     if (port < 0 || port > 1)
     {
-    	SetError("invalid value for port");
+    	SetError(card, "invalid value for port");
 	return -1;
     }
     if (value < 0 || value > 1023)
     {
-    	SetError("invalid value for value");
+    	SetError(card, "invalid value for value");
 	return -1;
     }
 
-    OPEN8055_INIT();
-    OPEN8055_LOCK_CARD(handle, card);
+    pthread_mutex_lock(&(card->cardLock));
 
     /* ----
      * Set the new PWM value and send it if in autoFlush mode.
      * ----
      */
     card->currentOutput.outputPwmValue[port] = htons(value);
-    OPEN8055_UNLOCK_CARD(card);
+    pthread_mutex_unlock(&(card->cardLock));
     if (card->autoFlush)
     {
 	if (DeviceWrite(card, &(card->currentOutput), sizeof(card->currentOutput)) != sizeof(card->currentOutput))
@@ -1214,22 +1084,8 @@ Open8055_Init(void)
     if (initialized)
     	return 0;
 
-    if (pthread_mutex_init(&openCardsLock, NULL) != 0)
-    {
-	SetError("pthread_mutex_init() failed - %s", ErrorString());
-	return -1;
-    }
-    if (pthread_mutex_init(&lastErrorLock, NULL) != 0)
-    {
-	SetError("pthread_mutex_init() failed - %s", ErrorString());
-	pthread_mutex_destroy(&openCardsLock);
-	return -1;
-    }
-
     if (DeviceInit() < 0)
     {
-	pthread_mutex_destroy(&lastErrorLock);
-	pthread_mutex_destroy(&openCardsLock);
 	return -1;
     }
 
@@ -1291,7 +1147,7 @@ Open8055_WaitForInput(Open8055_card_t *card, uint32_t mask, long us)
 
     if (rc < 0)
     {
-    	SetError("pthread_cond_wait() failed - %s", ErrorString());
+    	SetError(card, "pthread_cond_wait() failed - %s", ErrorString());
 	return -1;
     }
 
@@ -1306,19 +1162,21 @@ Open8055_WaitForInput(Open8055_card_t *card, uint32_t mask, long us)
  * ----
  */
 static void
-SetError(char *fmt, ...)
+SetError(Open8055_card_t *card, char *fmt, ...)
 {
     va_list     ap;
 
-    if (initialized)
-    	pthread_mutex_lock(&lastErrorLock);
-
     va_start(ap, fmt);
-    vsnprintf(lastErrorMessage, sizeof(lastErrorMessage), fmt, ap);
+    if (card == NULL)
+    {
+	vsnprintf(lastErrorMessage, sizeof(lastErrorMessage), fmt, ap);
+    }
+    else
+    {
+    	card->error = TRUE;
+	vsnprintf(card->errorMessage, sizeof(card->errorMessage), fmt, ap);
+    }
     va_end(ap);
-
-    if (initialized)
-    	pthread_mutex_unlock(&lastErrorLock);
 }
 
 
@@ -1345,7 +1203,7 @@ CardIOThread(void *cdata)
 	 */
 	if (card->readerTerminate)
 	{
-	    OPEN8055_UNLOCK_CARD(card);
+	    pthread_mutex_unlock(&(card->cardLock));
 	    return NULL;
 	}
 
@@ -1365,16 +1223,9 @@ CardIOThread(void *cdata)
 	if (rc < 0)
 	{
 	    /* ----
-	     * In case of error we copy the current error message as quickly as
-	     * possible into the card status structure. We then set the ioError
-	     * flag, signal all possible IO waiters and terminate the IO thread.
+	     * In case of error signal all possible IO waiters and terminate the IO thread.
 	     * ----
 	     */
-	    pthread_mutex_lock(&lastErrorLock);
-	    strcpy(card->ioErrorMessage, lastErrorMessage);
-	    pthread_mutex_unlock(&lastErrorLock);
-
-	    card->ioError = 1;
 	    pthread_cond_broadcast(&(card->readWaiterCond));
 	    pthread_mutex_unlock(&(card->cardLock));
 	    return NULL;
@@ -1394,9 +1245,8 @@ CardIOThread(void *cdata)
 	    	break;
 
 	    default:
-		card->ioError = TRUE;
-	    	snprintf(card->ioErrorMessage, sizeof(card->ioErrorMessage),
-			"Received unknown message type 0x%02x", inputMessage.msgType);
+		SetError(card, "Received unknown message type 0x%02x", inputMessage.msgType);
+			
 		pthread_cond_broadcast(&(card->readWaiterCond));
 		pthread_mutex_unlock(&(card->cardLock));
 		return NULL;
@@ -1491,7 +1341,7 @@ DeviceOpen(Open8055_card_t *card)
     path = DeviceFindPath(card->idLocal);
     if (path == NULL)
     {
-	SetError("Open8055 card number %d not present", card->idLocal);
+	SetError(card, "Open8055 card number %d not present", card->idLocal);
 	return -1;
     }
 
@@ -1507,7 +1357,7 @@ DeviceOpen(Open8055_card_t *card)
     if (cardHandleRecv[card->idLocal] == INVALID_HANDLE_VALUE ||
     	cardHandleSend[card->idLocal] == INVALID_HANDLE_VALUE)
     {
-	SetError("Cannot open Open8055 card number %d - %s", card->idLocal, ErrorString());
+	SetError(card, "Cannot open Open8055 card number %d - %s", card->idLocal, ErrorString());
 	free(path);
 	return -1;
     }
@@ -1538,12 +1388,12 @@ DeviceClose(Open8055_card_t *card)
     if (!CloseHandle(cardHandleRecv[card->idLocal]))
     {
 	CloseHandle(cardHandleSend[card->idLocal]);
-	SetError("Cannot close Open8055 card number %d - %s", card->idLocal, ErrorString());
+	SetError(card, "Cannot close Open8055 card number %d - %s", card->idLocal, ErrorString());
 	rc = -1;
     }
     if (!CloseHandle(cardHandleSend[card->idLocal]))
     {
-	SetError("Cannot close Open8055 card number %d - %s", card->idLocal, ErrorString());
+	SetError(card, "Cannot close Open8055 card number %d - %s", card->idLocal, ErrorString());
 	rc = -1;
     }
 
@@ -1565,20 +1415,20 @@ DeviceRead(Open8055_card_t *card, void *buffer, int len)
 
     if ((ioBuf = malloc(len + 1)) == NULL)
     {
-        SetError("Out of memory in DeviceRead() - failed to allocate %d bytes", len + 1);
+        SetError(card, "Out of memory in DeviceRead() - failed to allocate %d bytes", len + 1);
 	return -1;
     }
 
     if (!ReadFile(cardHandleRecv[card->idLocal], ioBuf, len + 1, &bytesRead, NULL))
     {
-	SetError("ReadFile() failed for card %d - %s", card->idLocal, ErrorString());
+	SetError(card, "ReadFile() failed for card %d - %s", card->idLocal, ErrorString());
 	free(ioBuf);
 	return -1;
     }
 
     if (bytesRead != len + 1)
     {
-	SetError("Short read from card %d - expected %d but got %d", card->idLocal, len + 1, bytesRead);
+	SetError(card, "Short read from card %d - expected %d but got %d", card->idLocal, len + 1, bytesRead);
 	free(ioBuf);
 	return -1;
     }
@@ -1604,7 +1454,7 @@ DeviceWrite(Open8055_card_t *card, void *buffer, int len)
 
     if ((ioBuf = malloc(len + 1)) == NULL)
     {
-        SetError("Out of memory in DeviceWrite() - failed to allocate %d bytes", len + 1);
+        SetError(card, "Out of memory in DeviceWrite() - failed to allocate %d bytes", len + 1);
 	return -1;
     }
 
@@ -1613,7 +1463,7 @@ DeviceWrite(Open8055_card_t *card, void *buffer, int len)
 
     if (!WriteFile(cardHandleSend[card->idLocal], ioBuf, len + 1, &bytesWritten, NULL))
     {
-	SetError("WriteFile() failed for card %d - %s", card->idLocal, ErrorString());
+	SetError(card, "WriteFile() failed for card %d - %s", card->idLocal, ErrorString());
 	free(ioBuf);
 	return -1;
     }
@@ -1622,7 +1472,7 @@ DeviceWrite(Open8055_card_t *card, void *buffer, int len)
 
     if (bytesWritten != len + 1)
     {
-	SetError("Short write to card %d - expected %d but wrote %d", card->idLocal, len + 1, bytesWritten);
+	SetError(card, "Short write to card %d - expected %d but wrote %d", card->idLocal, len + 1, bytesWritten);
 	return -1;
     }
 
@@ -1654,7 +1504,7 @@ DeviceFindPath(int cardNumber)
      */
     if (UuidFromString((unsigned char *)OPEN8055_GUID, &open8055_Guid) != RPC_S_OK)
     {
-	SetError("UuidFromString() failed");
+	SetError(NULL, "UuidFromString() failed");
 	return NULL;
     }
 
@@ -1672,7 +1522,7 @@ DeviceFindPath(int cardNumber)
 	    DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
     if (DeviceInfoSet == INVALID_HANDLE_VALUE)
     {
-	SetError("SetupDiGetClassDevs(): error %ld", GetLastError());
+	SetError(NULL, "SetupDiGetClassDevs(): error %ld", GetLastError());
 	return NULL;
     }
 
@@ -1701,7 +1551,7 @@ DeviceFindPath(int cardNumber)
 	DetailData = (PSP_DEVICE_INTERFACE_DETAIL_DATA)malloc(RequiredSize + sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA));
 	if (DetailData == NULL)
 	{
-	    SetError("malloc(): out of memory");
+	    SetError(NULL, "malloc(): out of memory");
 	    SetupDiDestroyDeviceInfoList(DeviceInfoSet);
 	    return NULL;
 	}
@@ -1714,7 +1564,7 @@ DeviceFindPath(int cardNumber)
 	if (!SetupDiGetDeviceInterfaceDetail(DeviceInfoSet, &DeviceInterfaceData,
 		DetailData, RequiredSize, &RequiredSize, NULL))
 	{
-	    SetError("SetupDiGetInterfaceDetail(): error %ld", GetLastError());
+	    SetError(NULL, "SetupDiGetInterfaceDetail(): error %ld", GetLastError());
 	    free(DetailData);
 	    SetupDiDestroyDeviceInfoList(DeviceInfoSet);
 	    return NULL;
