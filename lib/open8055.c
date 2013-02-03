@@ -510,6 +510,113 @@ Open8055_Close(int handle)
 
 
 /* ----
+ * Open8055_Reset()
+ *
+ *  Perform a device Reset. Since the device is supposed to disconnect
+ *  we also need to close it.
+ * ----
+ */
+OPEN8055_EXTERN int STDCALL
+Open8055_Reset(int handle)
+{
+    Open8055_card_t		*card;
+    int				rc = 0;
+    Open8055_hidMessage_t	message;
+
+    OPEN8055_INIT();
+    OPEN8055_LOCK_CARD(handle, card);
+
+    /* ----
+     * If the readerTerminate flag is set some other thread is already
+     * performing a close operation.
+     * ----
+     */
+    if (card->readerTerminate)
+    {
+    	SetError("Concurrent duplicate Open8055_Close() calls for card %d, handle %d",
+			card->idLocal, handle);
+	OPEN8055_UNLOCK_CARD(card);
+	return -1;
+    }
+
+    /* ----
+     * Tell the reader thread to terminate then force an input report so the
+     * reader thread will wake up.
+     * ----
+     */
+    card->readerTerminate = TRUE;
+    pthread_mutex_unlock(&(card->cardLock));
+    memset(&message, 0, sizeof(message));
+    message.msgType = OPEN8055_HID_MESSAGE_GETINPUT;
+    if (DeviceWrite(card, &message, sizeof(message)) != sizeof(message))
+    {
+    	rc = -1;
+    }
+    else
+    {
+	if (pthread_join(card->readerThread, NULL) != 0)
+	{
+	    SetError("pthread_join() failed - %s", ErrorString());
+	    rc = -1;
+	}
+    }
+    pthread_mutex_lock(&(card->cardLock));
+
+    /* ----
+     * If we are error free so far send it the RESET command.
+     * ----
+     */
+    if (rc == 0)
+    {
+	memset(&message, 0, sizeof(message));
+	message.msgType = OPEN8055_HID_MESSAGE_RESET;
+	if (DeviceWrite(card, &message, sizeof(message)) != sizeof(message))
+	{
+	    rc = -1;
+	}
+    }
+
+    /* ----
+     * Now close the actual handles.
+     * ----
+     */
+    DeviceClose(card);
+
+    /* ----
+     * Before destroying all the other resources, make sure we
+     * no longer have any IO waiters.
+     * ----
+     */
+    card->ioError = TRUE;
+    strcpy(card->ioErrorMessage, "card is closed");
+    while (card->readWaiters > 0)
+    {
+	pthread_cond_broadcast(&(card->readWaiterCond));
+	pthread_mutex_unlock(&(card->cardLock));
+	usleep(1000);
+	pthread_mutex_lock(&(card->cardLock));
+    }
+
+    /* ----
+     * Free the card structure and all its resources. Then mark the
+     * slot empty.
+     * ----
+     */
+    pthread_mutex_lock(&openCardsLock);
+
+    pthread_mutex_unlock(&(card->cardLock));
+    pthread_mutex_destroy(&(card->cardLock));
+    pthread_cond_destroy(&(card->readWaiterCond));
+    free(card);
+    openCards[handle] = NULL;
+
+    pthread_mutex_unlock(&openCardsLock);
+
+    return rc;
+}
+
+
+/* ----
  * Open8055_Wait()
  *
  *  Wait until any new input becomes available

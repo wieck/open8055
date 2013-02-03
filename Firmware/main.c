@@ -191,6 +191,7 @@ void lowPriorityISRCode();
 static void initializeSystem(void);
 static void userInit(void);
 static void processIO(void);
+static void resetDevice(void);
 
 void USBCBSendResume(void);
 
@@ -752,6 +753,11 @@ static void processIO(void)
 				currentInputRequested = TRUE;
 				break;
 			
+			// RESET message
+			case OPEN8055_HID_MESSAGE_RESET:
+				resetDevice();
+				break;
+				
 			// Ignore unknown message types.	
 			default:
 				break;
@@ -864,6 +870,46 @@ static void processIO(void)
 	}
 	
 }//end processIO
+
+
+/********************************************************************
+ * Function:        static void resetDevice(void)
+ *
+ * PreCondition:    None
+ *
+ * Input:           None
+ *
+ * Output:          None
+ *
+ * Side Effects:    None
+ *
+ * Overview:        This function will disable the USB module and
+ *					reset the controller.
+ *
+ * Note:            None
+ *******************************************************************/
+static void resetDevice(void)
+{
+	// Disable USB module.
+	USBDeviceDetach();
+	
+	// The comments in usb_device.h say that it is necessary to wait at least 80ms after
+	// USBDeviceDetach() before reattaching. Otherwise a host may not interpret this as
+	// a disconnect/reconnect but as a USB communication glitch. Since we are not returning
+	// to the main loop, we can abuse the ticker.
+	for (tickMillisecond = 0; tickMillisecond < 100; tickMillisecond++)
+	{
+		tickCounter = 0;
+		while (tickCounter < OPEN8055_TICKS_PER_MS)
+			Nop();
+	}
+	
+	// Good to reset the controller now.
+	Reset();
+	Nop();
+	Nop();
+	
+}//end resetDevice
 
 
 // ******************************************************************************************************

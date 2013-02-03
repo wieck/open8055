@@ -126,6 +126,7 @@ OPEN8055_EXTERN int		STDCALL Open8055_CardPresent(int cardNumber);
 
 OPEN8055_EXTERN int		STDCALL Open8055_Connect(char *destination, char *password);
 OPEN8055_EXTERN int		STDCALL Open8055_Close(int h);
+OPEN8055_EXTERN int		STDCALL Open8055_Reset(int h);
 
 OPEN8055_EXTERN int		STDCALL Open8055_Wait(int h, long us);
 OPEN8055_EXTERN int		STDCALL Open8055_WaitFor(int h, uint32_t mask, long us);
