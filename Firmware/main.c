@@ -559,7 +559,7 @@ static void userInit(void)
 		switchStatus[i].debounceConfig	= OPEN8055_COUNTER_DEBOUNCE_DEFAULT * OPEN8055_TICKS_PER_MS;
 		switchStatus[i].debounceCounter	= 0;
 		
-		currentConfig1.debounceValue[i] = OPEN8055_COUNTER_DEBOUNCE_DEFAULT * OPEN8055_TICKS_PER_MS;
+		currentConfig1.debounceValue[i] = htons(switchStatus[i].debounceConfig);
 	}
 	
     //initialize the variable holding the handle for the last
@@ -722,11 +722,22 @@ static void processIO(void)
 				CCPR2L = value >> 2;
 				CCP2CON = (CCP2CON & 0xCF) | 
 					    ((value & 0x03) << 4);
+					    
+				for (i = 0; i < 5; i++)
+				{
+					if ((currentOutput.resetCounter & (1 << i)))
+						switchStatus[i].counter = 0;
+				}	
 				break;
 			
 			// SETCONFIG1 message containing configuration settings.
 			case OPEN8055_HID_MESSAGE_SETCONFIG1:
 			    memcpy((void *)&currentConfig1, (void *)&receivedDataBuffer, sizeof(currentConfig1));
+			    
+			    for (i = 0; i < 5; i++)
+			    {
+				    switchStatus[i].debounceConfig = ntohs(currentConfig1.debounceValue[i]);
+				}
 				break;
 			
 			// GETINPUT message instructing us to forcefully send the current input.
