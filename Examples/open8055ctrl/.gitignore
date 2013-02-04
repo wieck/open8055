@@ -1,0 +1,9 @@
+Makefile
+*.o
+*.dll
+*.exe
+open8055ctrl
+gram.c
+gram.h
+scan.c
+scan.h
