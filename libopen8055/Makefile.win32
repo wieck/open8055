@@ -1,7 +1,7 @@
 # ----------------------------------------------------------------------
 # Makefile.win32
 #
-#	MinGW-32 (and MSYS) specific Makefile for the open8055.dll.
+#	MinGW-32 (and MSYS) specific Makefile for the libopen8055.dll.
 #
 # ----------------------------------------------------------------------
 #
@@ -45,20 +45,19 @@ MINGW_PATH=	/c/mingw
 LIBPTHREAD=	$(MINGW_PATH)/lib/libpthreadGC2.dll.a
 
 # ----
-# Stuff required for building the open8055.a
+# Stuff required for building the libopen8055.a
 # ----
-OPEN8055_A=		open8055.a
+OPEN8055_A=		libopen8055.a
 OPEN8055_A_OBJS=	open8055.o
-OPEN8055_A_LIBS=	-L. -lsetupapi -lrpcrt4 -lws2_32
+OPEN8055_A_LIBS=	-L. -lpthread -lsetupapi -lrpcrt4 -lws2_32
 
 
 # ----
-# Stuff required for building the open8055.dll
+# Stuff required for building the libopen8055.dll
 # ----
-OPEN8055_DLL=		open8055.dll
+OPEN8055_DLL=		libopen8055.dll
 OPEN8055_DLL_OBJS=	open8055.so
-OPEN8055_DLL_STATICLIBS=$(LIBPTHREAD)
-OPEN8055_DLL_LIBS=	-L. -lsetupapi -lrpcrt4 -lws2_32
+OPEN8055_DLL_LIBS=	-L. -lpthread -lsetupapi -lrpcrt4 -lws2_32
 
 
 # ----
@@ -95,7 +94,7 @@ $(OPEN8055_A):	$(OPEN8055_A_OBJS)
 	$(AR) -rs $@ $^
 
 $(OPEN8055_DLL):	$(OPEN8055_DLL_OBJS)
-	$(CC) $(CFLAGS) -shared -o $@ $^ $(OPEN8055_DLL_STATICLIBS) $(OPEN8055_DLL_LIBS) -Wl,--add-stdcall-alias
+	$(CC) $(LDFLAGS) -shared -o $@ $^ $(OPEN8055_DLL_STATICLIBS) $(OPEN8055_DLL_LIBS) -Wl,--add-stdcall-alias
 
 
 # ----
