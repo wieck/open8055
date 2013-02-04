@@ -51,7 +51,6 @@ typedef struct {
     int				idLocal;
     char			destination[1024];
 
-    int				error;
     char			errorMessage[1024];
 
     Open8055_hidMessage_t	currentConfig1;
@@ -368,6 +367,11 @@ Open8055_Wait(OPEN8055_HANDLE h, int timeout)
 {
     Open8055_card_t	*card = (Open8055_card_t *)h;
 
+    if (timeout < 0)
+    	timeout = 0;
+    if (timeout > 3600000)
+    	timeout = 3600000;
+
     return Open8055_WaitForInput(card, OPEN8055_INPUT_ANY, timeout);
 }
 
@@ -382,6 +386,13 @@ OPEN8055_EXTERN int STDCALL
 Open8055_WaitFor(OPEN8055_HANDLE h, int mask, int timeout)
 {
     Open8055_card_t	*card = (Open8055_card_t *)h;
+
+    mask &= OPEN8055_INPUT_ANY;
+
+    if (timeout < 0)
+    	timeout = 0;
+    if (timeout > 3600000)
+    	timeout = 3600000;
 
     return Open8055_WaitForInput(card, mask, timeout);
 }
@@ -416,7 +427,7 @@ Open8055_SetAutoFlush(OPEN8055_HANDLE h, int flag)
 {
     Open8055_card_t	*card = (Open8055_card_t *)h;
 
-    card->autoFlush = (flag == TRUE);
+    card->autoFlush = (flag != FALSE);
 
     if (card->autoFlush)
     	return Open8055_Flush(h);
@@ -461,6 +472,39 @@ Open8055_Flush(OPEN8055_HANDLE h)
 
 
 /* ----
+ * Open8055_GetInputDigital()
+ *
+ *  Read a digital input port.
+ * ----
+ */
+OPEN8055_EXTERN int STDCALL
+Open8055_GetInputDigital(OPEN8055_HANDLE h, int port)
+{
+    Open8055_card_t	*card = (Open8055_card_t *)h;
+    int			rc = 0;
+
+    if (port < 0 || port > 4)
+        return 0;
+
+    /* ----
+     * Make sure we have current input data.
+     * ----
+     */
+    if (Open8055_WaitForInput(card, OPEN8055_INPUT_I1 << port, OPEN8055_WAITFOR_US) < 0)
+    	return -1;
+
+    /* ----
+     * Mark all digital inputs as consumed and return the current state.
+     * ----
+     */
+    rc = (card->currentInput.inputBits & (1 << port)) ? 1 : 0;
+    card->currentInputUnconsumed &= ~(OPEN8055_INPUT_I1 << port);
+
+    return rc;
+}
+
+
+/* ----
  * Open8055_GetInputDigitalAll()
  *
  *  Read the 5 digital input ports
@@ -476,16 +520,8 @@ Open8055_GetInputDigitalAll(OPEN8055_HANDLE h)
      * Make sure we have current input data.
      * ----
      */
-    Open8055_WaitForInput(card, OPEN8055_INPUT_I_ANY, OPEN8055_WAITFOR_US);
-
-    /* ----
-     * Stop here on error.
-     * ----
-     */
-    if (card->error)
-    {
-	return -1;
-    }
+    if (Open8055_WaitForInput(card, OPEN8055_INPUT_I_ANY, OPEN8055_WAITFOR_US) < 0)
+    	return -1;
 
     /* ----
      * Mark all digital inputs as consumed and return the current state.
@@ -510,27 +546,15 @@ Open8055_GetInputADC(OPEN8055_HANDLE h, int port)
     Open8055_card_t	*card = (Open8055_card_t *)h;
     int			rc = 0;
 
-    if (port < 0 || port > 2)
-    {
-    	SetError(card, "invalid port number %d", port);
-	return -1;
-    }
+    if (port < 0 || port > 1)
+    	return 0;
 
     /* ----
      * Make sure we have current input data.
      * ----
      */
-    Open8055_WaitForInput(card, OPEN8055_INPUT_ADC1 << port, OPEN8055_WAITFOR_US);
-
-    /* ----
-     * If the card is in error state, just copy it's error message and 
-     * return with error.
-     * ----
-     */
-    if (card->error)
-    {
-	return -1;
-    }
+    if (Open8055_WaitForInput(card, OPEN8055_INPUT_ADC1 << port, OPEN8055_WAITFOR_US) < 0)
+    	return -1;
 
     /* ----
      * Mark the counter consumed.
@@ -555,26 +579,15 @@ Open8055_GetInputCounter(OPEN8055_HANDLE h, int port)
     Open8055_card_t	*card = (Open8055_card_t *)h;
     int			rc = 0;
 
-    if (port < 0 || port > 5)
-    {
-    	SetError(card, "invalid port number %d", port);
-	return -1;
-    }
+    if (port < 0 || port > 4)
+    	return 0;
 
     /* ----
      * Make sure we have current input data.
      * ----
      */
-    Open8055_WaitForInput(card, OPEN8055_INPUT_COUNT1 << port, OPEN8055_WAITFOR_US);
-
-    /* ----
-     * If the card is in error state stop here.
-     * ----
-     */
-    if (card->error)
-    {
-	return -1;
-    }
+    if (Open8055_WaitForInput(card, OPEN8055_INPUT_COUNT1 << port, OPEN8055_WAITFOR_US) < 0)
+    	return -1;
 
     /* ----
      * Mark the counter consumed.
@@ -599,17 +612,46 @@ Open8055_ResetInputCounter(OPEN8055_HANDLE h, int port)
     Open8055_card_t	*card = (Open8055_card_t *)h;
     int			rc = 0;
 
-    if (port < 0 || port > 5)
-    {
-    	SetError(card, "invalid value for port");
-	return -1;
-    }
+    if (port < 0 || port > 4)
+    	return 0;
 
     /* ----
      * Set the value and send it if in autoFlush mode.
      * ----
      */
     card->currentOutput.resetCounter |= (1 << port);
+    if (card->autoFlush)
+    {
+	if (DeviceWrite(card, &(card->currentOutput)) < 0)
+	    rc = -1;
+    	card->pendingOutput = FALSE;
+    }
+    else
+    {
+	card->pendingOutput = TRUE;
+    }
+
+    return rc;
+}
+
+
+/* ----
+ * Open8055_ResetInputCounterAll()
+ *
+ *  Reset all input counters.
+ * ----
+ */
+OPEN8055_EXTERN int STDCALL
+Open8055_ResetInputCounterAll(OPEN8055_HANDLE h)
+{
+    Open8055_card_t	*card = (Open8055_card_t *)h;
+    int			rc = 0;
+
+    /* ----
+     * Set the value and send it if in autoFlush mode.
+     * ----
+     */
+    card->currentOutput.resetCounter |= 0x1F;
     if (card->autoFlush)
     {
 	if (DeviceWrite(card, &(card->currentOutput)) < 0)
@@ -637,11 +679,8 @@ Open8055_GetInputDebounce(OPEN8055_HANDLE h, int port)
     Open8055_card_t	*card = (Open8055_card_t *)h;
     double		rc;
 
-    if (port < 0 || port > 5)
-    {
-    	SetError(card, "invalid value for port");
-	return -1;
-    }
+    if (port < 0 || port > 4)
+    	return 0.0;
 
     rc = (double)ntohs(card->currentConfig1.debounceValue[port]) / 10.0;
 
@@ -661,16 +700,12 @@ Open8055_SetInputDebounce(OPEN8055_HANDLE h, int port, double ms)
     Open8055_card_t	*card = (Open8055_card_t *)h;
     int			rc = 0;
 
-    if (port < 0 || port > 5)
-    {
-    	SetError(card, "invalid value for port");
-	return -1;
-    }
-    if (ms < 0.0 || ms > 5000.0)
-    {
-    	SetError(card, "invalid value for ms");
-	return -1;
-    }
+    if (port < 0 || port > 4)
+    	return 0;
+    if (ms < 0.0)
+    	ms = 0.0;
+    if (ms > 5000.0)
+    	ms = 5000.0;
 
     /* ----
      * Set the value and send it if in autoFlush mode.
@@ -693,36 +728,29 @@ Open8055_SetInputDebounce(OPEN8055_HANDLE h, int port, double ms)
 
 
 /* ----
- * Open8055_ResetInputCounter()
+ * Open8055_GetOutputDigital()
  *
- *  Reset an individual input counter.
+ *  Return one current digital output settings.
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_ResetInputCounterAll(OPEN8055_HANDLE h)
+Open8055_GetOutputDigital(OPEN8055_HANDLE h, int port)
 {
     Open8055_card_t	*card = (Open8055_card_t *)h;
     int			rc = 0;
 
+    if (port < 0 || port > 7)
+    	return 0;
+
     /* ----
-     * Set the value and send it if in autoFlush mode.
+     * We have queried them at Connect and tracked them all the time.
      * ----
      */
-    card->currentOutput.resetCounter = 0x1F;
-    if (card->autoFlush)
-    {
-	if (DeviceWrite(card, &(card->currentOutput)) < 0)
-	    rc = -1;
-    	card->pendingOutput = FALSE;
-	card->currentOutput.resetCounter = 0x00;
-    }
-    else
-    {
-	card->pendingOutput = TRUE;
-    }
+    rc = (card->currentOutput.outputBits & (1 << port)) ? 1 : 0;
 
     return rc;
 }
+
 
 
 /* ----
@@ -761,16 +789,52 @@ Open8055_GetOutputPWM(OPEN8055_HANDLE h, int port)
     int			rc = 0;
 
     if (port < 0 || port > 1)
-    {
-    	SetError(card, "invalid value for port");
-	return -1;
-    }
+        return 0;
 
     /* ----
      * We have queried them at Connect and tracked them all the time.
      * ----
      */
     rc = ntohs(card->currentOutput.outputPwmValue[port]);
+
+    return rc;
+}
+
+
+/* ----
+ * Open8055_SetOutputDigital()
+ *
+ *  Change one digital output.
+ * ----
+ */
+OPEN8055_EXTERN int STDCALL
+Open8055_SetOutputDigital(OPEN8055_HANDLE h, int port, int val)
+{
+    Open8055_card_t	*card = (Open8055_card_t *)h;
+    int			rc = 0;
+
+    if (port < 0 || port > 7)
+    	return 0;
+
+    /* ----
+     * Set or clear the bit and send the new info if in autoFlush mode.
+     * ----
+     */
+    if (val)
+	card->currentOutput.outputBits |= (1 << port);
+    else
+	card->currentOutput.outputBits &= ~(1 << port);
+
+    if (card->autoFlush)
+    {
+	if (DeviceWrite(card, &(card->currentOutput)) < 0)
+	    rc = -1;
+    	card->pendingOutput = FALSE;
+    }
+    else
+    {
+	card->pendingOutput = TRUE;
+    }
 
     return rc;
 }
@@ -788,11 +852,7 @@ Open8055_SetOutputDigitalAll(OPEN8055_HANDLE h, int bits)
     Open8055_card_t	*card = (Open8055_card_t *)h;
     int			rc = 0;
 
-    if (bits < 0 || bits > 255)
-    {
-    	SetError(card, "invalid value for bits");
-	return -1;
-    }
+    bits &= 0xff;
 
     /* ----
      * Set the bits and send them if in autoFlush mode.
@@ -827,15 +887,11 @@ Open8055_SetOutputPWM(OPEN8055_HANDLE h, int port, int value)
     int			rc = 0;
 
     if (port < 0 || port > 1)
-    {
-    	SetError(card, "invalid value for port");
-	return -1;
-    }
-    if (value < 0 || value > 1023)
-    {
-    	SetError(card, "invalid value for value");
-	return -1;
-    }
+        return 0;
+    if (value < 0)
+        value = 0;
+    if (value > 1023)
+    	value = 1023;
 
     /* ----
      * Set the new PWM value and send it if in autoFlush mode.
@@ -891,13 +947,6 @@ Open8055_WaitForInput(Open8055_card_t *card, int mask, int timeout)
 {
     Open8055_hidMessage_t	inputMessage;
     int				rc = 0;
-
-    /* ----
-     * Check for previous error condition.
-     * ----
-     */
-    if (card->error)
-    	return -1;
 
     /* ----
      * Check if we currently have that data unconsumed.
@@ -956,7 +1005,6 @@ SetError(Open8055_card_t *card, char *fmt, ...)
     }
     else
     {
-    	card->error = TRUE;
 	vsnprintf(card->errorMessage, sizeof(card->errorMessage), fmt, ap);
     }
     va_end(ap);
@@ -1097,7 +1145,7 @@ DevicePresent(int cardNumber)
     char       *devicePath;
 
     /* ----
-     * Make sure the library is initialized.
+     * Check if this device exists.
      * ----
      */
     if ((devicePath = DeviceFindPath(cardNumber)) == NULL)

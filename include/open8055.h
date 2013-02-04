@@ -39,6 +39,8 @@
 #ifndef _OPEN8055_H
 #define _OPEN8055_H
 
+#include "open8055_compat.h"
+
 
 #ifdef __cplusplus
 "C" {
@@ -137,12 +139,12 @@ OPEN8055_EXTERN int		STDCALL Open8055_Flush(OPEN8055_HANDLE h);
 
 OPEN8055_EXTERN int		STDCALL Open8055_GetInputDigital(OPEN8055_HANDLE h, int port);
 OPEN8055_EXTERN int		STDCALL Open8055_GetInputDigitalAll(OPEN8055_HANDLE h);
-OPEN8055_EXTERN int		STDCALL Open8055_GetInputADC(OPEN8055_HANDLE h, int port);
 OPEN8055_EXTERN int		STDCALL Open8055_GetInputCounter(OPEN8055_HANDLE h, int port);
 OPEN8055_EXTERN int		STDCALL Open8055_ResetInputCounter(OPEN8055_HANDLE h, int port);
 OPEN8055_EXTERN int		STDCALL Open8055_ResetInputCounterAll(OPEN8055_HANDLE h);
 OPEN8055_EXTERN double		STDCALL Open8055_GetInputDebounce(OPEN8055_HANDLE h, int port);
 OPEN8055_EXTERN int		STDCALL Open8055_SetInputDebounce(OPEN8055_HANDLE h, int port, double value);
+OPEN8055_EXTERN int		STDCALL Open8055_GetInputADC(OPEN8055_HANDLE h, int port);
 
 OPEN8055_EXTERN int		STDCALL Open8055_GetOutputDigital(OPEN8055_HANDLE h, int port);
 OPEN8055_EXTERN int		STDCALL Open8055_GetOutputDigitalAll(OPEN8055_HANDLE h);
