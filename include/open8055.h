@@ -85,7 +85,7 @@
  */
 
 #define OPEN8055_MAX_CARDS	3
-#define OPEN8055_WAITFOR_US	1000
+#define OPEN8055_WAITFOR_MS	1
 
 typedef void *OPEN8055_HANDLE;
 

@@ -490,7 +490,7 @@ Open8055_GetInputDigital(OPEN8055_HANDLE h, int port)
      * Make sure we have current input data.
      * ----
      */
-    if (Open8055_WaitForInput(card, OPEN8055_INPUT_I1 << port, OPEN8055_WAITFOR_US) < 0)
+    if (Open8055_WaitForInput(card, OPEN8055_INPUT_I1 << port, OPEN8055_WAITFOR_MS) < 0)
     	return -1;
 
     /* ----
@@ -520,7 +520,7 @@ Open8055_GetInputDigitalAll(OPEN8055_HANDLE h)
      * Make sure we have current input data.
      * ----
      */
-    if (Open8055_WaitForInput(card, OPEN8055_INPUT_I_ANY, OPEN8055_WAITFOR_US) < 0)
+    if (Open8055_WaitForInput(card, OPEN8055_INPUT_I_ANY, OPEN8055_WAITFOR_MS) < 0)
     	return -1;
 
     /* ----
@@ -553,7 +553,7 @@ Open8055_GetInputADC(OPEN8055_HANDLE h, int port)
      * Make sure we have current input data.
      * ----
      */
-    if (Open8055_WaitForInput(card, OPEN8055_INPUT_ADC1 << port, OPEN8055_WAITFOR_US) < 0)
+    if (Open8055_WaitForInput(card, OPEN8055_INPUT_ADC1 << port, OPEN8055_WAITFOR_MS) < 0)
     	return -1;
 
     /* ----
@@ -586,7 +586,7 @@ Open8055_GetInputCounter(OPEN8055_HANDLE h, int port)
      * Make sure we have current input data.
      * ----
      */
-    if (Open8055_WaitForInput(card, OPEN8055_INPUT_COUNT1 << port, OPEN8055_WAITFOR_US) < 0)
+    if (Open8055_WaitForInput(card, OPEN8055_INPUT_COUNT1 << port, OPEN8055_WAITFOR_MS) < 0)
     	return -1;
 
     /* ----
@@ -1009,85 +1009,6 @@ SetError(Open8055_card_t *card, char *fmt, ...)
     }
     va_end(ap);
 }
-
-
-#if 0
-/* ----
- * CardIOThread()
- *
- *  This function implements the physical IO with an Open8055 card.
- * ----
- */
-static void *
-CardIOThread(void *cdata)
-{
-    Open8055_card_t		*card = (Open8055_card_t *)cdata;
-    Open8055_hidMessage_t	inputMessage;
-    int				rc;
-
-    pthread_mutex_lock(&(card->cardLock));
-
-    while(TRUE)
-    {
-	/* ----
-	 * Check for card terminate flag
-	 * ----
-	 */
-	if (card->readerTerminate)
-	{
-	    pthread_mutex_unlock(&(card->cardLock));
-	    return NULL;
-	}
-
-	/* ----
-	 * Wait for a message from the card. Unlock the card status data
-	 * so other threads can access it.
-	 * ----
-	 */
-	pthread_mutex_unlock(&(card->cardLock));
-	rc = DeviceRead(card, &inputMessage, sizeof(inputMessage));
-	pthread_mutex_lock(&(card->cardLock));
-
-	/* ----
-	 * Check for physical card IO error.
-	 * ----
-	 */
-	if (rc < 0)
-	{
-	    /* ----
-	     * In case of error signal all possible IO waiters and terminate the IO thread.
-	     * ----
-	     */
-	    pthread_cond_broadcast(&(card->readWaiterCond));
-	    pthread_mutex_unlock(&(card->cardLock));
-	    return NULL;
-	}
-
-	switch (inputMessage.msgType)
-	{
-	    case OPEN8055_HID_MESSAGE_INPUT:
-		memcpy(&(card->currentInput), &inputMessage, sizeof(card->currentInput));
-		card->currentInputUnconsumed = OPEN8055_INPUT_ANY;
-		if (card->readWaiters > 0)
-		    pthread_cond_broadcast(&(card->readWaiterCond));
-		break;
-
-	    case OPEN8055_HID_MESSAGE_SETCONFIG1:
-	    case OPEN8055_HID_MESSAGE_OUTPUT:
-	    	break;
-
-	    default:
-		SetError(card, "Received unknown message type 0x%02x", inputMessage.msgType);
-			
-		pthread_cond_broadcast(&(card->readWaiterCond));
-		pthread_mutex_unlock(&(card->cardLock));
-		return NULL;
-	}
-    }
-
-    return NULL;
-}
-#endif
 
 
 /* ----------------------------------------------------------------------
