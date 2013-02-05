@@ -1,2 +1,5 @@
 Release
 Debug
+*.vxproj.*
+*.ncb
+*.suo
