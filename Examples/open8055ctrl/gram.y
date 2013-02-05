@@ -144,7 +144,7 @@ cmd_CardPresent			: C_CardPresent ival
 
 cmd_GetSkipMessages		: C_GetSkipMessages
 				{
-				    return Open8055_GetSkipMessages(cardHandle);
+				    printf("%d\n", Open8055_GetSkipMessages(cardHandle));
 				}
 
 cmd_SetSkipMessages		: C_SetSkipMessages ival
