@@ -39,6 +39,9 @@ static char			commandLine[CMDLINE_SIZE];
 static usage_help_t		usageHelp[] = {
     { C_LastError,		"LastError" },
     { C_CardPresent,		"CardPresent <cardNum>" },
+    { C_GetSkipMessages,	"GetSkipMessages" },
+    { C_SetSkipMessages,	"SetSkipMessages <flag>" },
+
     { C_Close,			"Close" },
     { C_Reset,			"Reset" },
 

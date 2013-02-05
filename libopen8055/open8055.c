@@ -58,6 +58,7 @@ typedef struct {
     Open8055_hidMessage_t	currentInput;
     int				currentInputUnconsumed;
 
+    int				skipMessages;
     int				autoFlush;
     int				pendingConfig1;
     int				pendingOutput;
@@ -158,6 +159,36 @@ Open8055_CardPresent(int cardNumber)
 
 
 /* ----
+ * Open8055_GetSkipMessages()
+ *
+ *  Return the current skipMessages flag of the card.
+ * ----
+ */
+OPEN8055_EXTERN int STDCALL
+Open8055_GetSkipMessages(OPEN8055_HANDLE h)
+{
+    Open8055_card_t	*card = (Open8055_card_t *)h;
+
+    return (card->skipMessages) ? 1 : 0;
+}
+
+
+/* ----
+ * Open8055_SetSkipMessages()
+ *
+ *  Set the skipMessages flag of the card.
+ * ----
+ */
+OPEN8055_EXTERN void STDCALL
+Open8055_SetSkipMessages(OPEN8055_HANDLE h, int flag)
+{
+    Open8055_card_t	*card = (Open8055_card_t *)h;
+
+    card->skipMessages = (flag != FALSE) ? 1 : 0;
+}
+
+
+/* ----
  * Open8055_Connect()
  *
  *  Attempts to open a local or remote Open8055 card.
@@ -223,6 +254,7 @@ Open8055_Connect(char *destination, char *password)
     strncpy(card->destination, destination, sizeof(card->destination));
     card->isLocal	= TRUE;
     card->idLocal	= cardNumber;
+    card->skipMessages	= TRUE;
     card->autoFlush	= TRUE;
 
     /* ----
@@ -949,7 +981,40 @@ Open8055_WaitForInput(Open8055_card_t *card, int mask, int timeout)
     int				rc = 0;
 
     /* ----
-     * Check if we currently have that data unconsumed.
+     * If skipMessages is set drain out old reports.
+     * ----
+     */
+    if (card->skipMessages)
+    {
+    	while ((rc = DeviceRead(card, &inputMessage, 0)) == 1)
+	{
+	    /* ----
+	     * Handle by message type.
+	     * ----
+	     */
+	    switch (inputMessage.msgType)
+	    {
+		case OPEN8055_HID_MESSAGE_INPUT:
+		    memcpy(&(card->currentInput), &inputMessage, sizeof(card->currentInput));
+		    card->currentInputUnconsumed = OPEN8055_INPUT_ANY;
+		    break;
+
+		case OPEN8055_HID_MESSAGE_SETCONFIG1:
+		case OPEN8055_HID_MESSAGE_OUTPUT:
+		    break;
+
+		default:
+		    SetError(card, "Received unknown message type 0x%02x", inputMessage.msgType);
+		    return -1;
+	    }
+	}
+
+	if (rc < 0)
+	    return -1;
+    }
+
+    /* ----
+     * Check if we currently have the requested data unconsumed.
      * ----
      */
     if ((card->currentInputUnconsumed & mask) != 0)
@@ -980,10 +1045,10 @@ Open8055_WaitForInput(Open8055_card_t *card, int mask, int timeout)
 
 	default:
 	    SetError(card, "Received unknown message type 0x%02x", inputMessage.msgType);
-	    rc = -1;
+	    return -1;
     }
 
-    return rc;
+    return (card->currentInputUnconsumed & mask) ? 1 : 0;
 }
 
 
@@ -1238,7 +1303,7 @@ DeviceRead(Open8055_card_t *card, void *buffer, int timeout)
 
     if (card->readPending)
     {
-	switch(WaitForSingleObject(card->readEvent, (timeout == 0) ? INFINITE : timeout))
+	switch(WaitForSingleObject(card->readEvent, (timeout < 0) ? INFINITE : timeout))
 	{
 	    case WAIT_OBJECT_0:
 		ResetEvent(card->readEvent);

@@ -86,6 +86,7 @@
 
 #define OPEN8055_MAX_CARDS	3
 #define OPEN8055_WAITFOR_MS	1
+#define OPEN8055_INFINITE	-1
 
 typedef void *OPEN8055_HANDLE;
 
@@ -126,6 +127,8 @@ typedef void *OPEN8055_HANDLE;
  */
 OPEN8055_EXTERN char *		STDCALL Open8055_LastError(HANDLE h);
 OPEN8055_EXTERN int		STDCALL Open8055_CardPresent(int cardNumber);
+OPEN8055_EXTERN int		STDCALL Open8055_GetSkipMessages(OPEN8055_HANDLE h);
+OPEN8055_EXTERN void		STDCALL Open8055_SetSkipMessages(OPEN8055_HANDLE h, int flag);
 
 OPEN8055_EXTERN OPEN8055_HANDLE	STDCALL Open8055_Connect(char *destination, char *password);
 OPEN8055_EXTERN int		STDCALL Open8055_Close(OPEN8055_HANDLE h);

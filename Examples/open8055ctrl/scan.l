@@ -20,6 +20,8 @@ hexdigit	[0-9a-f]
 
 LastError			{ return command(C_LastError);			}
 CardPresent			{ return command(C_CardPresent);		}
+GetSkipMessages			{ return command(C_GetSkipMessages);		}
+SetSkipMessages			{ return command(C_SetSkipMessages);		}
 
 Close				{ return command(C_Close);			}
 Quit				{ return command(C_Close);			}
