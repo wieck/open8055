@@ -72,7 +72,10 @@ typedef struct {
 #else
     unsigned char			readBuffer[OPEN8055_HID_MESSAGE_SIZE];
 	libusb_device_handle    *cardHandle;
-	int                      hadKernelDriver;
+	int						hadKernelDriver;
+	struct libusb_transfer	*transfer;
+	int						transferPending;
+	int						transferDone;
 #endif
 
 } Open8055_card_t;
@@ -288,7 +291,7 @@ Open8055_Connect(char *destination, char *password)
     while (card->currentConfig1.msgType == 0x00 || card->currentOutput.msgType == 0x00
     	|| card->currentInput.msgType == 0x00)
     {
-    	if (DeviceRead(card, &inputMessage, 0) < 0)
+    	if (DeviceRead(card, &inputMessage, 1000) < 0)
 	{
 	    SetError(NULL, "DeviceRead failed - %s", ErrorString());
 	    DeviceClose(card);
@@ -1307,7 +1310,7 @@ DeviceRead(Open8055_card_t *card, void *buffer, int timeout)
 
     if (card->readPending)
     {
-	switch(WaitForSingleObject(card->readEvent, (timeout < 0) ? INFINITE : timeout))
+	switch(WaitForSingleObject(card->readEvent, timeout))
 	{
 	    case WAIT_OBJECT_0:
 		ResetEvent(card->readEvent);
@@ -1692,6 +1695,21 @@ DeviceOpen(Open8055_card_t *card)
 		return -1;
     }
 
+	/* ----
+	 * Allocate the libusb_transfer structure for async IO.
+	 * ----
+	 */
+	if ((card->transfer = libusb_alloc_transfer(0)) == NULL)
+	{
+		SetError(card, "libusb_alloc_transfer(): %s", ErrorString());
+		libusb_release_interface(dev, interface);
+		if (card->hadKernelDriver)
+			libusb_attach_kernel_driver(dev, interface);
+		libusb_close(dev);
+		return -1;
+	}
+	
+
     return 0;
 }
 
@@ -1705,14 +1723,51 @@ DeviceOpen(Open8055_card_t *card)
 static int
 DeviceClose(Open8055_card_t *card)
 {
-    int     interface = 0;
+    int     		interface = 0;
+	struct timeval	tv;
 
+	/* ----
+	 * If an IO is pending, cancel it and wait for the callback
+	 * to have happened.
+	 * ----
+	 */
+	if (card->transferPending)
+		libusb_cancel_transfer(card->transfer);
+	
+	while (card->transferPending)
+	{
+		tv.tv_sec = 0;
+		tv.tv_usec = 1000;
+		libusb_handle_events_timeout(libusbCxt, &tv);
+	}
+
+	/* ----
+	 * Free all resources and close the device.
+	 * ----
+	 */
+	libusb_free_transfer(card->transfer);
     libusb_release_interface(card->cardHandle, interface);
     if (card->hadKernelDriver)
 		libusb_attach_kernel_driver(card->cardHandle, interface);
     libusb_close(card->cardHandle);
 
     return 0;
+}
+
+
+/* ----
+ * DeviceReadCallback()
+ *
+ *  Libusb callback for async transfer complete.
+ * ----
+ */
+static void
+DeviceReadCallback(struct libusb_transfer *transfer)
+{
+	Open8055_card_t		*card = (Open8055_card_t *)(transfer->user_data);
+
+	card->transferPending = FALSE;
+	card->transferDone = TRUE;
 }
 
 
@@ -1725,23 +1780,148 @@ DeviceClose(Open8055_card_t *card)
 static int
 DeviceRead(Open8055_card_t *card, void *buffer, int timeout)
 {
-    int     bytesRead;
+	struct timeval	tv;
 
-    if (libusb_interrupt_transfer(card->cardHandle,
-	    LIBUSB_ENDPOINT_IN | 1, (void *)buffer, 
-	    sizeof(Open8055_hidMessage_t), &bytesRead, 0) == 0)
-    {
-	if (bytesRead != sizeof(Open8055_hidMessage_t))
+	/* ----
+	 * transferDone is TRUE if a previously submitted transfer
+	 * ended. Reset the flag and check the completion status.
+	 * ----
+	 */
+	if (card->transferDone)
 	{
-	    SetError(card, "short read - expected %d, got %d", 
-				OPEN8055_HID_MESSAGE_SIZE, bytesRead);
-	    return -1;
+		card->transferDone = FALSE;
+		if (card->transfer->status != LIBUSB_TRANSFER_COMPLETED)
+		{
+			SetError(card, "libusb transfer failed: %s", ErrorString());
+			return -1;
+		}
+
+		/* ----
+		 * We have received a new report. Copy it to the caller.
+		 * ----
+		 */
+		memcpy(buffer, card->readBuffer, OPEN8055_HID_MESSAGE_SIZE);
+
+		/* ----
+		 * Submit the next transfer right away and call the event
+		 * handling with a short timeout so that we keep the input
+		 * buffers inside the USB stack empty.
+		 * ----
+		 */
+		libusb_fill_interrupt_transfer(card->transfer, card->cardHandle,
+				LIBUSB_ENDPOINT_IN | 1, card->readBuffer, 
+				OPEN8055_HID_MESSAGE_SIZE,
+				DeviceReadCallback, (void *)card, 0);
+		if (libusb_submit_transfer(card->transfer) != 0)
+		{
+			SetError(card, "libusb_submit_transfer(): %s", ErrorString());
+			return -1;
+		}
+		card->transferPending = TRUE;
+
+		tv.tv_sec = 0;
+		tv.tv_usec = 100;
+		if (libusb_handle_events_timeout(libusbCxt, &tv) != 0)
+		{
+			SetError(card, "libusb_handle_events_timeout(): %s",
+					ErrorString());
+			return -1;
+		}
+
+		return 1;
 	}
 
-	return bytesRead;
-    }
+	/* ----
+	 * Make sure the timeout is sane.
+	 * ----
+	 */
+	if (timeout < 0)
+		timeout = 0;
+	tv.tv_sec  = timeout / 1000;
+	tv.tv_usec = (timeout % 1000) * 1000;
 
-    SetError(card, "libusb_interrupt_transfer(): %s", ErrorString());
+	/* ----
+	 * If there is no transfer pending, submit one.
+	 * ----
+	 */
+	if (!card->transferPending)
+	{
+		libusb_fill_interrupt_transfer(card->transfer, card->cardHandle,
+				LIBUSB_ENDPOINT_IN | 1, card->readBuffer, 
+				OPEN8055_HID_MESSAGE_SIZE,
+				DeviceReadCallback, (void *)card, 0);
+		if (libusb_submit_transfer(card->transfer) != 0)
+		{
+			SetError(card, "libusb_submit_transfer(): %s", ErrorString());
+			return -1;
+		}
+		card->transferPending = TRUE;
+
+		/* ----
+		 * Since we just submitted the transfer, make sure the event
+		 * handling below has at least 100us to interact with the card.
+		 * ----
+		 */
+		if (timeout == 0)
+			tv.tv_usec = 100;
+	}
+
+	/* ----
+	 * Call the libusb event handling with the requested timeout.
+	 * ----
+	 */
+	if (libusb_handle_events_timeout(libusbCxt, &tv) != 0)
+	{
+		SetError(card, "libusb_handle_events_timeout(): %s",
+				ErrorString());
+		return -1;
+	}
+
+	/* ----
+	 * If the transfer is still pending we have a timeout.
+	 * ----
+	 */
+	if (card->transferPending)
+		return 0;
+
+	/* ----
+	 * Reset the transfer done flag and check the completion status.
+	 * ----
+	 */
+	card->transferDone = FALSE;
+	if (card->transfer->status == LIBUSB_TRANSFER_COMPLETED)
+	{
+		/* ----
+		 * We have a new report. Like above, copy to caller
+		 * and submit the next transfer.
+		 * ----
+		 */
+		memcpy(buffer, card->readBuffer, OPEN8055_HID_MESSAGE_SIZE);
+
+		libusb_fill_interrupt_transfer(card->transfer, card->cardHandle,
+				LIBUSB_ENDPOINT_IN | 1, card->readBuffer, 
+				OPEN8055_HID_MESSAGE_SIZE,
+				DeviceReadCallback, (void *)card, 0);
+		if (libusb_submit_transfer(card->transfer) != 0)
+		{
+			SetError(card, "libusb_submit_transfer(): %s", ErrorString());
+			return -1;
+		}
+		card->transferPending = TRUE;
+
+		tv.tv_sec = 0;
+		tv.tv_usec = 100;
+		if (libusb_handle_events_timeout(libusbCxt, &tv) != 0)
+		{
+			SetError(card, "libusb_handle_events_timeout(): %s",
+					ErrorString());
+			return -1;
+		}
+
+		return 1;
+	}
+
+    SetError(card, "libusb transfer failed: %s", ErrorString());
     return -1;
 }
 
