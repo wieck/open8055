@@ -46,12 +46,14 @@ extern "C" {
 #endif
 
 #ifdef _WIN32
+
 #define OPEN8055_EXTERN		_CRTIMP
 #define OPEN8055_CDECL		__cdecl
+
 #else /* !_WIN32 */
 
-#define OPEN8055_CDECL
 #define OPEN8055_EXTERN extern
+#define OPEN8055_CDECL
 
 #endif /* _WIN32 */
 
