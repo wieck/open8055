@@ -35,6 +35,10 @@
 #ifndef _OPEN8055_COMPAT_H
 #define _OPEN8055_COMPAT_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef _WIN32
 
 #include <winsock2.h>
@@ -78,22 +82,26 @@ typedef struct sockaddr_in	SOCKADDR_IN;
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
+//#include <stdint.h>
 #include <stdarg.h>
 #include <string.h>
-#include <strings.h>
+//#include <strings.h>
 #include <ctype.h>
 #include <signal.h>
-#include <sys/time.h>
-#include <getopt.h>
+//#include <sys/time.h>
+//#include <getopt.h>
 #include <math.h>
-#include <unistd.h>
+//#include <unistd.h>
 
 #ifndef FALSE
 #define FALSE 0
 #endif
 #ifndef TRUE
 #define TRUE ~FALSE
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* _OPEN8055_COMPAT_H */

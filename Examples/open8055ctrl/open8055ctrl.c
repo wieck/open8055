@@ -32,6 +32,8 @@
  *	
  * ------------------------------------------------------------
  */
+#include <getopt.h>
+
 #include "open8055.h"
 #include "open8055ctrl.h"
 #include "gram.h"

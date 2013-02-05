@@ -133,7 +133,7 @@ static int				openLocalCards[OPEN8055_MAX_CARDS];
  *	there never was an error.
  * ----
  */
-OPEN8055_EXTERN char * STDCALL
+OPEN8055_EXTERN char * OPEN8055_CDECL
 Open8055_LastError(OPEN8055_HANDLE h)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
@@ -152,7 +152,7 @@ Open8055_LastError(OPEN8055_HANDLE h)
  *	Returns 1 if card is present, 0 if not.
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_CardPresent(int cardNumber)
 {
 	if (!initialized)
@@ -171,7 +171,7 @@ Open8055_CardPresent(int cardNumber)
  *	Return the current skipMessages flag of the card.
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_GetSkipMessages(OPEN8055_HANDLE h)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
@@ -186,7 +186,7 @@ Open8055_GetSkipMessages(OPEN8055_HANDLE h)
  *	Set the skipMessages flag of the card.
  * ----
  */
-OPEN8055_EXTERN void STDCALL
+OPEN8055_EXTERN void OPEN8055_CDECL
 Open8055_SetSkipMessages(OPEN8055_HANDLE h, int flag)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
@@ -202,7 +202,7 @@ Open8055_SetSkipMessages(OPEN8055_HANDLE h, int flag)
  *	Returns -1 on error or the ID of the new card.
  * ----
  */
-OPEN8055_EXTERN OPEN8055_HANDLE STDCALL
+OPEN8055_EXTERN OPEN8055_HANDLE OPEN8055_CDECL
 Open8055_Connect(char *destination, char *password)
 {
 	int						cardNumber;
@@ -333,7 +333,7 @@ Open8055_Connect(char *destination, char *password)
  *	Close an Open8055.
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_Close(OPEN8055_HANDLE h)
 {
 	Open8055_card_t		*card = (Open8055_card_t *)h;
@@ -363,7 +363,7 @@ Open8055_Close(OPEN8055_HANDLE h)
  *	we also need to close it.
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_Reset(OPEN8055_HANDLE h)
 {
 	Open8055_card_t			*card = (Open8055_card_t *)h;
@@ -405,7 +405,7 @@ Open8055_Reset(OPEN8055_HANDLE h)
  *	Wait until any new input becomes available
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_Wait(OPEN8055_HANDLE h, int timeout)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
@@ -425,7 +425,7 @@ Open8055_Wait(OPEN8055_HANDLE h, int timeout)
  *	Wait until specific input ports have changed.
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_WaitFor(OPEN8055_HANDLE h, int mask, int timeout)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
@@ -447,7 +447,7 @@ Open8055_WaitFor(OPEN8055_HANDLE h, int mask, int timeout)
  *	Return the current autoFlush setting.
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_GetAutoFlush(OPEN8055_HANDLE h)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
@@ -465,7 +465,7 @@ Open8055_GetAutoFlush(OPEN8055_HANDLE h)
  *	Set the auto flush feature.
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_SetAutoFlush(OPEN8055_HANDLE h, int flag)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
@@ -485,7 +485,7 @@ Open8055_SetAutoFlush(OPEN8055_HANDLE h, int flag)
  *	Send pending changes to the card.
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_Flush(OPEN8055_HANDLE h)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
@@ -518,7 +518,7 @@ Open8055_Flush(OPEN8055_HANDLE h)
  *	Read a digital input port.
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_GetInput(OPEN8055_HANDLE h, int port)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
@@ -551,7 +551,7 @@ Open8055_GetInput(OPEN8055_HANDLE h, int port)
  *	Read the 5 digital input ports
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_GetInputAll(OPEN8055_HANDLE h)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
@@ -581,7 +581,7 @@ Open8055_GetInputAll(OPEN8055_HANDLE h)
  *	Read the current value of a counter.
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_GetCounter(OPEN8055_HANDLE h, int port)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
@@ -614,7 +614,7 @@ Open8055_GetCounter(OPEN8055_HANDLE h, int port)
  *	Reset an individual input counter.
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_ResetCounter(OPEN8055_HANDLE h, int port)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
@@ -649,7 +649,7 @@ Open8055_ResetCounter(OPEN8055_HANDLE h, int port)
  *	Reset all input counters.
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_ResetCounterAll(OPEN8055_HANDLE h)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
@@ -681,7 +681,7 @@ Open8055_ResetCounterAll(OPEN8055_HANDLE h)
  *	Set the debounce value of a digital input.
  * ----
  */
-OPEN8055_EXTERN double STDCALL
+OPEN8055_EXTERN double OPEN8055_CDECL
 Open8055_GetDebounce(OPEN8055_HANDLE h, int port)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
@@ -702,7 +702,7 @@ Open8055_GetDebounce(OPEN8055_HANDLE h, int port)
  *	Set the debounce value of a digital input.
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_SetDebounce(OPEN8055_HANDLE h, int port, double ms)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
@@ -741,7 +741,7 @@ Open8055_SetDebounce(OPEN8055_HANDLE h, int port, double ms)
  *	Read the current value of an ADC
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_GetADC(OPEN8055_HANDLE h, int port)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
@@ -774,7 +774,7 @@ Open8055_GetADC(OPEN8055_HANDLE h, int port)
  *	Return one current digital output settings.
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_GetOutput(OPEN8055_HANDLE h, int port)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
@@ -800,7 +800,7 @@ Open8055_GetOutput(OPEN8055_HANDLE h, int port)
  *	Return the current digital output settings.
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_GetOutputAll(OPEN8055_HANDLE h)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
@@ -823,7 +823,7 @@ Open8055_GetOutputAll(OPEN8055_HANDLE h)
  *	Return the current setting of a PWM output
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_GetPWM(OPEN8055_HANDLE h, int port)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
@@ -848,7 +848,7 @@ Open8055_GetPWM(OPEN8055_HANDLE h, int port)
  *	Change one digital output.
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_SetOutput(OPEN8055_HANDLE h, int port, int val)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
@@ -887,7 +887,7 @@ Open8055_SetOutput(OPEN8055_HANDLE h, int port, int val)
  *	Change all 8 digital outputs.
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_SetOutputAll(OPEN8055_HANDLE h, int bits)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
@@ -921,7 +921,7 @@ Open8055_SetOutputAll(OPEN8055_HANDLE h, int bits)
  *	Change one of the PWM outputs.
  * ----
  */
-OPEN8055_EXTERN int STDCALL
+OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_SetPWM(OPEN8055_HANDLE h, int port, int value)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
@@ -1412,7 +1412,7 @@ DeviceFindPath(int cardNumber)
 	 * Build the magic string we are looking for in the device paths.
 	 * ----
 	 */
-	snprintf(vidPidString, sizeof(vidPidString), "vid_10cf&pid_%04x", OPEN8055_PID + cardNumber);
+	sprintf(vidPidString, "vid_10cf&pid_%04x", OPEN8055_PID + cardNumber);
 
 	/* ----
 	 * Get the device info set for this GUID's class.
