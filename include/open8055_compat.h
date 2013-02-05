@@ -55,4 +55,11 @@ typedef struct sockaddr_in	SOCKADDR_IN;
 #include <math.h>
 #include <unistd.h>
 
+#ifndef FALSE
+#define FALSE 0
+#endif
+#ifndef TRUE
+#define TRUE ~FALSE
+#endif
+
 #endif /* _OPEN8055_COMPAT_H */

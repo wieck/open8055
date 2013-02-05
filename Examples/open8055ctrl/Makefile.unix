@@ -3,30 +3,54 @@
 #
 #   Unix version
 # ------------------------------------------------------------
-LIBS=	-lm -lpthread -lusb
-OBJS=	open8055ctrl.o
-OPEN8055_LIB=	../lib/open8055.a
+LIBS=				-lm -lpthread -lusb
+OBJS=				open8055ctrl.o gram.o scan.o
+OPEN8055_LIB=		../../libopen8055/open8055.a
 
-PROGS=	open8055ctrl
+PROGS=				open8055ctrl
 
-CFLAGS+= -I../Include
+CC=					gcc
+CFLAGS+= 			-O2 -Wall -I../../include
 
 
-all:	buildlib $(PROGS)
+all:				buildlib $(PROGS)
 
 clean:
 	rm -f $(PROGS) $(OBJS)
-	$(MAKE) -C ../lib clean
+	rm -f gram.c gram.h scan.c scan.h
+	$(MAKE) -C ../../libopen8055 clean
 
 buildlib:
-	$(MAKE) -C ../lib all
+	$(MAKE) -C ../../libopen8055 all
 
 unsafe:	all
 	chown root $(PROGS) 
 	chmod 4755 $(PROGS)
 
 open8055ctrl:	$(OBJS)
-	gcc -O2 -Wall -o $@ $(OBJS) $(OPEN8055_LIB) $(LIBS)
+	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(OPEN8055_LIB) $(LIBS)
 
-open8055ctrl.o:	open8055ctrl.c
-	gcc -c -O2 -Wall $(CFLAGS) -o $@ $<
+open8055ctrl.o:	open8055ctrl.c							\
+				open8055ctrl.h							\
+				../../include/open8055_compat.h			\
+				../../include/open8055_hid_protocol.h	\
+				../../include/open8055.h				\
+				gram.h									\
+				scan.h
+
+scan.o:		scan.c open8055ctrl.h gram.h
+
+scan.c:		scan.l
+	flex --header-file=scan.h -o'scan.c' scan.l
+
+scan.h:		scan.c
+
+gram.o:		gram.c scan.h open8055ctrl.h ../../include/open8055.h
+
+gram.c:		gram.y
+	bison -y -d gram.y
+	mv -f y.tab.c gram.c
+	mv -f y.tab.h gram.h
+
+gram.h:		gram.c
+

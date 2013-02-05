@@ -47,28 +47,32 @@
  */
 
 typedef struct {
-    int				isLocal;
-    int				idLocal;
-    char			destination[1024];
+    int						isLocal;
+    int						idLocal;
+    char					destination[1024];
 
-    char			errorMessage[1024];
+    char					errorMessage[1024];
 
     Open8055_hidMessage_t	currentConfig1;
     Open8055_hidMessage_t	currentOutput;
     Open8055_hidMessage_t	currentInput;
-    int				currentInputUnconsumed;
+    int						currentInputUnconsumed;
 
-    int				skipMessages;
-    int				autoFlush;
-    int				pendingConfig1;
-    int				pendingOutput;
+    int						skipMessages;
+    int						autoFlush;
+    int						pendingConfig1;
+    int						pendingOutput;
 
 #ifdef _WIN32
-    unsigned char		writeBuffer[OPEN8055_HID_MESSAGE_SIZE + 1];
-    unsigned char		readBuffer[OPEN8055_HID_MESSAGE_SIZE + 1];
-    HANDLE			readEvent;
-    int				readPending;
-    OVERLAPPED			readOverlapped;
+    unsigned char			writeBuffer[OPEN8055_HID_MESSAGE_SIZE + 1];
+    unsigned char			readBuffer[OPEN8055_HID_MESSAGE_SIZE + 1];
+    HANDLE					readEvent;
+    int						readPending;
+    OVERLAPPED				readOverlapped;
+#else
+    unsigned char			readBuffer[OPEN8055_HID_MESSAGE_SIZE];
+	libusb_device_handle    *cardHandle;
+	int                      hadKernelDriver;
 #endif
 
 } Open8055_card_t;
@@ -1522,8 +1526,6 @@ ErrorString(void)
  * ----
  */
 static libusb_context          *libusbCxt;
-static libusb_device_handle    *cardHandle[OPEN8055_MAX_CARDS];
-static int                      hadKernelDriver[OPEN8055_MAX_CARDS];
 
 
 /* ----
@@ -1537,8 +1539,8 @@ DeviceInit(void)
 {
     if (libusb_init(&libusbCxt) != 0)
     {
-	SetError("libusb_init() failed - %s", ErrorString());
-	return -1;
+		SetError(NULL, "libusb_init() failed - %s", ErrorString());
+		return -1;
     }
 
     return 0;
@@ -1568,8 +1570,8 @@ DevicePresent(int cardNumber)
     numDevices = libusb_get_device_list(libusbCxt, &deviceList);
     if (numDevices < 0)
     {
-	SetError("libusb_get_device_list(): %s", ErrorString());
-	return -1;
+		SetError(NULL, "libusb_get_device_list(): %s", ErrorString());
+		return -1;
     }
 
     /* ----
@@ -1580,7 +1582,7 @@ DevicePresent(int cardNumber)
     {
 	if (libusb_get_device_descriptor(deviceList[i], &deviceDesc) != 0)
 	{
-	    SetError("libusb_get_device_descriptor(): %s", ErrorString());
+	    SetError(NULL, "libusb_get_device_descriptor(): %s", ErrorString());
 	    libusb_free_device_list(deviceList, 1);
 	    return -1;
 	}
@@ -1610,7 +1612,7 @@ DevicePresent(int cardNumber)
  * ----
  */
 static int
-DeviceOpen(int cardNumber)
+DeviceOpen(Open8055_card_t *card)
 {
     libusb_device_handle   *dev;
     int                     rc;
@@ -1620,12 +1622,12 @@ DeviceOpen(int cardNumber)
      * Open the device.
      * ----
      */
-    dev = cardHandle[cardNumber] = libusb_open_device_with_vid_pid(
-	    libusbCxt, OPEN8055_VID, OPEN8055_PID + cardNumber);
-    if (cardHandle[cardNumber] == NULL)
+    dev = card->cardHandle = libusb_open_device_with_vid_pid(
+			libusbCxt, OPEN8055_VID, OPEN8055_PID + card->idLocal);
+    if (dev == NULL)
     {
-	SetError("libusb_open_device_with_vid_pid(): %s", ErrorString());
-	return -1;
+		SetError(card, "libusb_open_device_with_vid_pid(): %s", ErrorString());
+		return -1;
     }
 
     /* ----
@@ -1634,9 +1636,9 @@ DeviceOpen(int cardNumber)
      */
     if (libusb_set_configuration(dev, 1) != 0)
     {
-	SetError("libusb_set_configuration(): %s", ErrorString());
-	libusb_close(dev);
-	return -1;
+		SetError(card, "libusb_set_configuration(): %s", ErrorString());
+		libusb_close(dev);
+		return -1;
     }
 
     /* ----
@@ -1645,22 +1647,22 @@ DeviceOpen(int cardNumber)
      */
     if ((rc = libusb_kernel_driver_active(dev, interface)) < 0)
     {
-	SetError("libusb_kernel_driver_active(): %s", ErrorString());
-	libusb_close(dev);
-	return -1;
+		SetError(card, "libusb_kernel_driver_active(): %s", ErrorString());
+		libusb_close(dev);
+		return -1;
     }
     else
     {
-	hadKernelDriver[cardNumber] = rc;
-	if (rc != 0)
-	{
-	    if (libusb_detach_kernel_driver(dev, interface) != 0)
-	    {
-		SetError("libusb_detach_kernel_driver(): %s", ErrorString());
-		libusb_close(dev);
-		return -1;
-	    }
-	}
+		card->hadKernelDriver = rc;
+		if (rc != 0)
+		{
+			if (libusb_detach_kernel_driver(dev, interface) != 0)
+			{
+				SetError(card, "libusb_detach_kernel_driver(): %s", ErrorString());
+				libusb_close(dev);
+				return -1;
+			}
+		}
     }
 
     /* ----
@@ -1669,11 +1671,11 @@ DeviceOpen(int cardNumber)
      */
     if (libusb_claim_interface(dev, interface) != 0)
     {
-	SetError("libusb_claim_interface(): %s", ErrorString());
-	if (hadKernelDriver[cardNumber])
-	    libusb_attach_kernel_driver(dev, interface);
-	libusb_close(dev);
-	return -1;
+		SetError(card, "libusb_claim_interface(): %s", ErrorString());
+		if (card->hadKernelDriver)
+			libusb_attach_kernel_driver(dev, interface);
+		libusb_close(dev);
+		return -1;
     }
 
     /* ----
@@ -1682,12 +1684,12 @@ DeviceOpen(int cardNumber)
      */
     if (libusb_set_interface_alt_setting(dev, interface, 0) != 0)
     {
-	SetError("libusb_set_interface_alt_setting(): %s", ErrorString());
-	libusb_release_interface(dev, interface);
-	if (hadKernelDriver[cardNumber])
-	    libusb_attach_kernel_driver(dev, interface);
-	libusb_close(dev);
-	return -1;
+		SetError(card, "libusb_set_interface_alt_setting(): %s", ErrorString());
+		libusb_release_interface(dev, interface);
+		if (card->hadKernelDriver)
+			libusb_attach_kernel_driver(dev, interface);
+		libusb_close(dev);
+		return -1;
     }
 
     return 0;
@@ -1701,14 +1703,14 @@ DeviceOpen(int cardNumber)
  * ----
  */
 static int
-DeviceClose(int cardNumber)
+DeviceClose(Open8055_card_t *card)
 {
     int     interface = 0;
 
-    libusb_release_interface(cardHandle[cardNumber], interface);
-    if (hadKernelDriver[cardNumber])
-	libusb_attach_kernel_driver(cardHandle[cardNumber], interface);
-    libusb_close(cardHandle[cardNumber]);
+    libusb_release_interface(card->cardHandle, interface);
+    if (card->hadKernelDriver)
+		libusb_attach_kernel_driver(card->cardHandle, interface);
+    libusb_close(card->cardHandle);
 
     return 0;
 }
@@ -1721,24 +1723,25 @@ DeviceClose(int cardNumber)
  * ----
  */
 static int
-DeviceRead(int cardNumber, unsigned char *buffer, int len)
+DeviceRead(Open8055_card_t *card, void *buffer, int timeout)
 {
     int     bytesRead;
 
-    if (libusb_interrupt_transfer(cardHandle[cardNumber],
+    if (libusb_interrupt_transfer(card->cardHandle,
 	    LIBUSB_ENDPOINT_IN | 1, (void *)buffer, 
-	    len, &bytesRead, 0) == 0)
+	    sizeof(Open8055_hidMessage_t), &bytesRead, 0) == 0)
     {
-	if (bytesRead != len)
+	if (bytesRead != sizeof(Open8055_hidMessage_t))
 	{
-	    SetError("short read - expected %d, got %d", len, bytesRead);
+	    SetError(card, "short read - expected %d, got %d", 
+				OPEN8055_HID_MESSAGE_SIZE, bytesRead);
 	    return -1;
 	}
 
 	return bytesRead;
     }
 
-    SetError("libusb_interrupt_transfer(): %s", ErrorString());
+    SetError(card, "libusb_interrupt_transfer(): %s", ErrorString());
     return -1;
 }
 
@@ -1750,24 +1753,25 @@ DeviceRead(int cardNumber, unsigned char *buffer, int len)
  * ----
  */
 static int
-DeviceWrite(int cardNumber, unsigned char *buffer, int len)
+DeviceWrite(Open8055_card_t *card, void *buffer)
 {
     int     bytesWritten;
 
-    if (libusb_interrupt_transfer(cardHandle[cardNumber],
+    if (libusb_interrupt_transfer(card->cardHandle,
 	    LIBUSB_ENDPOINT_OUT | 1, (void *)buffer, 
-	    len, &bytesWritten, 0) == 0)
+	    OPEN8055_HID_MESSAGE_SIZE, &bytesWritten, 0) == 0)
     {
-	if (bytesWritten != len)
-	{
-	    SetError("short write - expected %d, wrote %d", len, bytesWritten);
-	    return -1;
-	}
+		if (bytesWritten != OPEN8055_HID_MESSAGE_SIZE)
+		{
+			SetError(card, "short write - expected %d, wrote %d", 
+				OPEN8055_HID_MESSAGE_SIZE, bytesWritten);
+			return -1;
+		}
 
-	return bytesWritten;
+		return bytesWritten;
     }
 
-    SetError("libusb_interrupt_transfer(): %s", ErrorString());
+    SetError(card, "libusb_interrupt_transfer(): %s", ErrorString());
     return -1;
 }
 
