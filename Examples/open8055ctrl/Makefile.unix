@@ -1,7 +1,7 @@
 # ------------------------------------------------------------
 # Makefile for open8055ctrl
 #
-#   Unix version
+#	Unix version
 # ------------------------------------------------------------
 LIBS=				-lm -lpthread -lusb
 OBJS=				open8055ctrl.o gram.o scan.o
@@ -10,7 +10,7 @@ OPEN8055_LIB=		../../libopen8055/open8055.a
 PROGS=				open8055ctrl
 
 CC=					gcc
-CFLAGS+= 			-O2 -Wall -I../../include
+CFLAGS+=			-O2 -Wall -I../../include
 
 
 all:				buildlib $(PROGS)
@@ -23,14 +23,14 @@ clean:
 buildlib:
 	$(MAKE) -C ../../libopen8055 all
 
-unsafe:	all
+unsafe: all
 	chown root $(PROGS) 
 	chmod 4755 $(PROGS)
 
 open8055ctrl:	$(OBJS)
 	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(OPEN8055_LIB) $(LIBS)
 
-open8055ctrl.o:	open8055ctrl.c							\
+open8055ctrl.o: open8055ctrl.c							\
 				open8055ctrl.h							\
 				../../include/open8055_compat.h			\
 				../../include/open8055_hid_protocol.h	\

@@ -513,13 +513,13 @@ Open8055_Flush(OPEN8055_HANDLE h)
 
 
 /* ----
- * Open8055_GetInputDigital()
+ * Open8055_GetInput()
  *
  *	Read a digital input port.
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_GetInputDigital(OPEN8055_HANDLE h, int port)
+Open8055_GetInput(OPEN8055_HANDLE h, int port)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
@@ -546,13 +546,13 @@ Open8055_GetInputDigital(OPEN8055_HANDLE h, int port)
 
 
 /* ----
- * Open8055_GetInputDigitalAll()
+ * Open8055_GetInputAll()
  *
  *	Read the 5 digital input ports
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_GetInputDigitalAll(OPEN8055_HANDLE h)
+Open8055_GetInputAll(OPEN8055_HANDLE h)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
@@ -576,46 +576,13 @@ Open8055_GetInputDigitalAll(OPEN8055_HANDLE h)
 
 
 /* ----
- * Open8055_GetInputADC()
- *
- *	Read the current value of an ADC
- * ----
- */
-OPEN8055_EXTERN int STDCALL
-Open8055_GetInputADC(OPEN8055_HANDLE h, int port)
-{
-	Open8055_card_t *card = (Open8055_card_t *)h;
-	int			rc = 0;
-
-	if (port < 0 || port > 1)
-		return 0;
-
-	/* ----
-	 * Make sure we have current input data.
-	 * ----
-	 */
-	if (Open8055_WaitForInput(card, OPEN8055_INPUT_ADC1 << port, OPEN8055_WAITFOR_MS) < 0)
-		return -1;
-
-	/* ----
-	 * Mark the counter consumed.
-	 * ----
-	 */
-	card->currentInputUnconsumed &= ~(OPEN8055_INPUT_ADC1 << port);
-	rc = ntohs(card->currentInput.inputAdcValue[port]);
-
-	return rc;
-}
-
-
-/* ----
- * Open8055_GetInputCounter()
+ * Open8055_GetCounter()
  *
  *	Read the current value of a counter.
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_GetInputCounter(OPEN8055_HANDLE h, int port)
+Open8055_GetCounter(OPEN8055_HANDLE h, int port)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
@@ -642,13 +609,13 @@ Open8055_GetInputCounter(OPEN8055_HANDLE h, int port)
 
 
 /* ----
- * Open8055_ResetInputCounter()
+ * Open8055_ResetCounter()
  *
  *	Reset an individual input counter.
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_ResetInputCounter(OPEN8055_HANDLE h, int port)
+Open8055_ResetCounter(OPEN8055_HANDLE h, int port)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
@@ -677,13 +644,13 @@ Open8055_ResetInputCounter(OPEN8055_HANDLE h, int port)
 
 
 /* ----
- * Open8055_ResetInputCounterAll()
+ * Open8055_ResetCounterAll()
  *
  *	Reset all input counters.
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_ResetInputCounterAll(OPEN8055_HANDLE h)
+Open8055_ResetCounterAll(OPEN8055_HANDLE h)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
@@ -709,13 +676,13 @@ Open8055_ResetInputCounterAll(OPEN8055_HANDLE h)
 
 
 /* ----
- * Open8055_GetInputDebounce()
+ * Open8055_GetDebounce()
  *
  *	Set the debounce value of a digital input.
  * ----
  */
 OPEN8055_EXTERN double STDCALL
-Open8055_GetInputDebounce(OPEN8055_HANDLE h, int port)
+Open8055_GetDebounce(OPEN8055_HANDLE h, int port)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	double		rc;
@@ -730,13 +697,13 @@ Open8055_GetInputDebounce(OPEN8055_HANDLE h, int port)
 
 
 /* ----
- * Open8055_SetInputDebounce()
+ * Open8055_SetDebounce()
  *
  *	Set the debounce value of a digital input.
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_SetInputDebounce(OPEN8055_HANDLE h, int port, double ms)
+Open8055_SetDebounce(OPEN8055_HANDLE h, int port, double ms)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
@@ -769,13 +736,46 @@ Open8055_SetInputDebounce(OPEN8055_HANDLE h, int port, double ms)
 
 
 /* ----
- * Open8055_GetOutputDigital()
+ * Open8055_GetADC()
+ *
+ *	Read the current value of an ADC
+ * ----
+ */
+OPEN8055_EXTERN int STDCALL
+Open8055_GetADC(OPEN8055_HANDLE h, int port)
+{
+	Open8055_card_t *card = (Open8055_card_t *)h;
+	int			rc = 0;
+
+	if (port < 0 || port > 1)
+		return 0;
+
+	/* ----
+	 * Make sure we have current input data.
+	 * ----
+	 */
+	if (Open8055_WaitForInput(card, OPEN8055_INPUT_ADC1 << port, OPEN8055_WAITFOR_MS) < 0)
+		return -1;
+
+	/* ----
+	 * Mark the counter consumed.
+	 * ----
+	 */
+	card->currentInputUnconsumed &= ~(OPEN8055_INPUT_ADC1 << port);
+	rc = ntohs(card->currentInput.inputAdcValue[port]);
+
+	return rc;
+}
+
+
+/* ----
+ * Open8055_GetOutput()
  *
  *	Return one current digital output settings.
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_GetOutputDigital(OPEN8055_HANDLE h, int port)
+Open8055_GetOutput(OPEN8055_HANDLE h, int port)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
@@ -795,13 +795,13 @@ Open8055_GetOutputDigital(OPEN8055_HANDLE h, int port)
 
 
 /* ----
- * Open8055_GetOutputDigitalAll()
+ * Open8055_GetOutputAll()
  *
  *	Return the current digital output settings.
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_GetOutputDigitalAll(OPEN8055_HANDLE h)
+Open8055_GetOutputAll(OPEN8055_HANDLE h)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
@@ -818,13 +818,13 @@ Open8055_GetOutputDigitalAll(OPEN8055_HANDLE h)
 
 
 /* ----
- * Open8055_GetOutputPWM()
+ * Open8055_GetPWM()
  *
  *	Return the current setting of a PWM output
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_GetOutputPWM(OPEN8055_HANDLE h, int port)
+Open8055_GetPWM(OPEN8055_HANDLE h, int port)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
@@ -843,13 +843,13 @@ Open8055_GetOutputPWM(OPEN8055_HANDLE h, int port)
 
 
 /* ----
- * Open8055_SetOutputDigital()
+ * Open8055_SetOutput()
  *
  *	Change one digital output.
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_SetOutputDigital(OPEN8055_HANDLE h, int port, int val)
+Open8055_SetOutput(OPEN8055_HANDLE h, int port, int val)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
@@ -882,13 +882,13 @@ Open8055_SetOutputDigital(OPEN8055_HANDLE h, int port, int val)
 
 
 /* ----
- * Open8055_SetOutputDigitalAll()
+ * Open8055_SetOutputAll()
  *
  *	Change all 8 digital outputs.
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_SetOutputDigitalAll(OPEN8055_HANDLE h, int bits)
+Open8055_SetOutputAll(OPEN8055_HANDLE h, int bits)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
@@ -916,13 +916,13 @@ Open8055_SetOutputDigitalAll(OPEN8055_HANDLE h, int bits)
 
 
 /* ----
- * Open8055_SetOutputPWM()
+ * Open8055_SetPWM()
  *
  *	Change one of the PWM outputs.
  * ----
  */
 OPEN8055_EXTERN int STDCALL
-Open8055_SetOutputPWM(OPEN8055_HANDLE h, int port, int value)
+Open8055_SetPWM(OPEN8055_HANDLE h, int port, int value)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;

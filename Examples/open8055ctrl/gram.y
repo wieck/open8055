@@ -2,34 +2,34 @@
 /* ----------------------------------------------------------------------
  * gram.h
  *
- *  The bison parser for the open8055ctrl utility.
+ *	The bison parser for the open8055ctrl utility.
  * ----------------------------------------------------------------------
  *
- *  Copyright (c) 2013, Jan Wieck
- *  All rights reserved.
- *  
- *  Redistribution and use in source and binary forms, with or without
- *  modification, are permitted provided that the following conditions are met:
- *      * Redistributions of source code must retain the above copyright
- *        notice, this list of conditions and the following disclaimer.
- *      * Redistributions in binary form must reproduce the above copyright
- *        notice, this list of conditions and the following disclaimer in the
- *        documentation and/or other materials provided with the distribution.
- *      * Neither the name of the <organization> nor the
- *        names of its contributors may be used to endorse or promote products
- *        derived from this software without specific prior written permission.
- *  
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- *  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
- *  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- *  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *  
+ *	Copyright (c) 2013, Jan Wieck
+ *	All rights reserved.
+ *	
+ *	Redistribution and use in source and binary forms, with or without
+ *	modification, are permitted provided that the following conditions are met:
+ *		* Redistributions of source code must retain the above copyright
+ *		  notice, this list of conditions and the following disclaimer.
+ *		* Redistributions in binary form must reproduce the above copyright
+ *		  notice, this list of conditions and the following disclaimer in the
+ *		  documentation and/or other materials provided with the distribution.
+ *		* Neither the name of the <organization> nor the
+ *		  names of its contributors may be used to endorse or promote products
+ *		  derived from this software without specific prior written permission.
+ *	
+ *	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ *	ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ *	WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ *	DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+ *	DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ *	(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *	LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ *	ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *	(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ *	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *	
  * ----------------------------------------------------------------------
  */
 #include "open8055_compat.h"
@@ -60,8 +60,8 @@ static void		displayCardError(void);
  * ----
  */
 %union {
-    int		ival;
-    double	dval;
+	int		ival;
+	double	dval;
 }
 
 %token		T_UNKNOWN_CMD
@@ -82,23 +82,23 @@ static void		displayCardError(void);
 %token		C_SetAutoFlush
 %token		C_Flush
 
-%token		C_GetInputDigital
-%token		C_GetInputDigitalAll
-%token		C_GetInputADC
-%token		C_GetInputCounter
-%token		C_ResetInputCounter
-%token		C_ResetInputCounterAll
-%token		C_GetInputDebounce
-%token		C_SetInputDebounce
+%token		C_GetInput
+%token		C_GetInputAll
+%token		C_GetADC
+%token		C_GetCounter
+%token		C_ResetCounter
+%token		C_ResetCounterAll
+%token		C_GetDebounce
+%token		C_SetDebounce
 
-%token		C_GetOutputDigital
-%token		C_GetOutputDigitalAll
+%token		C_GetOutput
+%token		C_GetOutputAll
 %token		C_GetOutputValue
-%token		C_GetOutputPWM
-%token		C_SetOutputDigital
-%token		C_SetOutputDigitalAll
+%token		C_GetPWM
+%token		C_SetOutput
+%token		C_SetOutputAll
 %token		C_SetOutputValue
-%token		C_SetOutputPWM
+%token		C_SetPWM
 
 
 %type <ival>	ival
@@ -119,20 +119,20 @@ command					:
 						| cmd_GetAutoFlush
 						| cmd_SetAutoFlush
 						| cmd_Flush
-						| cmd_GetInputDigital
-						| cmd_GetInputDigitalAll
-						| cmd_GetInputADC
-						| cmd_GetInputCounter
-						| cmd_ResetInputCounter
-						| cmd_ResetInputCounterAll
-						| cmd_GetInputDebounce
-						| cmd_SetInputDebounce
-						| cmd_GetOutputDigital
-						| cmd_GetOutputDigitalAll
-						| cmd_GetOutputPWM
-						| cmd_SetOutputDigital
-						| cmd_SetOutputDigitalAll
-						| cmd_SetOutputPWM
+						| cmd_GetInput
+						| cmd_GetInputAll
+						| cmd_GetADC
+						| cmd_GetCounter
+						| cmd_ResetCounter
+						| cmd_ResetCounterAll
+						| cmd_GetDebounce
+						| cmd_SetDebounce
+						| cmd_GetOutput
+						| cmd_GetOutputAll
+						| cmd_GetPWM
+						| cmd_SetOutput
+						| cmd_SetOutputAll
+						| cmd_SetPWM
 
 cmd_LastError			: C_LastError
 						{
@@ -205,145 +205,145 @@ cmd_Flush				: C_Flush
 								displayCardError();
 						}
 
-cmd_GetInputDigital		: C_GetInputDigital ival
+cmd_GetInput		: C_GetInput ival
 						{
-							if ((intRc = Open8055_GetInputDigital(cardHandle, $2)) < 0)
+							if ((intRc = Open8055_GetInput(cardHandle, $2)) < 0)
 								displayCardError();
 							else
 								printf("%d\n", intRc);
 						}
 
-cmd_GetInputDigitalAll	: C_GetInputDigitalAll
+cmd_GetInputAll : C_GetInputAll
 						{
-							if ((intRc = Open8055_GetInputDigitalAll(cardHandle)) < 0)
+							if ((intRc = Open8055_GetInputAll(cardHandle)) < 0)
 								displayCardError();
 							else
 								printf("%d\n", intRc);
 						}
 
-cmd_GetInputADC			: C_GetInputADC ival
+cmd_GetADC			: C_GetADC ival
 						{
-							if ((intRc = Open8055_GetInputADC(cardHandle, $2)) < 0)
+							if ((intRc = Open8055_GetADC(cardHandle, $2)) < 0)
 								displayCardError();
 							else
 								printf("%d\n", intRc);
 						}
 
-cmd_GetInputCounter		: C_GetInputCounter ival
+cmd_GetCounter		: C_GetCounter ival
 						{
-							if ((intRc = Open8055_GetInputCounter(cardHandle, $2)) < 0)
+							if ((intRc = Open8055_GetCounter(cardHandle, $2)) < 0)
 								displayCardError();
 							else
 								printf("%d\n", intRc);
 						}
 
-cmd_ResetInputCounter	: C_ResetInputCounter ival
+cmd_ResetCounter	: C_ResetCounter ival
 						{
-							if ((intRc = Open8055_ResetInputCounter(cardHandle, $2)) < 0)
+							if ((intRc = Open8055_ResetCounter(cardHandle, $2)) < 0)
 								displayCardError();
 						}
 
-cmd_ResetInputCounterAll: C_ResetInputCounterAll
+cmd_ResetCounterAll: C_ResetCounterAll
 				{
-				    if ((intRc = Open8055_ResetInputCounterAll(cardHandle)) < 0)
-				    	displayCardError();
+					if ((intRc = Open8055_ResetCounterAll(cardHandle)) < 0)
+						displayCardError();
 				}
 
-cmd_GetInputDebounce		: C_GetInputDebounce ival
+cmd_GetDebounce		: C_GetDebounce ival
 				{
-				    doubleRc = Open8055_GetInputDebounce(cardHandle, $2);
-				    printf("%.1f\n", doubleRc);
+					doubleRc = Open8055_GetDebounce(cardHandle, $2);
+					printf("%.1f\n", doubleRc);
 				}
 
-cmd_SetInputDebounce		: C_SetInputDebounce ival dval
+cmd_SetDebounce		: C_SetDebounce ival dval
 				{
-				    if ((intRc = Open8055_SetInputDebounce(cardHandle, $2, $3)) < 0)
-				    	displayCardError();
+					if ((intRc = Open8055_SetDebounce(cardHandle, $2, $3)) < 0)
+						displayCardError();
 				}
 
-cmd_GetOutputDigital		: C_GetOutputDigital ival
+cmd_GetOutput		: C_GetOutput ival
 				{
-				    if ((intRc = Open8055_GetOutputDigital(cardHandle, $2)) < 0)
-				    	displayCardError();
-				    else
-				    	printf("%d\n", intRc);
+					if ((intRc = Open8055_GetOutput(cardHandle, $2)) < 0)
+						displayCardError();
+					else
+						printf("%d\n", intRc);
 				}
 
-cmd_GetOutputDigitalAll		: C_GetOutputDigitalAll
+cmd_GetOutputAll		: C_GetOutputAll
 				{
-				    if ((intRc = Open8055_GetOutputDigitalAll(cardHandle)) < 0)
-				    	displayCardError();
-				    else
-				    	printf("%d\n", intRc);
+					if ((intRc = Open8055_GetOutputAll(cardHandle)) < 0)
+						displayCardError();
+					else
+						printf("%d\n", intRc);
 				}
 
-cmd_GetOutputPWM		: C_GetOutputPWM ival
+cmd_GetPWM		: C_GetPWM ival
 				{
-				    if ((intRc = Open8055_GetOutputPWM(cardHandle, $2)) < 0)
-				    	displayCardError();
-				    else
-				    	printf("%d\n", intRc);
+					if ((intRc = Open8055_GetPWM(cardHandle, $2)) < 0)
+						displayCardError();
+					else
+						printf("%d\n", intRc);
 				}
 
-cmd_SetOutputDigital		: C_SetOutputDigital ival ival
+cmd_SetOutput		: C_SetOutput ival ival
 				{
-				    if ((intRc = Open8055_SetOutputDigital(cardHandle, $2, $3)) < 0)
-				        displayCardError();
+					if ((intRc = Open8055_SetOutput(cardHandle, $2, $3)) < 0)
+						displayCardError();
 				}
 
-cmd_SetOutputDigitalAll		: C_SetOutputDigitalAll ival
+cmd_SetOutputAll		: C_SetOutputAll ival
 				{
-				    if ((intRc = Open8055_SetOutputDigitalAll(cardHandle, $2)) < 0)
-				        displayCardError();
+					if ((intRc = Open8055_SetOutputAll(cardHandle, $2)) < 0)
+						displayCardError();
 				}
 
-cmd_SetOutputPWM		: C_SetOutputPWM ival ival
+cmd_SetPWM		: C_SetPWM ival ival
 				{
-				    if ((intRc = Open8055_SetOutputPWM(cardHandle, $2, $3)) < 0)
-				        displayCardError();
+					if ((intRc = Open8055_SetPWM(cardHandle, $2, $3)) < 0)
+						displayCardError();
 				}
 
 ival				: T_INTEGER
 				{
-				    $$ = parseInteger(yytext);
+					$$ = parseInteger(yytext);
 				}
 
 dval				: T_DOUBLE
 				{
-				    $$ = parseDouble(yytext);
+					$$ = parseDouble(yytext);
 				}
 				| T_INTEGER
 				{
-				    $$ = (double)parseInteger(yytext);
+					$$ = (double)parseInteger(yytext);
 				}
 %%
 
 static int
 parseInteger(char *str)
 {
-    int	result;
+	int result;
 
-    sscanf(str, "%i", &result);
-    return result;
+	sscanf(str, "%i", &result);
+	return result;
 }
 
 static double
 parseDouble(char *str)
 {
-    double result;
+	double result;
 
-    sscanf(str, "%lf", &result);
-    return result;
+	sscanf(str, "%lf", &result);
+	return result;
 }
 
 static void
 displayCardError(void)
 {
-    fprintf(stderr, "Error: %s\n", Open8055_LastError(cardHandle));
+	fprintf(stderr, "Error: %s\n", Open8055_LastError(cardHandle));
 }
 
 void
 yyerror(const char *msg)
 {
-    fprintf(stderr, "Error: %s at or near %s\n", msg, yytext);
+	fprintf(stderr, "Error: %s at or near %s\n", msg, yytext);
 }
