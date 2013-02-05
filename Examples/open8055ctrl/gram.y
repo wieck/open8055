@@ -42,11 +42,16 @@
  * Local variables.
  * ----
  */
-static int	intRc;
+static int		intRc;
 static double	doubleRc;
-static int	parseInteger(char *str);
+
+/* ----
+ * Local functions.
+ * ----
+ */
+static int		parseInteger(char *str);
 static double	parseDouble(char *str);
-static void	displayCardError(void);
+static void		displayCardError(void);
 
 %}
 
@@ -102,143 +107,143 @@ static void	displayCardError(void);
 
 %%
 
-command				:
-				| cmd_LastError
-				| cmd_CardPresent
-				| cmd_GetSkipMessages
-				| cmd_SetSkipMessages
-				| cmd_Close
-				| cmd_Reset
-				| cmd_Wait
-				| cmd_WaitFor
-				| cmd_GetAutoFlush
-				| cmd_SetAutoFlush
-				| cmd_Flush
-				| cmd_GetInputDigital
-				| cmd_GetInputDigitalAll
-				| cmd_GetInputADC
-				| cmd_GetInputCounter
-				| cmd_ResetInputCounter
-				| cmd_ResetInputCounterAll
-				| cmd_GetInputDebounce
-				| cmd_SetInputDebounce
-				| cmd_GetOutputDigital
-				| cmd_GetOutputDigitalAll
-				| cmd_GetOutputPWM
-				| cmd_SetOutputDigital
-				| cmd_SetOutputDigitalAll
-				| cmd_SetOutputPWM
+command					:
+						| cmd_LastError
+						| cmd_CardPresent
+						| cmd_GetSkipMessages
+						| cmd_SetSkipMessages
+						| cmd_Close
+						| cmd_Reset
+						| cmd_Wait
+						| cmd_WaitFor
+						| cmd_GetAutoFlush
+						| cmd_SetAutoFlush
+						| cmd_Flush
+						| cmd_GetInputDigital
+						| cmd_GetInputDigitalAll
+						| cmd_GetInputADC
+						| cmd_GetInputCounter
+						| cmd_ResetInputCounter
+						| cmd_ResetInputCounterAll
+						| cmd_GetInputDebounce
+						| cmd_SetInputDebounce
+						| cmd_GetOutputDigital
+						| cmd_GetOutputDigitalAll
+						| cmd_GetOutputPWM
+						| cmd_SetOutputDigital
+						| cmd_SetOutputDigitalAll
+						| cmd_SetOutputPWM
 
 cmd_LastError			: C_LastError
-				{
-				    displayCardError();
-				}
+						{
+							displayCardError();
+						}
 
 cmd_CardPresent			: C_CardPresent ival
-				{
-				    if ((intRc = Open8055_CardPresent($2)) < 0)
-				    	displayCardError();
-				    else
-					printf("%d\n", intRc);
-				}
+						{
+							if ((intRc = Open8055_CardPresent($2)) < 0)
+								displayCardError();
+							else
+							printf("%d\n", intRc);
+						}
 
 cmd_GetSkipMessages		: C_GetSkipMessages
-				{
-				    printf("%d\n", Open8055_GetSkipMessages(cardHandle));
-				}
+						{
+							printf("%d\n", Open8055_GetSkipMessages(cardHandle));
+						}
 
 cmd_SetSkipMessages		: C_SetSkipMessages ival
-				{
-				    Open8055_SetSkipMessages(cardHandle, $2);
-				}
+						{
+							Open8055_SetSkipMessages(cardHandle, $2);
+						}
 
-cmd_Close			: C_Close
-				{
-				    terminateFlag = TRUE;
-				}
+cmd_Close				: C_Close
+						{
+							terminateFlag = TRUE;
+						}
 
-cmd_Reset			: C_Reset
-				{
-				    if ((intRc = Open8055_Reset(cardHandle)) < 0)
-				    	displayCardError();
-				    exit(0);
-				}
+cmd_Reset				: C_Reset
+						{
+							if ((intRc = Open8055_Reset(cardHandle)) < 0)
+								displayCardError();
+							exit(0);
+						}
 
-cmd_Wait			: C_Wait ival
-				{
-				    if ((intRc = Open8055_Wait(cardHandle, $2)) < 0)
-				    	displayCardError();
-				    else
-				    	printf("%d\n", intRc);
-				}
+cmd_Wait				: C_Wait ival
+						{
+							if ((intRc = Open8055_Wait(cardHandle, $2)) < 0)
+								displayCardError();
+							else
+								printf("%d\n", intRc);
+						}
 
-cmd_WaitFor			: C_WaitFor ival ival
-				{
-				    if ((intRc = Open8055_WaitFor(cardHandle, $2, $3)) < 0)
-				    	displayCardError();
-				    else
-				    	printf("%d\n", intRc);
-				}
+cmd_WaitFor				: C_WaitFor ival ival
+						{
+							if ((intRc = Open8055_WaitFor(cardHandle, $2, $3)) < 0)
+								displayCardError();
+							else
+								printf("%d\n", intRc);
+						}
 
 cmd_GetAutoFlush		: C_GetAutoFlush
-				{
-				    if ((intRc = Open8055_GetAutoFlush(cardHandle)) < 0)
-				    	displayCardError();
-				    else
-				    	printf("%d\n", intRc);
-				}
+						{
+							if ((intRc = Open8055_GetAutoFlush(cardHandle)) < 0)
+								displayCardError();
+							else
+								printf("%d\n", intRc);
+						}
 
 cmd_SetAutoFlush		: C_SetAutoFlush ival
-				{
-				    if ((intRc = Open8055_SetAutoFlush(cardHandle, $2)) < 0)
-				    	displayCardError();
-				}
+						{
+							if ((intRc = Open8055_SetAutoFlush(cardHandle, $2)) < 0)
+								displayCardError();
+						}
 
-cmd_Flush			: C_Flush
-				{
-				    if ((intRc = Open8055_Flush(cardHandle)) < 0)
-				    	displayCardError();
-				}
+cmd_Flush				: C_Flush
+						{
+							if ((intRc = Open8055_Flush(cardHandle)) < 0)
+								displayCardError();
+						}
 
 cmd_GetInputDigital		: C_GetInputDigital ival
-				{
-				    if ((intRc = Open8055_GetInputDigital(cardHandle, $2)) < 0)
-				    	displayCardError();
-				    else
-					printf("%d\n", intRc);
-				}
+						{
+							if ((intRc = Open8055_GetInputDigital(cardHandle, $2)) < 0)
+								displayCardError();
+							else
+								printf("%d\n", intRc);
+						}
 
-cmd_GetInputDigitalAll		: C_GetInputDigitalAll
-				{
-				    if ((intRc = Open8055_GetInputDigitalAll(cardHandle)) < 0)
-				    	displayCardError();
-				    else
-					printf("%d\n", intRc);
-				}
+cmd_GetInputDigitalAll	: C_GetInputDigitalAll
+						{
+							if ((intRc = Open8055_GetInputDigitalAll(cardHandle)) < 0)
+								displayCardError();
+							else
+								printf("%d\n", intRc);
+						}
 
 cmd_GetInputADC			: C_GetInputADC ival
-				{
-				    if ((intRc = Open8055_GetInputADC(cardHandle, $2)) < 0)
-				    	displayCardError();
-				    else
-					printf("%d\n", intRc);
-				}
+						{
+							if ((intRc = Open8055_GetInputADC(cardHandle, $2)) < 0)
+								displayCardError();
+							else
+								printf("%d\n", intRc);
+						}
 
 cmd_GetInputCounter		: C_GetInputCounter ival
-				{
-				    if ((intRc = Open8055_GetInputCounter(cardHandle, $2)) < 0)
-				    	displayCardError();
-				    else
-					printf("%d\n", intRc);
-				}
+						{
+							if ((intRc = Open8055_GetInputCounter(cardHandle, $2)) < 0)
+								displayCardError();
+							else
+								printf("%d\n", intRc);
+						}
 
-cmd_ResetInputCounter		: C_ResetInputCounter ival
-				{
-				    if ((intRc = Open8055_ResetInputCounter(cardHandle, $2)) < 0)
-				    	displayCardError();
-				}
+cmd_ResetInputCounter	: C_ResetInputCounter ival
+						{
+							if ((intRc = Open8055_ResetInputCounter(cardHandle, $2)) < 0)
+								displayCardError();
+						}
 
-cmd_ResetInputCounterAll	: C_ResetInputCounterAll
+cmd_ResetInputCounterAll: C_ResetInputCounterAll
 				{
 				    if ((intRc = Open8055_ResetInputCounterAll(cardHandle)) < 0)
 				    	displayCardError();
