@@ -113,6 +113,17 @@ namespace Open8055Demo {
 	private: System::Windows::Forms::ComboBox^  InputMode5;
 	private: System::Windows::Forms::ProgressBar^  ADCBar1;
 	private: System::Windows::Forms::ProgressBar^  ADCBar2;
+	private: System::Windows::Forms::Label^  label20;
+	private: System::Windows::Forms::TextBox^  PWM1;
+
+
+	private: System::Windows::Forms::TextBox^  PWM2;
+	private: System::Windows::Forms::Label^  label21;
+	private: System::Windows::Forms::HScrollBar^  PWMBar2;
+	private: System::Windows::Forms::HScrollBar^  PWMBar1;
+
+
+
 
 
 
@@ -198,6 +209,12 @@ namespace Open8055Demo {
 			this->InputMode5 = (gcnew System::Windows::Forms::ComboBox());
 			this->ADCBar1 = (gcnew System::Windows::Forms::ProgressBar());
 			this->ADCBar2 = (gcnew System::Windows::Forms::ProgressBar());
+			this->label20 = (gcnew System::Windows::Forms::Label());
+			this->PWM1 = (gcnew System::Windows::Forms::TextBox());
+			this->PWM2 = (gcnew System::Windows::Forms::TextBox());
+			this->label21 = (gcnew System::Windows::Forms::Label());
+			this->PWMBar2 = (gcnew System::Windows::Forms::HScrollBar());
+			this->PWMBar1 = (gcnew System::Windows::Forms::HScrollBar());
 			this->SuspendLayout();
 			// 
 			// cardDestination
@@ -271,7 +288,7 @@ namespace Open8055Demo {
 			// ADC1
 			// 
 			this->ADC1->Enabled = false;
-			this->ADC1->Location = System::Drawing::Point(41, 93);
+			this->ADC1->Location = System::Drawing::Point(64, 93);
 			this->ADC1->Name = L"ADC1";
 			this->ADC1->Size = System::Drawing::Size(57, 20);
 			this->ADC1->TabIndex = 7;
@@ -281,7 +298,7 @@ namespace Open8055Demo {
 			// ADC2
 			// 
 			this->ADC2->Enabled = false;
-			this->ADC2->Location = System::Drawing::Point(41, 119);
+			this->ADC2->Location = System::Drawing::Point(64, 119);
 			this->ADC2->Name = L"ADC2";
 			this->ADC2->Size = System::Drawing::Size(57, 20);
 			this->ADC2->TabIndex = 8;
@@ -301,7 +318,7 @@ namespace Open8055Demo {
 			// 
 			this->I1->AutoSize = true;
 			this->I1->Enabled = false;
-			this->I1->Location = System::Drawing::Point(41, 146);
+			this->I1->Location = System::Drawing::Point(64, 146);
 			this->I1->Name = L"I1";
 			this->I1->Size = System::Drawing::Size(15, 14);
 			this->I1->TabIndex = 10;
@@ -319,7 +336,7 @@ namespace Open8055Demo {
 			// label6
 			// 
 			this->label6->AutoSize = true;
-			this->label6->Location = System::Drawing::Point(62, 146);
+			this->label6->Location = System::Drawing::Point(85, 146);
 			this->label6->Name = L"label6";
 			this->label6->Size = System::Drawing::Size(47, 13);
 			this->label6->TabIndex = 12;
@@ -328,7 +345,7 @@ namespace Open8055Demo {
 			// Counter1
 			// 
 			this->Counter1->Enabled = false;
-			this->Counter1->Location = System::Drawing::Point(115, 143);
+			this->Counter1->Location = System::Drawing::Point(138, 143);
 			this->Counter1->Name = L"Counter1";
 			this->Counter1->Size = System::Drawing::Size(57, 20);
 			this->Counter1->TabIndex = 13;
@@ -338,7 +355,7 @@ namespace Open8055Demo {
 			// label7
 			// 
 			this->label7->AutoSize = true;
-			this->label7->Location = System::Drawing::Point(230, 146);
+			this->label7->Location = System::Drawing::Point(253, 146);
 			this->label7->Name = L"label7";
 			this->label7->Size = System::Drawing::Size(82, 13);
 			this->label7->TabIndex = 14;
@@ -346,7 +363,7 @@ namespace Open8055Demo {
 			// 
 			// Debounce1
 			// 
-			this->Debounce1->Location = System::Drawing::Point(318, 143);
+			this->Debounce1->Location = System::Drawing::Point(341, 143);
 			this->Debounce1->Name = L"Debounce1";
 			this->Debounce1->Size = System::Drawing::Size(57, 20);
 			this->Debounce1->TabIndex = 15;
@@ -355,7 +372,7 @@ namespace Open8055Demo {
 			// 
 			// SetDebounce1
 			// 
-			this->SetDebounce1->Location = System::Drawing::Point(381, 141);
+			this->SetDebounce1->Location = System::Drawing::Point(404, 141);
 			this->SetDebounce1->Name = L"SetDebounce1";
 			this->SetDebounce1->Size = System::Drawing::Size(32, 23);
 			this->SetDebounce1->TabIndex = 16;
@@ -376,7 +393,7 @@ namespace Open8055Demo {
 			// 
 			this->I2->AutoSize = true;
 			this->I2->Enabled = false;
-			this->I2->Location = System::Drawing::Point(41, 172);
+			this->I2->Location = System::Drawing::Point(64, 172);
 			this->I2->Name = L"I2";
 			this->I2->Size = System::Drawing::Size(15, 14);
 			this->I2->TabIndex = 18;
@@ -385,7 +402,7 @@ namespace Open8055Demo {
 			// Counter2
 			// 
 			this->Counter2->Enabled = false;
-			this->Counter2->Location = System::Drawing::Point(115, 169);
+			this->Counter2->Location = System::Drawing::Point(138, 169);
 			this->Counter2->Name = L"Counter2";
 			this->Counter2->Size = System::Drawing::Size(57, 20);
 			this->Counter2->TabIndex = 19;
@@ -395,7 +412,7 @@ namespace Open8055Demo {
 			// label9
 			// 
 			this->label9->AutoSize = true;
-			this->label9->Location = System::Drawing::Point(62, 172);
+			this->label9->Location = System::Drawing::Point(85, 172);
 			this->label9->Name = L"label9";
 			this->label9->Size = System::Drawing::Size(47, 13);
 			this->label9->TabIndex = 20;
@@ -404,7 +421,7 @@ namespace Open8055Demo {
 			// label10
 			// 
 			this->label10->AutoSize = true;
-			this->label10->Location = System::Drawing::Point(230, 172);
+			this->label10->Location = System::Drawing::Point(253, 172);
 			this->label10->Name = L"label10";
 			this->label10->Size = System::Drawing::Size(82, 13);
 			this->label10->TabIndex = 21;
@@ -412,7 +429,7 @@ namespace Open8055Demo {
 			// 
 			// Debounce2
 			// 
-			this->Debounce2->Location = System::Drawing::Point(318, 169);
+			this->Debounce2->Location = System::Drawing::Point(341, 169);
 			this->Debounce2->Name = L"Debounce2";
 			this->Debounce2->Size = System::Drawing::Size(57, 20);
 			this->Debounce2->TabIndex = 22;
@@ -421,7 +438,7 @@ namespace Open8055Demo {
 			// 
 			// SetDebounce2
 			// 
-			this->SetDebounce2->Location = System::Drawing::Point(381, 167);
+			this->SetDebounce2->Location = System::Drawing::Point(404, 167);
 			this->SetDebounce2->Name = L"SetDebounce2";
 			this->SetDebounce2->Size = System::Drawing::Size(32, 23);
 			this->SetDebounce2->TabIndex = 23;
@@ -431,7 +448,7 @@ namespace Open8055Demo {
 			// 
 			// SetDebounce3
 			// 
-			this->SetDebounce3->Location = System::Drawing::Point(381, 194);
+			this->SetDebounce3->Location = System::Drawing::Point(404, 194);
 			this->SetDebounce3->Name = L"SetDebounce3";
 			this->SetDebounce3->Size = System::Drawing::Size(32, 23);
 			this->SetDebounce3->TabIndex = 30;
@@ -441,7 +458,7 @@ namespace Open8055Demo {
 			// 
 			// Debounce3
 			// 
-			this->Debounce3->Location = System::Drawing::Point(318, 195);
+			this->Debounce3->Location = System::Drawing::Point(341, 195);
 			this->Debounce3->Name = L"Debounce3";
 			this->Debounce3->Size = System::Drawing::Size(57, 20);
 			this->Debounce3->TabIndex = 29;
@@ -451,7 +468,7 @@ namespace Open8055Demo {
 			// label11
 			// 
 			this->label11->AutoSize = true;
-			this->label11->Location = System::Drawing::Point(230, 198);
+			this->label11->Location = System::Drawing::Point(253, 198);
 			this->label11->Name = L"label11";
 			this->label11->Size = System::Drawing::Size(82, 13);
 			this->label11->TabIndex = 28;
@@ -460,7 +477,7 @@ namespace Open8055Demo {
 			// Counter3
 			// 
 			this->Counter3->Enabled = false;
-			this->Counter3->Location = System::Drawing::Point(115, 195);
+			this->Counter3->Location = System::Drawing::Point(138, 195);
 			this->Counter3->Name = L"Counter3";
 			this->Counter3->Size = System::Drawing::Size(57, 20);
 			this->Counter3->TabIndex = 27;
@@ -470,7 +487,7 @@ namespace Open8055Demo {
 			// label12
 			// 
 			this->label12->AutoSize = true;
-			this->label12->Location = System::Drawing::Point(62, 198);
+			this->label12->Location = System::Drawing::Point(85, 198);
 			this->label12->Name = L"label12";
 			this->label12->Size = System::Drawing::Size(47, 13);
 			this->label12->TabIndex = 26;
@@ -489,7 +506,7 @@ namespace Open8055Demo {
 			// 
 			this->I3->AutoSize = true;
 			this->I3->Enabled = false;
-			this->I3->Location = System::Drawing::Point(41, 199);
+			this->I3->Location = System::Drawing::Point(64, 199);
 			this->I3->Name = L"I3";
 			this->I3->Size = System::Drawing::Size(15, 14);
 			this->I3->TabIndex = 24;
@@ -497,7 +514,7 @@ namespace Open8055Demo {
 			// 
 			// SetDebounce4
 			// 
-			this->SetDebounce4->Location = System::Drawing::Point(381, 219);
+			this->SetDebounce4->Location = System::Drawing::Point(404, 219);
 			this->SetDebounce4->Name = L"SetDebounce4";
 			this->SetDebounce4->Size = System::Drawing::Size(32, 23);
 			this->SetDebounce4->TabIndex = 37;
@@ -507,7 +524,7 @@ namespace Open8055Demo {
 			// 
 			// Debounce4
 			// 
-			this->Debounce4->Location = System::Drawing::Point(318, 221);
+			this->Debounce4->Location = System::Drawing::Point(341, 221);
 			this->Debounce4->Name = L"Debounce4";
 			this->Debounce4->Size = System::Drawing::Size(57, 20);
 			this->Debounce4->TabIndex = 36;
@@ -517,7 +534,7 @@ namespace Open8055Demo {
 			// label14
 			// 
 			this->label14->AutoSize = true;
-			this->label14->Location = System::Drawing::Point(230, 224);
+			this->label14->Location = System::Drawing::Point(253, 224);
 			this->label14->Name = L"label14";
 			this->label14->Size = System::Drawing::Size(82, 13);
 			this->label14->TabIndex = 35;
@@ -526,7 +543,7 @@ namespace Open8055Demo {
 			// Counter4
 			// 
 			this->Counter4->Enabled = false;
-			this->Counter4->Location = System::Drawing::Point(115, 221);
+			this->Counter4->Location = System::Drawing::Point(138, 221);
 			this->Counter4->Name = L"Counter4";
 			this->Counter4->Size = System::Drawing::Size(57, 20);
 			this->Counter4->TabIndex = 34;
@@ -536,7 +553,7 @@ namespace Open8055Demo {
 			// label15
 			// 
 			this->label15->AutoSize = true;
-			this->label15->Location = System::Drawing::Point(62, 224);
+			this->label15->Location = System::Drawing::Point(85, 224);
 			this->label15->Name = L"label15";
 			this->label15->Size = System::Drawing::Size(47, 13);
 			this->label15->TabIndex = 33;
@@ -555,7 +572,7 @@ namespace Open8055Demo {
 			// 
 			this->I4->AutoSize = true;
 			this->I4->Enabled = false;
-			this->I4->Location = System::Drawing::Point(41, 224);
+			this->I4->Location = System::Drawing::Point(64, 224);
 			this->I4->Name = L"I4";
 			this->I4->Size = System::Drawing::Size(15, 14);
 			this->I4->TabIndex = 31;
@@ -563,7 +580,7 @@ namespace Open8055Demo {
 			// 
 			// SetDebounce5
 			// 
-			this->SetDebounce5->Location = System::Drawing::Point(381, 245);
+			this->SetDebounce5->Location = System::Drawing::Point(404, 245);
 			this->SetDebounce5->Name = L"SetDebounce5";
 			this->SetDebounce5->Size = System::Drawing::Size(32, 23);
 			this->SetDebounce5->TabIndex = 44;
@@ -573,7 +590,7 @@ namespace Open8055Demo {
 			// 
 			// Debounce5
 			// 
-			this->Debounce5->Location = System::Drawing::Point(318, 247);
+			this->Debounce5->Location = System::Drawing::Point(341, 247);
 			this->Debounce5->Name = L"Debounce5";
 			this->Debounce5->Size = System::Drawing::Size(57, 20);
 			this->Debounce5->TabIndex = 43;
@@ -583,7 +600,7 @@ namespace Open8055Demo {
 			// label17
 			// 
 			this->label17->AutoSize = true;
-			this->label17->Location = System::Drawing::Point(230, 250);
+			this->label17->Location = System::Drawing::Point(253, 250);
 			this->label17->Name = L"label17";
 			this->label17->Size = System::Drawing::Size(82, 13);
 			this->label17->TabIndex = 42;
@@ -592,7 +609,7 @@ namespace Open8055Demo {
 			// Counter5
 			// 
 			this->Counter5->Enabled = false;
-			this->Counter5->Location = System::Drawing::Point(115, 247);
+			this->Counter5->Location = System::Drawing::Point(138, 247);
 			this->Counter5->Name = L"Counter5";
 			this->Counter5->Size = System::Drawing::Size(57, 20);
 			this->Counter5->TabIndex = 41;
@@ -602,7 +619,7 @@ namespace Open8055Demo {
 			// label18
 			// 
 			this->label18->AutoSize = true;
-			this->label18->Location = System::Drawing::Point(62, 250);
+			this->label18->Location = System::Drawing::Point(85, 250);
 			this->label18->Name = L"label18";
 			this->label18->Size = System::Drawing::Size(47, 13);
 			this->label18->TabIndex = 40;
@@ -621,7 +638,7 @@ namespace Open8055Demo {
 			// 
 			this->I5->AutoSize = true;
 			this->I5->Enabled = false;
-			this->I5->Location = System::Drawing::Point(41, 250);
+			this->I5->Location = System::Drawing::Point(64, 250);
 			this->I5->Name = L"I5";
 			this->I5->Size = System::Drawing::Size(15, 14);
 			this->I5->TabIndex = 38;
@@ -629,7 +646,7 @@ namespace Open8055Demo {
 			// 
 			// CounterReset1
 			// 
-			this->CounterReset1->Location = System::Drawing::Point(178, 141);
+			this->CounterReset1->Location = System::Drawing::Point(201, 141);
 			this->CounterReset1->Name = L"CounterReset1";
 			this->CounterReset1->Size = System::Drawing::Size(46, 23);
 			this->CounterReset1->TabIndex = 45;
@@ -639,7 +656,7 @@ namespace Open8055Demo {
 			// 
 			// CounterReset5
 			// 
-			this->CounterReset5->Location = System::Drawing::Point(178, 245);
+			this->CounterReset5->Location = System::Drawing::Point(201, 245);
 			this->CounterReset5->Name = L"CounterReset5";
 			this->CounterReset5->Size = System::Drawing::Size(46, 23);
 			this->CounterReset5->TabIndex = 46;
@@ -649,7 +666,7 @@ namespace Open8055Demo {
 			// 
 			// CounterReset4
 			// 
-			this->CounterReset4->Location = System::Drawing::Point(178, 219);
+			this->CounterReset4->Location = System::Drawing::Point(201, 219);
 			this->CounterReset4->Name = L"CounterReset4";
 			this->CounterReset4->Size = System::Drawing::Size(46, 23);
 			this->CounterReset4->TabIndex = 47;
@@ -659,7 +676,7 @@ namespace Open8055Demo {
 			// 
 			// CounterReset3
 			// 
-			this->CounterReset3->Location = System::Drawing::Point(178, 194);
+			this->CounterReset3->Location = System::Drawing::Point(201, 194);
 			this->CounterReset3->Name = L"CounterReset3";
 			this->CounterReset3->Size = System::Drawing::Size(46, 23);
 			this->CounterReset3->TabIndex = 48;
@@ -669,7 +686,7 @@ namespace Open8055Demo {
 			// 
 			// CounterReset2
 			// 
-			this->CounterReset2->Location = System::Drawing::Point(178, 167);
+			this->CounterReset2->Location = System::Drawing::Point(201, 167);
 			this->CounterReset2->Name = L"CounterReset2";
 			this->CounterReset2->Size = System::Drawing::Size(46, 23);
 			this->CounterReset2->TabIndex = 49;
@@ -682,7 +699,7 @@ namespace Open8055Demo {
 			this->InputMode1->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
 			this->InputMode1->FormattingEnabled = true;
 			this->InputMode1->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Normal", L"Frequency"});
-			this->InputMode1->Location = System::Drawing::Point(419, 143);
+			this->InputMode1->Location = System::Drawing::Point(442, 143);
 			this->InputMode1->Name = L"InputMode1";
 			this->InputMode1->Size = System::Drawing::Size(121, 21);
 			this->InputMode1->TabIndex = 50;
@@ -693,7 +710,7 @@ namespace Open8055Demo {
 			this->InputMode2->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
 			this->InputMode2->FormattingEnabled = true;
 			this->InputMode2->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Normal", L"Frequency"});
-			this->InputMode2->Location = System::Drawing::Point(419, 169);
+			this->InputMode2->Location = System::Drawing::Point(442, 169);
 			this->InputMode2->Name = L"InputMode2";
 			this->InputMode2->Size = System::Drawing::Size(121, 21);
 			this->InputMode2->TabIndex = 51;
@@ -704,7 +721,7 @@ namespace Open8055Demo {
 			this->InputMode3->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
 			this->InputMode3->FormattingEnabled = true;
 			this->InputMode3->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Normal", L"Frequency"});
-			this->InputMode3->Location = System::Drawing::Point(419, 196);
+			this->InputMode3->Location = System::Drawing::Point(442, 196);
 			this->InputMode3->Name = L"InputMode3";
 			this->InputMode3->Size = System::Drawing::Size(121, 21);
 			this->InputMode3->TabIndex = 52;
@@ -715,7 +732,7 @@ namespace Open8055Demo {
 			this->InputMode4->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
 			this->InputMode4->FormattingEnabled = true;
 			this->InputMode4->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Normal", L"Frequency"});
-			this->InputMode4->Location = System::Drawing::Point(419, 220);
+			this->InputMode4->Location = System::Drawing::Point(442, 220);
 			this->InputMode4->Name = L"InputMode4";
 			this->InputMode4->Size = System::Drawing::Size(121, 21);
 			this->InputMode4->TabIndex = 53;
@@ -726,7 +743,7 @@ namespace Open8055Demo {
 			this->InputMode5->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
 			this->InputMode5->FormattingEnabled = true;
 			this->InputMode5->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Normal", L"Frequency"});
-			this->InputMode5->Location = System::Drawing::Point(419, 246);
+			this->InputMode5->Location = System::Drawing::Point(442, 246);
 			this->InputMode5->Name = L"InputMode5";
 			this->InputMode5->Size = System::Drawing::Size(121, 21);
 			this->InputMode5->TabIndex = 54;
@@ -734,7 +751,7 @@ namespace Open8055Demo {
 			// 
 			// ADCBar1
 			// 
-			this->ADCBar1->Location = System::Drawing::Point(115, 93);
+			this->ADCBar1->Location = System::Drawing::Point(138, 93);
 			this->ADCBar1->Maximum = 1023;
 			this->ADCBar1->Name = L"ADCBar1";
 			this->ADCBar1->Size = System::Drawing::Size(512, 20);
@@ -743,18 +760,82 @@ namespace Open8055Demo {
 			// 
 			// ADCBar2
 			// 
-			this->ADCBar2->Location = System::Drawing::Point(115, 119);
+			this->ADCBar2->Location = System::Drawing::Point(138, 119);
 			this->ADCBar2->Maximum = 1023;
 			this->ADCBar2->Name = L"ADCBar2";
 			this->ADCBar2->Size = System::Drawing::Size(512, 20);
 			this->ADCBar2->Style = System::Windows::Forms::ProgressBarStyle::Continuous;
 			this->ADCBar2->TabIndex = 56;
 			// 
+			// label20
+			// 
+			this->label20->AutoSize = true;
+			this->label20->Location = System::Drawing::Point(12, 287);
+			this->label20->Name = L"label20";
+			this->label20->Size = System::Drawing::Size(43, 13);
+			this->label20->TabIndex = 57;
+			this->label20->Text = L"PWM1:";
+			// 
+			// PWM1
+			// 
+			this->PWM1->Enabled = false;
+			this->PWM1->Location = System::Drawing::Point(64, 284);
+			this->PWM1->Name = L"PWM1";
+			this->PWM1->Size = System::Drawing::Size(57, 20);
+			this->PWM1->TabIndex = 58;
+			this->PWM1->Text = L"0";
+			this->PWM1->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
+			// 
+			// PWM2
+			// 
+			this->PWM2->Enabled = false;
+			this->PWM2->Location = System::Drawing::Point(64, 313);
+			this->PWM2->Name = L"PWM2";
+			this->PWM2->Size = System::Drawing::Size(57, 20);
+			this->PWM2->TabIndex = 61;
+			this->PWM2->Text = L"0";
+			this->PWM2->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
+			// 
+			// label21
+			// 
+			this->label21->AutoSize = true;
+			this->label21->Location = System::Drawing::Point(12, 316);
+			this->label21->Name = L"label21";
+			this->label21->Size = System::Drawing::Size(43, 13);
+			this->label21->TabIndex = 60;
+			this->label21->Text = L"PWM2:";
+			// 
+			// PWMBar2
+			// 
+			this->PWMBar2->Location = System::Drawing::Point(138, 313);
+			this->PWMBar2->Maximum = 1032;
+			this->PWMBar2->Name = L"PWMBar2";
+			this->PWMBar2->Size = System::Drawing::Size(512, 20);
+			this->PWMBar2->TabIndex = 62;
+			this->PWMBar2->TabStop = true;
+			this->PWMBar2->Scroll += gcnew System::Windows::Forms::ScrollEventHandler(this, &Form1::PWMBar2_Scroll);
+			// 
+			// PWMBar1
+			// 
+			this->PWMBar1->Location = System::Drawing::Point(138, 284);
+			this->PWMBar1->Maximum = 1032;
+			this->PWMBar1->Name = L"PWMBar1";
+			this->PWMBar1->Size = System::Drawing::Size(512, 20);
+			this->PWMBar1->TabIndex = 63;
+			this->PWMBar1->TabStop = true;
+			this->PWMBar1->Scroll += gcnew System::Windows::Forms::ScrollEventHandler(this, &Form1::PWMBar1_Scroll);
+			// 
 			// Form1
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
 			this->ClientSize = System::Drawing::Size(892, 673);
+			this->Controls->Add(this->PWMBar1);
+			this->Controls->Add(this->PWMBar2);
+			this->Controls->Add(this->PWM2);
+			this->Controls->Add(this->label21);
+			this->Controls->Add(this->PWM1);
+			this->Controls->Add(this->label20);
 			this->Controls->Add(this->ADCBar2);
 			this->Controls->Add(this->ADCBar1);
 			this->Controls->Add(this->InputMode5);
@@ -872,6 +953,11 @@ namespace Open8055Demo {
 					 Debounce3->Text = Open8055_GetDebounce(cardHandle, 2).ToString("f1");
 					 Debounce4->Text = Open8055_GetDebounce(cardHandle, 3).ToString("f1");
 					 Debounce5->Text = Open8055_GetDebounce(cardHandle, 4).ToString("f1");
+
+					 PWM1->Text = Open8055_GetPWM(cardHandle, 0).ToString("d");
+					 PWMBar1->Value = Open8055_GetPWM(cardHandle, 0);
+					 PWM2->Text = Open8055_GetPWM(cardHandle, 1).ToString("d");
+					 PWMBar2->Value = Open8055_GetPWM(cardHandle, 1);
 				 }
 			 }
 	private: System::Void timer1_Tick(System::Object^  sender, System::EventArgs^  e) {
@@ -995,6 +1081,20 @@ private: System::Void InputMode3_SelectedIndexChanged(System::Object^  sender, S
 private: System::Void InputMode4_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
 		 }
 private: System::Void InputMode5_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+		 }
+private: System::Void PWMBar1_Scroll(System::Object^  sender, System::Windows::Forms::ScrollEventArgs^  e) {
+			 if (cardHandle != NULL)
+			 {
+				 Open8055_SetPWM(cardHandle, 0, PWMBar1->Value);
+				 PWM1->Text = Open8055_GetPWM(cardHandle, 0).ToString("d");
+			 }
+		 }
+private: System::Void PWMBar2_Scroll(System::Object^  sender, System::Windows::Forms::ScrollEventArgs^  e) {
+			 if (cardHandle != NULL)
+			 {
+				 Open8055_SetPWM(cardHandle, 1, PWMBar2->Value);
+				 PWM2->Text = Open8055_GetPWM(cardHandle, 1).ToString("d");
+			 }
 		 }
 };
 }
