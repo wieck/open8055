@@ -106,6 +106,17 @@ namespace Open8055Demo {
 	private: System::Windows::Forms::Button^  CounterReset4;
 	private: System::Windows::Forms::Button^  CounterReset3;
 	private: System::Windows::Forms::Button^  CounterReset2;
+	private: System::Windows::Forms::ComboBox^  InputMode1;
+	private: System::Windows::Forms::ComboBox^  InputMode2;
+	private: System::Windows::Forms::ComboBox^  InputMode3;
+	private: System::Windows::Forms::ComboBox^  InputMode4;
+	private: System::Windows::Forms::ComboBox^  InputMode5;
+	private: System::Windows::Forms::ProgressBar^  ADCBar1;
+	private: System::Windows::Forms::ProgressBar^  ADCBar2;
+
+
+
+
 
 
 
@@ -180,6 +191,13 @@ namespace Open8055Demo {
 			this->CounterReset4 = (gcnew System::Windows::Forms::Button());
 			this->CounterReset3 = (gcnew System::Windows::Forms::Button());
 			this->CounterReset2 = (gcnew System::Windows::Forms::Button());
+			this->InputMode1 = (gcnew System::Windows::Forms::ComboBox());
+			this->InputMode2 = (gcnew System::Windows::Forms::ComboBox());
+			this->InputMode3 = (gcnew System::Windows::Forms::ComboBox());
+			this->InputMode4 = (gcnew System::Windows::Forms::ComboBox());
+			this->InputMode5 = (gcnew System::Windows::Forms::ComboBox());
+			this->ADCBar1 = (gcnew System::Windows::Forms::ProgressBar());
+			this->ADCBar2 = (gcnew System::Windows::Forms::ProgressBar());
 			this->SuspendLayout();
 			// 
 			// cardDestination
@@ -659,11 +677,91 @@ namespace Open8055Demo {
 			this->CounterReset2->UseVisualStyleBackColor = true;
 			this->CounterReset2->Click += gcnew System::EventHandler(this, &Form1::CounterReset2_Click);
 			// 
+			// InputMode1
+			// 
+			this->InputMode1->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
+			this->InputMode1->FormattingEnabled = true;
+			this->InputMode1->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Normal", L"Frequency"});
+			this->InputMode1->Location = System::Drawing::Point(419, 143);
+			this->InputMode1->Name = L"InputMode1";
+			this->InputMode1->Size = System::Drawing::Size(121, 21);
+			this->InputMode1->TabIndex = 50;
+			this->InputMode1->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::InputMode1_SelectedIndexChanged);
+			// 
+			// InputMode2
+			// 
+			this->InputMode2->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
+			this->InputMode2->FormattingEnabled = true;
+			this->InputMode2->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Normal", L"Frequency"});
+			this->InputMode2->Location = System::Drawing::Point(419, 169);
+			this->InputMode2->Name = L"InputMode2";
+			this->InputMode2->Size = System::Drawing::Size(121, 21);
+			this->InputMode2->TabIndex = 51;
+			this->InputMode2->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::InputMode2_SelectedIndexChanged);
+			// 
+			// InputMode3
+			// 
+			this->InputMode3->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
+			this->InputMode3->FormattingEnabled = true;
+			this->InputMode3->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Normal", L"Frequency"});
+			this->InputMode3->Location = System::Drawing::Point(419, 196);
+			this->InputMode3->Name = L"InputMode3";
+			this->InputMode3->Size = System::Drawing::Size(121, 21);
+			this->InputMode3->TabIndex = 52;
+			this->InputMode3->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::InputMode3_SelectedIndexChanged);
+			// 
+			// InputMode4
+			// 
+			this->InputMode4->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
+			this->InputMode4->FormattingEnabled = true;
+			this->InputMode4->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Normal", L"Frequency"});
+			this->InputMode4->Location = System::Drawing::Point(419, 220);
+			this->InputMode4->Name = L"InputMode4";
+			this->InputMode4->Size = System::Drawing::Size(121, 21);
+			this->InputMode4->TabIndex = 53;
+			this->InputMode4->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::InputMode4_SelectedIndexChanged);
+			// 
+			// InputMode5
+			// 
+			this->InputMode5->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
+			this->InputMode5->FormattingEnabled = true;
+			this->InputMode5->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Normal", L"Frequency"});
+			this->InputMode5->Location = System::Drawing::Point(419, 246);
+			this->InputMode5->Name = L"InputMode5";
+			this->InputMode5->Size = System::Drawing::Size(121, 21);
+			this->InputMode5->TabIndex = 54;
+			this->InputMode5->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::InputMode5_SelectedIndexChanged);
+			// 
+			// ADCBar1
+			// 
+			this->ADCBar1->Location = System::Drawing::Point(115, 93);
+			this->ADCBar1->Maximum = 1023;
+			this->ADCBar1->Name = L"ADCBar1";
+			this->ADCBar1->Size = System::Drawing::Size(512, 20);
+			this->ADCBar1->Style = System::Windows::Forms::ProgressBarStyle::Continuous;
+			this->ADCBar1->TabIndex = 55;
+			// 
+			// ADCBar2
+			// 
+			this->ADCBar2->Location = System::Drawing::Point(115, 119);
+			this->ADCBar2->Maximum = 1023;
+			this->ADCBar2->Name = L"ADCBar2";
+			this->ADCBar2->Size = System::Drawing::Size(512, 20);
+			this->ADCBar2->Style = System::Windows::Forms::ProgressBarStyle::Continuous;
+			this->ADCBar2->TabIndex = 56;
+			// 
 			// Form1
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
-			this->ClientSize = System::Drawing::Size(892, 373);
+			this->ClientSize = System::Drawing::Size(892, 673);
+			this->Controls->Add(this->ADCBar2);
+			this->Controls->Add(this->ADCBar1);
+			this->Controls->Add(this->InputMode5);
+			this->Controls->Add(this->InputMode4);
+			this->Controls->Add(this->InputMode3);
+			this->Controls->Add(this->InputMode2);
+			this->Controls->Add(this->InputMode1);
 			this->Controls->Add(this->CounterReset2);
 			this->Controls->Add(this->CounterReset3);
 			this->Controls->Add(this->CounterReset4);
@@ -727,6 +825,11 @@ namespace Open8055Demo {
 
 
 	private: System::Void Form1_Load(System::Object^  sender, System::EventArgs^  e) {
+				 InputMode1->SelectedIndex = 0;
+				 InputMode2->SelectedIndex = 0;
+				 InputMode3->SelectedIndex = 0;
+				 InputMode4->SelectedIndex = 0;
+				 InputMode5->SelectedIndex = 0;
 			 }
 	private: System::Void Form1_Destroy(void) {
 				 if (cardHandle != NULL)
@@ -792,8 +895,10 @@ namespace Open8055Demo {
 				 I4->Checked = (value & 0x08) != 0;
 				 I5->Checked = (value & 0x10) != 0;
 
-				 ADC1->Text = Open8055_GetADC(cardHandle, 0).ToString();
-				 ADC2->Text = Open8055_GetADC(cardHandle, 1).ToString();
+				 ADCBar1->Value = Open8055_GetADC(cardHandle, 0);
+				 ADC1->Text = ADCBar1->Value.ToString();
+				 ADCBar2->Value = Open8055_GetADC(cardHandle, 1);
+				 ADC2->Text = ADCBar2->Value.ToString();
 
 				 Counter1->Text = Open8055_GetCounter(cardHandle, 0).ToString();
 				 Counter2->Text = Open8055_GetCounter(cardHandle, 1).ToString();
@@ -880,6 +985,16 @@ private: System::Void SetDebounce5_Click(System::Object^  sender, System::EventA
 				 Open8055_SetDebounce(cardHandle, 4, value);
 			 } catch (...) {}
 			 Debounce5->Text = Open8055_GetDebounce(cardHandle, 4).ToString("F1");
+		 }
+private: System::Void InputMode1_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+		 }
+private: System::Void InputMode2_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+		 }
+private: System::Void InputMode3_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+		 }
+private: System::Void InputMode4_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+		 }
+private: System::Void InputMode5_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
 		 }
 };
 }
