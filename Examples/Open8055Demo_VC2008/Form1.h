@@ -41,6 +41,8 @@ namespace Open8055Demo {
 			{
 				delete components;
 			}
+
+			Form1_Destroy();
 		}
 	private: System::Windows::Forms::TextBox^  cardDestination;
 	protected: 
@@ -236,7 +238,7 @@ namespace Open8055Demo {
 			// 
 			// timer1
 			// 
-			this->timer1->Interval = 20;
+			this->timer1->Interval = 1;
 			this->timer1->Tick += gcnew System::EventHandler(this, &Form1::timer1_Tick);
 			// 
 			// label3
@@ -312,7 +314,7 @@ namespace Open8055Demo {
 			this->Counter1->Name = L"Counter1";
 			this->Counter1->Size = System::Drawing::Size(57, 20);
 			this->Counter1->TabIndex = 13;
-			this->Counter1->Text = L"0";
+			this->Counter1->Text = L"\?";
 			this->Counter1->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// label7
@@ -330,7 +332,7 @@ namespace Open8055Demo {
 			this->Debounce1->Name = L"Debounce1";
 			this->Debounce1->Size = System::Drawing::Size(57, 20);
 			this->Debounce1->TabIndex = 15;
-			this->Debounce1->Text = L"2.0";
+			this->Debounce1->Text = L"\?";
 			this->Debounce1->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// SetDebounce1
@@ -341,6 +343,7 @@ namespace Open8055Demo {
 			this->SetDebounce1->TabIndex = 16;
 			this->SetDebounce1->Text = L"Set";
 			this->SetDebounce1->UseVisualStyleBackColor = true;
+			this->SetDebounce1->Click += gcnew System::EventHandler(this, &Form1::SetDebounce1_Click);
 			// 
 			// label8
 			// 
@@ -368,7 +371,7 @@ namespace Open8055Demo {
 			this->Counter2->Name = L"Counter2";
 			this->Counter2->Size = System::Drawing::Size(57, 20);
 			this->Counter2->TabIndex = 19;
-			this->Counter2->Text = L"0";
+			this->Counter2->Text = L"\?";
 			this->Counter2->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// label9
@@ -395,7 +398,7 @@ namespace Open8055Demo {
 			this->Debounce2->Name = L"Debounce2";
 			this->Debounce2->Size = System::Drawing::Size(57, 20);
 			this->Debounce2->TabIndex = 22;
-			this->Debounce2->Text = L"2.0";
+			this->Debounce2->Text = L"\?";
 			this->Debounce2->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// SetDebounce2
@@ -406,6 +409,7 @@ namespace Open8055Demo {
 			this->SetDebounce2->TabIndex = 23;
 			this->SetDebounce2->Text = L"Set";
 			this->SetDebounce2->UseVisualStyleBackColor = true;
+			this->SetDebounce2->Click += gcnew System::EventHandler(this, &Form1::SetDebounce2_Click);
 			// 
 			// SetDebounce3
 			// 
@@ -415,6 +419,7 @@ namespace Open8055Demo {
 			this->SetDebounce3->TabIndex = 30;
 			this->SetDebounce3->Text = L"Set";
 			this->SetDebounce3->UseVisualStyleBackColor = true;
+			this->SetDebounce3->Click += gcnew System::EventHandler(this, &Form1::SetDebounce3_Click);
 			// 
 			// Debounce3
 			// 
@@ -422,7 +427,7 @@ namespace Open8055Demo {
 			this->Debounce3->Name = L"Debounce3";
 			this->Debounce3->Size = System::Drawing::Size(57, 20);
 			this->Debounce3->TabIndex = 29;
-			this->Debounce3->Text = L"2.0";
+			this->Debounce3->Text = L"\?";
 			this->Debounce3->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// label11
@@ -441,7 +446,7 @@ namespace Open8055Demo {
 			this->Counter3->Name = L"Counter3";
 			this->Counter3->Size = System::Drawing::Size(57, 20);
 			this->Counter3->TabIndex = 27;
-			this->Counter3->Text = L"0";
+			this->Counter3->Text = L"\?";
 			this->Counter3->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// label12
@@ -480,6 +485,7 @@ namespace Open8055Demo {
 			this->SetDebounce4->TabIndex = 37;
 			this->SetDebounce4->Text = L"Set";
 			this->SetDebounce4->UseVisualStyleBackColor = true;
+			this->SetDebounce4->Click += gcnew System::EventHandler(this, &Form1::SetDebounce4_Click);
 			// 
 			// Debounce4
 			// 
@@ -487,7 +493,7 @@ namespace Open8055Demo {
 			this->Debounce4->Name = L"Debounce4";
 			this->Debounce4->Size = System::Drawing::Size(57, 20);
 			this->Debounce4->TabIndex = 36;
-			this->Debounce4->Text = L"2.0";
+			this->Debounce4->Text = L"\?";
 			this->Debounce4->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// label14
@@ -506,7 +512,7 @@ namespace Open8055Demo {
 			this->Counter4->Name = L"Counter4";
 			this->Counter4->Size = System::Drawing::Size(57, 20);
 			this->Counter4->TabIndex = 34;
-			this->Counter4->Text = L"0";
+			this->Counter4->Text = L"\?";
 			this->Counter4->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// label15
@@ -545,6 +551,7 @@ namespace Open8055Demo {
 			this->SetDebounce5->TabIndex = 44;
 			this->SetDebounce5->Text = L"Set";
 			this->SetDebounce5->UseVisualStyleBackColor = true;
+			this->SetDebounce5->Click += gcnew System::EventHandler(this, &Form1::SetDebounce5_Click);
 			// 
 			// Debounce5
 			// 
@@ -552,7 +559,7 @@ namespace Open8055Demo {
 			this->Debounce5->Name = L"Debounce5";
 			this->Debounce5->Size = System::Drawing::Size(57, 20);
 			this->Debounce5->TabIndex = 43;
-			this->Debounce5->Text = L"2.0";
+			this->Debounce5->Text = L"\?";
 			this->Debounce5->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// label17
@@ -571,7 +578,7 @@ namespace Open8055Demo {
 			this->Counter5->Name = L"Counter5";
 			this->Counter5->Size = System::Drawing::Size(57, 20);
 			this->Counter5->TabIndex = 41;
-			this->Counter5->Text = L"0";
+			this->Counter5->Text = L"\?";
 			this->Counter5->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// label18
@@ -610,6 +617,7 @@ namespace Open8055Demo {
 			this->CounterReset1->TabIndex = 45;
 			this->CounterReset1->Text = L"Reset";
 			this->CounterReset1->UseVisualStyleBackColor = true;
+			this->CounterReset1->Click += gcnew System::EventHandler(this, &Form1::CounterReset1_Click);
 			// 
 			// CounterReset5
 			// 
@@ -619,6 +627,7 @@ namespace Open8055Demo {
 			this->CounterReset5->TabIndex = 46;
 			this->CounterReset5->Text = L"Reset";
 			this->CounterReset5->UseVisualStyleBackColor = true;
+			this->CounterReset5->Click += gcnew System::EventHandler(this, &Form1::CounterReset5_Click);
 			// 
 			// CounterReset4
 			// 
@@ -628,6 +637,7 @@ namespace Open8055Demo {
 			this->CounterReset4->TabIndex = 47;
 			this->CounterReset4->Text = L"Reset";
 			this->CounterReset4->UseVisualStyleBackColor = true;
+			this->CounterReset4->Click += gcnew System::EventHandler(this, &Form1::CounterReset4_Click);
 			// 
 			// CounterReset3
 			// 
@@ -637,6 +647,7 @@ namespace Open8055Demo {
 			this->CounterReset3->TabIndex = 48;
 			this->CounterReset3->Text = L"Reset";
 			this->CounterReset3->UseVisualStyleBackColor = true;
+			this->CounterReset3->Click += gcnew System::EventHandler(this, &Form1::CounterReset3_Click);
 			// 
 			// CounterReset2
 			// 
@@ -646,6 +657,7 @@ namespace Open8055Demo {
 			this->CounterReset2->TabIndex = 49;
 			this->CounterReset2->Text = L"Reset";
 			this->CounterReset2->UseVisualStyleBackColor = true;
+			this->CounterReset2->Click += gcnew System::EventHandler(this, &Form1::CounterReset2_Click);
 			// 
 			// Form1
 			// 
@@ -716,6 +728,10 @@ namespace Open8055Demo {
 
 	private: System::Void Form1_Load(System::Object^  sender, System::EventArgs^  e) {
 			 }
+	private: System::Void Form1_Destroy(void) {
+				 if (cardHandle != NULL)
+					 Open8055_Close(cardHandle);
+			 }
 	private: System::Void cardDestination_TextChanged(System::Object^  sender, System::EventArgs^  e) {
 			 }
 	private: System::Void buttonConnect_Click(System::Object^  sender, System::EventArgs^  e) {
@@ -747,24 +763,124 @@ namespace Open8055Demo {
 				 } else {
 					 connectedMessage->Text = "Connected to '" + cardDestination->Text + "'";
 					 timer1->Enabled = true;
+
+					 Debounce1->Text = Open8055_GetDebounce(cardHandle, 0).ToString("f1");
+					 Debounce2->Text = Open8055_GetDebounce(cardHandle, 1).ToString("f1");
+					 Debounce3->Text = Open8055_GetDebounce(cardHandle, 2).ToString("f1");
+					 Debounce4->Text = Open8055_GetDebounce(cardHandle, 3).ToString("f1");
+					 Debounce5->Text = Open8055_GetDebounce(cardHandle, 4).ToString("f1");
 				 }
 			 }
 	private: System::Void timer1_Tick(System::Object^  sender, System::EventArgs^  e) {
-				 int	bits = Open8055_GetInputAll(cardHandle);
+				 int	value;
+			
+				 if (cardHandle == NULL)
+					 return;
 
-				 if (bits < 0)
+				 value = Open8055_GetInputAll(cardHandle);
+
+				 if (value < 0)
 				 {
 					 connectedMessage->Text = "Connection lost";
 					 timer1->Enabled = false;
-				     return;
+					 return;
 				 }
 
-				 I1->Checked = (bits & 0x01) != 0;
-				 I2->Checked = (bits & 0x02) != 0;
-				 I3->Checked = (bits & 0x04) != 0;
-				 I4->Checked = (bits & 0x08) != 0;
-				 I5->Checked = (bits & 0x10) != 0;
+				 I1->Checked = (value & 0x01) != 0;
+				 I2->Checked = (value & 0x02) != 0;
+				 I3->Checked = (value & 0x04) != 0;
+				 I4->Checked = (value & 0x08) != 0;
+				 I5->Checked = (value & 0x10) != 0;
+
+				 ADC1->Text = Open8055_GetADC(cardHandle, 0).ToString();
+				 ADC2->Text = Open8055_GetADC(cardHandle, 1).ToString();
+
+				 Counter1->Text = Open8055_GetCounter(cardHandle, 0).ToString();
+				 Counter2->Text = Open8055_GetCounter(cardHandle, 1).ToString();
+				 Counter3->Text = Open8055_GetCounter(cardHandle, 2).ToString();
+				 Counter4->Text = Open8055_GetCounter(cardHandle, 3).ToString();
+				 Counter5->Text = Open8055_GetCounter(cardHandle, 4).ToString();
 			 }
-	 };
+private: System::Void CounterReset1_Click(System::Object^  sender, System::EventArgs^  e) {
+			 if (cardHandle != NULL)
+				 Open8055_ResetCounter(cardHandle, 0);
+		 }
+private: System::Void CounterReset2_Click(System::Object^  sender, System::EventArgs^  e) {
+			 if (cardHandle != NULL)
+				 Open8055_ResetCounter(cardHandle, 1);
+		 }
+private: System::Void CounterReset3_Click(System::Object^  sender, System::EventArgs^  e) {
+			 if (cardHandle != NULL)
+				 Open8055_ResetCounter(cardHandle, 2);
+		 }
+private: System::Void CounterReset4_Click(System::Object^  sender, System::EventArgs^  e) {
+			 if (cardHandle != NULL)
+				 Open8055_ResetCounter(cardHandle, 3);
+		 }
+private: System::Void CounterReset5_Click(System::Object^  sender, System::EventArgs^  e) {
+			 if (cardHandle != NULL)
+				 Open8055_ResetCounter(cardHandle, 4);
+		 }
+private: System::Void SetDebounce1_Click(System::Object^  sender, System::EventArgs^  e) {
+			 Double	value = 0.0;
+
+			 if (cardHandle == NULL)
+				 return;
+
+			 try {
+				 value = Double::Parse(Debounce1->Text);
+				 Open8055_SetDebounce(cardHandle, 0, value);
+			 } catch (...) {}
+			 Debounce1->Text = Open8055_GetDebounce(cardHandle, 0).ToString("F1");
+		 }
+private: System::Void SetDebounce2_Click(System::Object^  sender, System::EventArgs^  e) {
+			 Double	value = 0.0;
+
+			 if (cardHandle == NULL)
+				 return;
+
+			 try {
+				 value = Double::Parse(Debounce2->Text);
+				 Open8055_SetDebounce(cardHandle, 1, value);
+			 } catch (...) {}
+			 Debounce2->Text = Open8055_GetDebounce(cardHandle, 1).ToString("F1");
+		 }
+private: System::Void SetDebounce3_Click(System::Object^  sender, System::EventArgs^  e) {
+			 Double	value = 0.0;
+
+			 if (cardHandle == NULL)
+				 return;
+
+			 try {
+				 value = Double::Parse(Debounce3->Text);
+				 Open8055_SetDebounce(cardHandle, 2, value);
+			 } catch (...) {}
+			 Debounce3->Text = Open8055_GetDebounce(cardHandle, 2).ToString("F1");
+		 }
+private: System::Void SetDebounce4_Click(System::Object^  sender, System::EventArgs^  e) {
+			 Double	value = 0.0;
+
+			 if (cardHandle == NULL)
+				 return;
+
+			 try {
+				 value = Double::Parse(Debounce4->Text);
+				 Open8055_SetDebounce(cardHandle, 3, value);
+			 } catch (...) {}
+			 Debounce4->Text = Open8055_GetDebounce(cardHandle, 3).ToString("F1");
+		 }
+private: System::Void SetDebounce5_Click(System::Object^  sender, System::EventArgs^  e) {
+			 Double	value = 0.0;
+
+			 if (cardHandle == NULL)
+				 return;
+
+			 try {
+				 value = Double::Parse(Debounce5->Text);
+				 Open8055_SetDebounce(cardHandle, 4, value);
+			 } catch (...) {}
+			 Debounce5->Text = Open8055_GetDebounce(cardHandle, 4).ToString("F1");
+		 }
+};
 }
 
