@@ -632,7 +632,9 @@ Open8055_ResetCounter(OPEN8055_HANDLE h, int port)
 	{
 		if (DeviceWrite(card, &(card->currentOutput)) < 0)
 			rc = -1;
+
 		card->pendingOutput = FALSE;
+		card->currentOutput.resetCounter = 0x00;
 	}
 	else
 	{
@@ -664,7 +666,9 @@ Open8055_ResetCounterAll(OPEN8055_HANDLE h)
 	{
 		if (DeviceWrite(card, &(card->currentOutput)) < 0)
 			rc = -1;
+
 		card->pendingOutput = FALSE;
+		card->currentOutput.resetCounter = 0x00;
 	}
 	else
 	{
@@ -724,7 +728,9 @@ Open8055_SetDebounce(OPEN8055_HANDLE h, int port, double ms)
 	{
 		if (DeviceWrite(card, &(card->currentConfig1)) < 0)
 			rc = -1;
+
 		card->pendingConfig1 = FALSE;
+		card->currentOutput.resetCounter = 0x00;
 	}
 	else
 	{
@@ -870,7 +876,9 @@ Open8055_SetOutput(OPEN8055_HANDLE h, int port, int val)
 	{
 		if (DeviceWrite(card, &(card->currentOutput)) < 0)
 			rc = -1;
+
 		card->pendingOutput = FALSE;
+		card->currentOutput.resetCounter = 0x00;
 	}
 	else
 	{
@@ -904,7 +912,9 @@ Open8055_SetOutputAll(OPEN8055_HANDLE h, int bits)
 	{
 		if (DeviceWrite(card, &(card->currentOutput)) < 0)
 			rc = -1;
+
 		card->pendingOutput = FALSE;
+		card->currentOutput.resetCounter = 0x00;
 	}
 	else
 	{
@@ -943,7 +953,9 @@ Open8055_SetPWM(OPEN8055_HANDLE h, int port, int value)
 	{
 		if (DeviceWrite(card, &(card->currentOutput)) < 0)
 			rc = -1;
+
 		card->pendingOutput = FALSE;
+		card->currentOutput.resetCounter = 0x00;
 	}
 	else
 	{
