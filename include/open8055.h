@@ -146,6 +146,9 @@ OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_SetOutputAll(OPEN8055_HANDLE h, int
 OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_SetOutputValue(OPEN8055_HANDLE h, int port, int val);
 OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_SetPWM(OPEN8055_HANDLE h, int port, int val);
 
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetModeInput(OPEN8055_HANDLE h, int port);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_SetModeInput(OPEN8055_HANDLE h, int port, int mode);
+
 
 #ifdef __cplusplus
 }

@@ -155,6 +155,9 @@ private: System::Windows::Forms::ComboBox^  OutputMode8;
 
 private: System::Windows::Forms::Label^  label29;
 private: System::Windows::Forms::CheckBox^  O8;
+private: System::Windows::Forms::Button^  buttonDisconnect;
+private: System::Windows::Forms::Button^  buttonReset;
+
 
 
 
@@ -275,6 +278,8 @@ private: System::Windows::Forms::CheckBox^  O8;
 			this->OutputMode8 = (gcnew System::Windows::Forms::ComboBox());
 			this->label29 = (gcnew System::Windows::Forms::Label());
 			this->O8 = (gcnew System::Windows::Forms::CheckBox());
+			this->buttonDisconnect = (gcnew System::Windows::Forms::Button());
+			this->buttonReset = (gcnew System::Windows::Forms::Button());
 			this->SuspendLayout();
 			// 
 			// cardDestination
@@ -1117,11 +1122,33 @@ private: System::Windows::Forms::CheckBox^  O8;
 			this->O8->UseVisualStyleBackColor = true;
 			this->O8->CheckedChanged += gcnew System::EventHandler(this, &Form1::O8_CheckedChanged);
 			// 
+			// buttonDisconnect
+			// 
+			this->buttonDisconnect->Location = System::Drawing::Point(306, 41);
+			this->buttonDisconnect->Name = L"buttonDisconnect";
+			this->buttonDisconnect->Size = System::Drawing::Size(75, 23);
+			this->buttonDisconnect->TabIndex = 88;
+			this->buttonDisconnect->Text = L"Disconnect";
+			this->buttonDisconnect->UseVisualStyleBackColor = true;
+			this->buttonDisconnect->Click += gcnew System::EventHandler(this, &Form1::buttonDisconnect_Click);
+			// 
+			// buttonReset
+			// 
+			this->buttonReset->Location = System::Drawing::Point(387, 41);
+			this->buttonReset->Name = L"buttonReset";
+			this->buttonReset->Size = System::Drawing::Size(75, 23);
+			this->buttonReset->TabIndex = 89;
+			this->buttonReset->Text = L"Reset Card";
+			this->buttonReset->UseVisualStyleBackColor = true;
+			this->buttonReset->Click += gcnew System::EventHandler(this, &Form1::buttonReset_Click);
+			// 
 			// Form1
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
 			this->ClientSize = System::Drawing::Size(892, 553);
+			this->Controls->Add(this->buttonReset);
+			this->Controls->Add(this->buttonDisconnect);
 			this->Controls->Add(this->OutputMode8);
 			this->Controls->Add(this->label29);
 			this->Controls->Add(this->O8);
@@ -1220,6 +1247,65 @@ private: System::Windows::Forms::CheckBox^  O8;
 
 	static OPEN8055_HANDLE		cardHandle = NULL;
 
+	private: int modeInputToIndex(int mode) {
+				 switch (mode)
+				 {
+					 case OPEN8055_MODE_INPUT:
+						 return 0;
+					 case OPEN8055_MODE_FREQUENCY:
+						 return 1;
+					 default:
+						 return -1;
+				 }
+			 }
+
+	private: int modeInputFromIndex(int index) {
+				 switch (index)
+				 {
+					 case 0:
+						 return OPEN8055_MODE_INPUT;
+					 case 1:
+						 return OPEN8055_MODE_FREQUENCY;
+					 default:
+						 return -1;
+				 }
+			 }
+
+	private: int modeOuputToIndex(int mode) {
+				 switch (mode)
+				 {
+					 case OPEN8055_MODE_OUTPUT:
+						 return 0;
+					 case OPEN8055_MODE_SERVO:
+						 return 1;
+					 case OPEN8055_MODE_ISERVO:
+						 return 2;
+					 default:
+						 return -1;
+				 }
+			 }
+
+	private: int modeOuputFromIndex(int index) {
+				 switch (index)
+				 {
+					 case 0:
+						 return OPEN8055_MODE_OUTPUT;
+					 case 1:
+						 return OPEN8055_MODE_SERVO;
+					 case 2: 
+						 return OPEN8055_MODE_ISERVO;
+					 default:
+						 return -1;
+				 }
+			 }
+
+	private: System::Void updateAllConfig(void) {
+				 InputMode1->SelectedIndex = modeInputToIndex(Open8055_GetModeInput(cardHandle, 0));
+				 InputMode2->SelectedIndex = modeInputToIndex(Open8055_GetModeInput(cardHandle, 1));
+				 InputMode3->SelectedIndex = modeInputToIndex(Open8055_GetModeInput(cardHandle, 2));
+				 InputMode4->SelectedIndex = modeInputToIndex(Open8055_GetModeInput(cardHandle, 3));
+				 InputMode5->SelectedIndex = modeInputToIndex(Open8055_GetModeInput(cardHandle, 4));
+			 }
 
 	private: System::Void Form1_Load(System::Object^  sender, System::EventArgs^  e) {
 				 InputMode1->SelectedIndex = 0;
@@ -1292,7 +1378,27 @@ private: System::Windows::Forms::CheckBox^  O8;
 					 O6->Checked = Open8055_GetOutput(cardHandle, 5) != 0;
 					 O7->Checked = Open8055_GetOutput(cardHandle, 6) != 0;
 					 O8->Checked = Open8055_GetOutput(cardHandle, 7) != 0;
+
+					 updateAllConfig();
 				 }
+			 }
+	private: System::Void buttonDisconnect_Click(System::Object^  sender, System::EventArgs^  e) {
+				 if (cardHandle == NULL)
+					 return;
+
+				 Open8055_Close(cardHandle);
+				 cardHandle = NULL;
+				 timer1->Enabled = false;
+				 connectedMessage->Text = "Disconnected";
+			 }
+	private: System::Void buttonReset_Click(System::Object^  sender, System::EventArgs^  e) {
+				 if (cardHandle == NULL)
+					 return;
+
+				 Open8055_Reset(cardHandle);
+				 cardHandle = NULL;
+				 timer1->Enabled = false;
+				 connectedMessage->Text = "Disconnected";
 			 }
 	private: System::Void timer1_Tick(System::Object^  sender, System::EventArgs^  e) {
 				 int	value;
@@ -1406,15 +1512,26 @@ private: System::Void SetDebounce5_Click(System::Object^  sender, System::EventA
 			 } catch (...) {}
 			 Debounce5->Text = Open8055_GetDebounce(cardHandle, 4).ToString("F1");
 		 }
+
 private: System::Void InputMode1_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+			 Open8055_SetModeInput(cardHandle, 0, modeInputFromIndex(InputMode1->SelectedIndex));
+			 updateAllConfig();
 		 }
 private: System::Void InputMode2_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+			 Open8055_SetModeInput(cardHandle, 1, modeInputFromIndex(InputMode2->SelectedIndex));
+			 updateAllConfig();
 		 }
 private: System::Void InputMode3_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+			 Open8055_SetModeInput(cardHandle, 2, modeInputFromIndex(InputMode3->SelectedIndex));
+			 updateAllConfig();
 		 }
 private: System::Void InputMode4_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+			 Open8055_SetModeInput(cardHandle, 3, modeInputFromIndex(InputMode4->SelectedIndex));
+			 updateAllConfig();
 		 }
 private: System::Void InputMode5_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+			 Open8055_SetModeInput(cardHandle, 4, modeInputFromIndex(InputMode5->SelectedIndex));
+			 updateAllConfig();
 		 }
 private: System::Void PWMBar1_Scroll(System::Object^  sender, System::Windows::Forms::ScrollEventArgs^  e) {
 			 if (cardHandle != NULL)

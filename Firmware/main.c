@@ -179,6 +179,7 @@ struct {
 	unsigned char	lastState;
 	unsigned char	currentState;
 	unsigned short	counter;
+	unsigned short	frequency;
 	unsigned short	debounceConfig;				// Debounce time in ticks/ms
 	unsigned short	debounceCounter;
 } switchStatus[5];
@@ -557,6 +558,7 @@ static void userInit(void)
 	{
 		switchStatus[i].lastState		= 0;
 		switchStatus[i].counter			= 0;
+		switchStatus[i].frequency		= 0;
 		switchStatus[i].debounceConfig	= OPEN8055_COUNTER_DEBOUNCE_DEFAULT * OPEN8055_TICKS_PER_MS;
 		switchStatus[i].debounceCounter	= 0;
 		
@@ -818,6 +820,14 @@ static void processIO(void)
 				tickSecond = 0;
 				
 				// Per 1 second code comes here
+				for (i = 0; i < 5; i++)
+				{
+					if (currentConfig1.modeInput[i] == OPEN8055_MODE_FREQUENCY)
+					{
+						switchStatus[i].frequency = switchStatus[i].counter;
+						switchStatus[i].counter = 0;
+					}	
+				}	
 			}	
 		}	
 	}	
@@ -844,14 +854,20 @@ static void processIO(void)
 		// Construct a standard input state report.
 		memset(&currentInput, 0, sizeof(currentInput));
 		currentInput.msgType			= OPEN8055_HID_MESSAGE_INPUT;
-		currentInput.inputBits			= switchStatus[0].lastState |
-										  (switchStatus[1].lastState << 1) |
-										  (switchStatus[2].lastState << 2) |
-										  (switchStatus[3].lastState << 3) |
-										  (switchStatus[4].lastState << 4);
+
 		for (i = 0; i < 5; i++)
 		{
-			currentInput.inputCounter[i] = htons(switchStatus[i].counter);
+			switch (currentConfig1.modeInput[i])
+			{
+				case OPEN8055_MODE_INPUT:
+					currentInput.inputBits |= (switchStatus[i].lastState << i);
+					currentInput.inputCounter[i] = htons(switchStatus[i].counter);
+					break;
+					
+				case OPEN8055_MODE_FREQUENCY:
+					currentInput.inputCounter[i] = htons(switchStatus[i].frequency);
+					break;
+			}	
 		}
 		currentInput.raw[12] = analogValue_1_high;
 		currentInput.raw[13] = analogValue_1_low;

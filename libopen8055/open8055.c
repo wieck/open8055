@@ -410,6 +410,8 @@ Open8055_Wait(OPEN8055_HANDLE h, int timeout)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
 
+	CARD_VALID(card);
+
 	if (timeout < 0)
 		timeout = 0;
 	if (timeout > 3600000)
@@ -429,6 +431,8 @@ OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_WaitFor(OPEN8055_HANDLE h, int mask, int timeout)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
+
+	CARD_VALID(card);
 
 	mask &= OPEN8055_INPUT_ANY;
 
@@ -452,6 +456,8 @@ Open8055_GetAutoFlush(OPEN8055_HANDLE h)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
 
+	CARD_VALID(card);
+
 	if(card->autoFlush)
 		return 1;
 
@@ -469,6 +475,8 @@ OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_SetAutoFlush(OPEN8055_HANDLE h, int flag)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
+
+	CARD_VALID(card);
 
 	card->autoFlush = (flag != FALSE);
 
@@ -490,6 +498,8 @@ Open8055_Flush(OPEN8055_HANDLE h)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
+
+	CARD_VALID(card);
 
 	if (card->pendingConfig1)
 	{
@@ -524,6 +534,8 @@ Open8055_GetInput(OPEN8055_HANDLE h, int port)
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
 
+	CARD_VALID(card);
+
 	if (port < 0 || port > 4)
 		return 0;
 
@@ -557,6 +569,8 @@ Open8055_GetInputAll(OPEN8055_HANDLE h)
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
 
+	CARD_VALID(card);
+
 	/* ----
 	 * Make sure we have current input data.
 	 * ----
@@ -586,6 +600,8 @@ Open8055_GetCounter(OPEN8055_HANDLE h, int port)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
+
+	CARD_VALID(card);
 
 	if (port < 0 || port > 4)
 		return 0;
@@ -619,6 +635,8 @@ Open8055_ResetCounter(OPEN8055_HANDLE h, int port)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
+
+	CARD_VALID(card);
 
 	if (port < 0 || port > 4)
 		return 0;
@@ -657,6 +675,8 @@ Open8055_ResetCounterAll(OPEN8055_HANDLE h)
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
 
+	CARD_VALID(card);
+
 	/* ----
 	 * Set the value and send it if in autoFlush mode.
 	 * ----
@@ -691,6 +711,8 @@ Open8055_GetDebounce(OPEN8055_HANDLE h, int port)
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	double		rc;
 
+	CARD_VALID(card);
+
 	if (port < 0 || port > 4)
 		return 0.0;
 
@@ -711,6 +733,8 @@ Open8055_SetDebounce(OPEN8055_HANDLE h, int port, double ms)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
+
+	CARD_VALID(card);
 
 	if (port < 0 || port > 4)
 		return 0;
@@ -753,6 +777,8 @@ Open8055_GetADC(OPEN8055_HANDLE h, int port)
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
 
+	CARD_VALID(card);
+
 	if (port < 0 || port > 1)
 		return 0;
 
@@ -786,6 +812,8 @@ Open8055_GetOutput(OPEN8055_HANDLE h, int port)
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
 
+	CARD_VALID(card);
+
 	if (port < 0 || port > 7)
 		return 0;
 
@@ -812,6 +840,8 @@ Open8055_GetOutputAll(OPEN8055_HANDLE h)
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
 
+	CARD_VALID(card);
+
 	/* ----
 	 * We have queried them at Connect and tracked them all the time.
 	 * ----
@@ -834,6 +864,8 @@ Open8055_GetPWM(OPEN8055_HANDLE h, int port)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
+
+	CARD_VALID(card);
 
 	if (port < 0 || port > 1)
 		return 0;
@@ -859,6 +891,8 @@ Open8055_SetOutput(OPEN8055_HANDLE h, int port, int val)
 {
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
+
+	CARD_VALID(card);
 
 	if (port < 0 || port > 7)
 		return 0;
@@ -901,6 +935,8 @@ Open8055_SetOutputAll(OPEN8055_HANDLE h, int bits)
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
 
+	CARD_VALID(card);
+
 	bits &= 0xff;
 
 	/* ----
@@ -937,6 +973,8 @@ Open8055_SetPWM(OPEN8055_HANDLE h, int port, int value)
 	Open8055_card_t *card = (Open8055_card_t *)h;
 	int			rc = 0;
 
+	CARD_VALID(card);
+
 	if (port < 0 || port > 1)
 		return 0;
 	if (value < 0)
@@ -965,6 +1003,64 @@ Open8055_SetPWM(OPEN8055_HANDLE h, int port, int value)
 	return rc;
 }
 
+
+
+/* ----
+ * Open8055_GetModeInput()
+ *
+ *	Return the operation mode of a digital input.
+ * ----
+ */
+OPEN8055_EXTERN int OPEN8055_CDECL
+Open8055_GetModeInput(OPEN8055_HANDLE h, int port)
+{
+	Open8055_card_t *card = (Open8055_card_t *)h;
+
+	CARD_VALID(card);
+
+	if (port < 0 || port > 4)
+		return 0;
+
+	return card->currentConfig1.modeInput[port];
+}
+
+
+/* ----
+ * Open8055_SetModeInput()
+ *
+ *	Set the operation mode of a digital input.
+ * ----
+ */
+OPEN8055_EXTERN int OPEN8055_CDECL
+Open8055_SetModeInput(OPEN8055_HANDLE h, int port, int mode)
+{
+	Open8055_card_t *card = (Open8055_card_t *)h;
+	int				rc = 0;
+
+	CARD_VALID(card);
+
+	if (port < 0 || port > 4)
+		return 0;
+
+	if (mode == OPEN8055_MODE_INPUT || mode == OPEN8055_MODE_FREQUENCY)
+	{
+	    card->currentConfig1.modeInput[port] = mode;
+		if (card->autoFlush)
+		{
+			if (DeviceWrite(card, &(card->currentConfig1)) < 0)
+				rc = -1;
+
+			card->pendingConfig1 = FALSE;
+			card->currentOutput.resetCounter = 0x00;
+		}
+		else
+		{
+			card->pendingConfig1 = TRUE;
+		}
+	}
+
+	return rc;
+}
 
 
 /* ----------------------------------------------------------------------
