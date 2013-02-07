@@ -100,6 +100,9 @@ static void		displayCardError(void);
 %token		C_SetOutputValue
 %token		C_SetPWM
 
+%token		C_GetModeInput
+%token		C_SetModeInput
+
 
 %type <ival>	ival
 %type <dval>	dval
@@ -133,6 +136,8 @@ command					:
 						| cmd_SetOutput
 						| cmd_SetOutputAll
 						| cmd_SetPWM
+						| cmd_GetModeInput
+						| cmd_SetModeInput
 
 cmd_LastError			: C_LastError
 						{
@@ -291,7 +296,7 @@ cmd_SetOutput		: C_SetOutput ival ival
 						displayCardError();
 				}
 
-cmd_SetOutputAll		: C_SetOutputAll ival
+cmd_SetOutputAll	: C_SetOutputAll ival
 				{
 					if ((intRc = Open8055_SetOutputAll(cardHandle, $2)) < 0)
 						displayCardError();
@@ -300,6 +305,20 @@ cmd_SetOutputAll		: C_SetOutputAll ival
 cmd_SetPWM		: C_SetPWM ival ival
 				{
 					if ((intRc = Open8055_SetPWM(cardHandle, $2, $3)) < 0)
+						displayCardError();
+				}
+
+cmd_GetModeInput	: C_GetModeInput ival
+				{
+					if ((intRc = Open8055_GetModeInput(cardHandle, $2)) < 0)
+						displayCardError();
+					else
+					    printf("%d\n", intRc);
+				}
+
+cmd_SetModeInput	: C_SetModeInput ival ival
+				{
+					if ((intRc = Open8055_SetModeInput(cardHandle, $2, $3)) < 0)
 						displayCardError();
 				}
 

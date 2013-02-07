@@ -53,43 +53,46 @@ hexdigit	[0-9a-f]
 
 LastError				{ return command(C_LastError);			}
 CardPresent				{ return command(C_CardPresent);		}
-GetSkipMessages			{ return command(C_GetSkipMessages);		}
-SetSkipMessages			{ return command(C_SetSkipMessages);		}
+GetSkipMessages			{ return command(C_GetSkipMessages);	}
+SetSkipMessages			{ return command(C_SetSkipMessages);	}
 
-Close					{ return command(C_Close);			}
-Quit					{ return command(C_Close);			}
-Reset					{ return command(C_Reset);			}
+Close					{ return command(C_Close);				}
+Quit					{ return command(C_Close);				}
+Reset					{ return command(C_Reset);				}
 
-Wait					{ return command(C_Wait);			}
+Wait					{ return command(C_Wait);				}
 WaitFor					{ return command(C_WaitFor);			}
 GetAutoFlush			{ return command(C_GetAutoFlush);		}
 SetAutoFlush			{ return command(C_SetAutoFlush);		}
-Flush					{ return command(C_Flush);			}
+Flush					{ return command(C_Flush);				}
 
-GetInput				{ return command(C_GetInput);		}
+GetInput				{ return command(C_GetInput);			}
 GetInputAll				{ return command(C_GetInputAll);		}
-GetADC					{ return command(C_GetADC);		}
-GetCounter				{ return command(C_GetCounter);		}
+GetADC					{ return command(C_GetADC);				}
+GetCounter				{ return command(C_GetCounter);			}
 ResetCounter			{ return command(C_ResetCounter);		}
 ResetCounterAll			{ return command(C_ResetCounterAll);	}
 GetDebounce				{ return command(C_GetDebounce);		}
 SetDebounce				{ return command(C_SetDebounce);		}
 
-GetOutput				{ return command(C_GetOutput);		}
-GetOutputAll			{ return command(C_GetOutputAll);	}
-GetPWM					{ return command(C_GetPWM);		}
-SetOutput				{ return command(C_SetOutput);		}
-SetOutputAll			{ return command(C_SetOutputAll);	}
-SetPWM					{ return command(C_SetPWM);		}
+GetOutput				{ return command(C_GetOutput);			}
+GetOutputAll			{ return command(C_GetOutputAll);		}
+GetPWM					{ return command(C_GetPWM);				}
+SetOutput				{ return command(C_SetOutput);			}
+SetOutputAll			{ return command(C_SetOutputAll);		}
+SetPWM					{ return command(C_SetPWM);				}
 
-0x{hexdigit}+			{ return T_INTEGER;				}
-{digit}+				{ return T_INTEGER;				}
-{digit}+\.{digit}*		{ return T_DOUBLE;				}
-\.{digit}+				{ return T_DOUBLE;				}
+GetModeInput			{ return command(C_GetModeInput);		}
+SetModeInput			{ return command(C_SetModeInput);		}
+
+0x{hexdigit}+			{ return T_INTEGER;						}
+{digit}+				{ return T_INTEGER;						}
+{digit}+\.{digit}*		{ return T_DOUBLE;						}
+\.{digit}+				{ return T_DOUBLE;						}
 
 {space}					{}
 
-.						{ return yytext[0];				}
+.						{ return yytext[0];						}
 
 
 %%
