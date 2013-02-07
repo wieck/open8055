@@ -357,7 +357,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			this->ADC1->Name = L"ADC1";
 			this->ADC1->Size = System::Drawing::Size(57, 20);
 			this->ADC1->TabIndex = 7;
-			this->ADC1->Text = L"0";
+			this->ADC1->Text = L"\?";
 			this->ADC1->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// ADC2
@@ -367,7 +367,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			this->ADC2->Name = L"ADC2";
 			this->ADC2->Size = System::Drawing::Size(57, 20);
 			this->ADC2->TabIndex = 8;
-			this->ADC2->Text = L"0";
+			this->ADC2->Text = L"\?";
 			this->ADC2->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// label4
@@ -428,6 +428,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// 
 			// Debounce1
 			// 
+			this->Debounce1->Enabled = false;
 			this->Debounce1->Location = System::Drawing::Point(468, 144);
 			this->Debounce1->Name = L"Debounce1";
 			this->Debounce1->Size = System::Drawing::Size(57, 20);
@@ -437,6 +438,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// 
 			// SetDebounce1
 			// 
+			this->SetDebounce1->Enabled = false;
 			this->SetDebounce1->Location = System::Drawing::Point(531, 142);
 			this->SetDebounce1->Name = L"SetDebounce1";
 			this->SetDebounce1->Size = System::Drawing::Size(32, 23);
@@ -494,6 +496,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// 
 			// Debounce2
 			// 
+			this->Debounce2->Enabled = false;
 			this->Debounce2->Location = System::Drawing::Point(468, 170);
 			this->Debounce2->Name = L"Debounce2";
 			this->Debounce2->Size = System::Drawing::Size(57, 20);
@@ -503,6 +506,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// 
 			// SetDebounce2
 			// 
+			this->SetDebounce2->Enabled = false;
 			this->SetDebounce2->Location = System::Drawing::Point(531, 168);
 			this->SetDebounce2->Name = L"SetDebounce2";
 			this->SetDebounce2->Size = System::Drawing::Size(32, 23);
@@ -513,6 +517,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// 
 			// SetDebounce3
 			// 
+			this->SetDebounce3->Enabled = false;
 			this->SetDebounce3->Location = System::Drawing::Point(531, 195);
 			this->SetDebounce3->Name = L"SetDebounce3";
 			this->SetDebounce3->Size = System::Drawing::Size(32, 23);
@@ -523,6 +528,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// 
 			// Debounce3
 			// 
+			this->Debounce3->Enabled = false;
 			this->Debounce3->Location = System::Drawing::Point(468, 196);
 			this->Debounce3->Name = L"Debounce3";
 			this->Debounce3->Size = System::Drawing::Size(57, 20);
@@ -579,6 +585,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// 
 			// SetDebounce4
 			// 
+			this->SetDebounce4->Enabled = false;
 			this->SetDebounce4->Location = System::Drawing::Point(531, 220);
 			this->SetDebounce4->Name = L"SetDebounce4";
 			this->SetDebounce4->Size = System::Drawing::Size(32, 23);
@@ -589,6 +596,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// 
 			// Debounce4
 			// 
+			this->Debounce4->Enabled = false;
 			this->Debounce4->Location = System::Drawing::Point(468, 222);
 			this->Debounce4->Name = L"Debounce4";
 			this->Debounce4->Size = System::Drawing::Size(57, 20);
@@ -645,6 +653,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// 
 			// SetDebounce5
 			// 
+			this->SetDebounce5->Enabled = false;
 			this->SetDebounce5->Location = System::Drawing::Point(531, 246);
 			this->SetDebounce5->Name = L"SetDebounce5";
 			this->SetDebounce5->Size = System::Drawing::Size(32, 23);
@@ -655,6 +664,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// 
 			// Debounce5
 			// 
+			this->Debounce5->Enabled = false;
 			this->Debounce5->Location = System::Drawing::Point(468, 248);
 			this->Debounce5->Name = L"Debounce5";
 			this->Debounce5->Size = System::Drawing::Size(57, 20);
@@ -711,6 +721,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// 
 			// CounterReset1
 			// 
+			this->CounterReset1->Enabled = false;
 			this->CounterReset1->Location = System::Drawing::Point(328, 142);
 			this->CounterReset1->Name = L"CounterReset1";
 			this->CounterReset1->Size = System::Drawing::Size(46, 23);
@@ -721,6 +732,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// 
 			// CounterReset5
 			// 
+			this->CounterReset5->Enabled = false;
 			this->CounterReset5->Location = System::Drawing::Point(328, 246);
 			this->CounterReset5->Name = L"CounterReset5";
 			this->CounterReset5->Size = System::Drawing::Size(46, 23);
@@ -731,6 +743,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// 
 			// CounterReset4
 			// 
+			this->CounterReset4->Enabled = false;
 			this->CounterReset4->Location = System::Drawing::Point(328, 220);
 			this->CounterReset4->Name = L"CounterReset4";
 			this->CounterReset4->Size = System::Drawing::Size(46, 23);
@@ -741,6 +754,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// 
 			// CounterReset3
 			// 
+			this->CounterReset3->Enabled = false;
 			this->CounterReset3->Location = System::Drawing::Point(328, 195);
 			this->CounterReset3->Name = L"CounterReset3";
 			this->CounterReset3->Size = System::Drawing::Size(46, 23);
@@ -751,6 +765,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// 
 			// CounterReset2
 			// 
+			this->CounterReset2->Enabled = false;
 			this->CounterReset2->Location = System::Drawing::Point(328, 168);
 			this->CounterReset2->Name = L"CounterReset2";
 			this->CounterReset2->Size = System::Drawing::Size(46, 23);
@@ -762,6 +777,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// InputMode1
 			// 
 			this->InputMode1->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
+			this->InputMode1->Enabled = false;
 			this->InputMode1->FormattingEnabled = true;
 			this->InputMode1->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Mode Normal", L"Mode Frequency"});
 			this->InputMode1->Location = System::Drawing::Point(85, 143);
@@ -773,6 +789,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// InputMode2
 			// 
 			this->InputMode2->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
+			this->InputMode2->Enabled = false;
 			this->InputMode2->FormattingEnabled = true;
 			this->InputMode2->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Mode Normal", L"Mode Frequency"});
 			this->InputMode2->Location = System::Drawing::Point(85, 169);
@@ -784,6 +801,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// InputMode3
 			// 
 			this->InputMode3->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
+			this->InputMode3->Enabled = false;
 			this->InputMode3->FormattingEnabled = true;
 			this->InputMode3->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Mode Normal", L"Mode Frequency"});
 			this->InputMode3->Location = System::Drawing::Point(85, 196);
@@ -795,6 +813,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// InputMode4
 			// 
 			this->InputMode4->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
+			this->InputMode4->Enabled = false;
 			this->InputMode4->FormattingEnabled = true;
 			this->InputMode4->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Mode Normal", L"Mode Frequency"});
 			this->InputMode4->Location = System::Drawing::Point(85, 220);
@@ -806,6 +825,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// InputMode5
 			// 
 			this->InputMode5->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
+			this->InputMode5->Enabled = false;
 			this->InputMode5->FormattingEnabled = true;
 			this->InputMode5->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Mode Normal", L"Mode Frequency"});
 			this->InputMode5->Location = System::Drawing::Point(85, 246);
@@ -848,7 +868,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			this->PWM1->Name = L"PWM1";
 			this->PWM1->Size = System::Drawing::Size(57, 20);
 			this->PWM1->TabIndex = 58;
-			this->PWM1->Text = L"0";
+			this->PWM1->Text = L"\?";
 			this->PWM1->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// PWM2
@@ -858,7 +878,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			this->PWM2->Name = L"PWM2";
 			this->PWM2->Size = System::Drawing::Size(57, 20);
 			this->PWM2->TabIndex = 61;
-			this->PWM2->Text = L"0";
+			this->PWM2->Text = L"\?";
 			this->PWM2->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// label21
@@ -872,6 +892,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// 
 			// PWMBar2
 			// 
+			this->PWMBar2->Enabled = false;
 			this->PWMBar2->Location = System::Drawing::Point(138, 301);
 			this->PWMBar2->Maximum = 1032;
 			this->PWMBar2->Name = L"PWMBar2";
@@ -882,6 +903,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// 
 			// PWMBar1
 			// 
+			this->PWMBar1->Enabled = false;
 			this->PWMBar1->Location = System::Drawing::Point(138, 272);
 			this->PWMBar1->Maximum = 1032;
 			this->PWMBar1->Name = L"PWMBar1";
@@ -893,6 +915,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// O1
 			// 
 			this->O1->AutoSize = true;
+			this->O1->Enabled = false;
 			this->O1->Location = System::Drawing::Point(64, 327);
 			this->O1->Name = L"O1";
 			this->O1->Size = System::Drawing::Size(15, 14);
@@ -912,6 +935,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// OutputMode1
 			// 
 			this->OutputMode1->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
+			this->OutputMode1->Enabled = false;
 			this->OutputMode1->FormattingEnabled = true;
 			this->OutputMode1->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Mode Normal", L"Mode Servo"});
 			this->OutputMode1->Location = System::Drawing::Point(85, 324);
@@ -922,6 +946,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// OutputMode2
 			// 
 			this->OutputMode2->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
+			this->OutputMode2->Enabled = false;
 			this->OutputMode2->FormattingEnabled = true;
 			this->OutputMode2->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Mode Normal", L"Mode Servo"});
 			this->OutputMode2->Location = System::Drawing::Point(85, 351);
@@ -941,6 +966,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// O2
 			// 
 			this->O2->AutoSize = true;
+			this->O2->Enabled = false;
 			this->O2->Location = System::Drawing::Point(64, 354);
 			this->O2->Name = L"O2";
 			this->O2->Size = System::Drawing::Size(15, 14);
@@ -951,6 +977,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// OutputMode3
 			// 
 			this->OutputMode3->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
+			this->OutputMode3->Enabled = false;
 			this->OutputMode3->FormattingEnabled = true;
 			this->OutputMode3->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Mode Normal", L"Mode Servo"});
 			this->OutputMode3->Location = System::Drawing::Point(85, 378);
@@ -970,6 +997,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// O3
 			// 
 			this->O3->AutoSize = true;
+			this->O3->Enabled = false;
 			this->O3->Location = System::Drawing::Point(64, 381);
 			this->O3->Name = L"O3";
 			this->O3->Size = System::Drawing::Size(15, 14);
@@ -980,6 +1008,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// OutputMode4
 			// 
 			this->OutputMode4->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
+			this->OutputMode4->Enabled = false;
 			this->OutputMode4->FormattingEnabled = true;
 			this->OutputMode4->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Mode Normal", L"Mode Servo"});
 			this->OutputMode4->Location = System::Drawing::Point(85, 405);
@@ -999,6 +1028,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// O4
 			// 
 			this->O4->AutoSize = true;
+			this->O4->Enabled = false;
 			this->O4->Location = System::Drawing::Point(64, 408);
 			this->O4->Name = L"O4";
 			this->O4->Size = System::Drawing::Size(15, 14);
@@ -1009,6 +1039,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// OutputMode5
 			// 
 			this->OutputMode5->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
+			this->OutputMode5->Enabled = false;
 			this->OutputMode5->FormattingEnabled = true;
 			this->OutputMode5->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Mode Normal", L"Mode Servo"});
 			this->OutputMode5->Location = System::Drawing::Point(85, 432);
@@ -1028,6 +1059,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// O5
 			// 
 			this->O5->AutoSize = true;
+			this->O5->Enabled = false;
 			this->O5->Location = System::Drawing::Point(64, 435);
 			this->O5->Name = L"O5";
 			this->O5->Size = System::Drawing::Size(15, 14);
@@ -1038,6 +1070,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// OutputMode6
 			// 
 			this->OutputMode6->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
+			this->OutputMode6->Enabled = false;
 			this->OutputMode6->FormattingEnabled = true;
 			this->OutputMode6->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Mode Normal", L"Mode Servo"});
 			this->OutputMode6->Location = System::Drawing::Point(85, 459);
@@ -1057,6 +1090,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// O6
 			// 
 			this->O6->AutoSize = true;
+			this->O6->Enabled = false;
 			this->O6->Location = System::Drawing::Point(64, 462);
 			this->O6->Name = L"O6";
 			this->O6->Size = System::Drawing::Size(15, 14);
@@ -1067,6 +1101,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// OutputMode7
 			// 
 			this->OutputMode7->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
+			this->OutputMode7->Enabled = false;
 			this->OutputMode7->FormattingEnabled = true;
 			this->OutputMode7->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Mode Normal", L"Mode Servo"});
 			this->OutputMode7->Location = System::Drawing::Point(85, 486);
@@ -1086,6 +1121,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// O7
 			// 
 			this->O7->AutoSize = true;
+			this->O7->Enabled = false;
 			this->O7->Location = System::Drawing::Point(64, 489);
 			this->O7->Name = L"O7";
 			this->O7->Size = System::Drawing::Size(15, 14);
@@ -1096,6 +1132,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// OutputMode8
 			// 
 			this->OutputMode8->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
+			this->OutputMode8->Enabled = false;
 			this->OutputMode8->FormattingEnabled = true;
 			this->OutputMode8->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Mode Normal", L"Mode Servo"});
 			this->OutputMode8->Location = System::Drawing::Point(85, 513);
@@ -1115,6 +1152,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// O8
 			// 
 			this->O8->AutoSize = true;
+			this->O8->Enabled = false;
 			this->O8->Location = System::Drawing::Point(64, 516);
 			this->O8->Name = L"O8";
 			this->O8->Size = System::Drawing::Size(15, 14);
@@ -1124,6 +1162,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// 
 			// buttonDisconnect
 			// 
+			this->buttonDisconnect->Enabled = false;
 			this->buttonDisconnect->Location = System::Drawing::Point(306, 41);
 			this->buttonDisconnect->Name = L"buttonDisconnect";
 			this->buttonDisconnect->Size = System::Drawing::Size(75, 23);
@@ -1134,6 +1173,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			// 
 			// buttonReset
 			// 
+			this->buttonReset->Enabled = false;
 			this->buttonReset->Location = System::Drawing::Point(387, 41);
 			this->buttonReset->Name = L"buttonReset";
 			this->buttonReset->Size = System::Drawing::Size(75, 23);
@@ -1271,7 +1311,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 				 }
 			 }
 
-	private: int modeOuputToIndex(int mode) {
+	private: int modeOutputToIndex(int mode) {
 				 switch (mode)
 				 {
 					 case OPEN8055_MODE_OUTPUT:
@@ -1285,7 +1325,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 				 }
 			 }
 
-	private: int modeOuputFromIndex(int index) {
+	private: int modeOutputFromIndex(int index) {
 				 switch (index)
 				 {
 					 case 0:
@@ -1305,23 +1345,18 @@ private: System::Windows::Forms::Button^  buttonReset;
 				 InputMode3->SelectedIndex = modeInputToIndex(Open8055_GetModeInput(cardHandle, 2));
 				 InputMode4->SelectedIndex = modeInputToIndex(Open8055_GetModeInput(cardHandle, 3));
 				 InputMode5->SelectedIndex = modeInputToIndex(Open8055_GetModeInput(cardHandle, 4));
+
+				 OutputMode1->SelectedIndex = modeOutputToIndex(Open8055_GetModeOutput(cardHandle, 0));
+				 OutputMode2->SelectedIndex = modeOutputToIndex(Open8055_GetModeOutput(cardHandle, 1));
+				 OutputMode3->SelectedIndex = modeOutputToIndex(Open8055_GetModeOutput(cardHandle, 2));
+				 OutputMode4->SelectedIndex = modeOutputToIndex(Open8055_GetModeOutput(cardHandle, 3));
+				 OutputMode5->SelectedIndex = modeOutputToIndex(Open8055_GetModeOutput(cardHandle, 4));
+				 OutputMode6->SelectedIndex = modeOutputToIndex(Open8055_GetModeOutput(cardHandle, 5));
+				 OutputMode7->SelectedIndex = modeOutputToIndex(Open8055_GetModeOutput(cardHandle, 6));
+				 OutputMode8->SelectedIndex = modeOutputToIndex(Open8055_GetModeOutput(cardHandle, 7));
 			 }
 
 	private: System::Void Form1_Load(System::Object^  sender, System::EventArgs^  e) {
-				 InputMode1->SelectedIndex = 0;
-				 InputMode2->SelectedIndex = 0;
-				 InputMode3->SelectedIndex = 0;
-				 InputMode4->SelectedIndex = 0;
-				 InputMode5->SelectedIndex = 0;
-
-				 OutputMode1->SelectedIndex = 0;
-				 OutputMode2->SelectedIndex = 0;
-				 OutputMode3->SelectedIndex = 0;
-				 OutputMode4->SelectedIndex = 0;
-				 OutputMode5->SelectedIndex = 0;
-				 OutputMode6->SelectedIndex = 0;
-				 OutputMode7->SelectedIndex = 0;
-				 OutputMode8->SelectedIndex = 0;
 			 }
 	private: System::Void Form1_Destroy(void) {
 				 if (cardHandle != NULL)
@@ -1337,9 +1372,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 				 // Close any previously open card
 				 if (cardHandle != NULL)
 				 {
-					 timer1->Enabled = false;
-					 Open8055_Close(cardHandle);
-					 cardHandle = NULL;
+					 buttonDisconnect_Click(sender, e);
 				 }
 					
 				 // Try to open the requested card
@@ -1379,6 +1412,56 @@ private: System::Windows::Forms::Button^  buttonReset;
 					 O7->Checked = Open8055_GetOutput(cardHandle, 6) != 0;
 					 O8->Checked = Open8055_GetOutput(cardHandle, 7) != 0;
 
+					 buttonDisconnect->Enabled = true;
+					 buttonReset->Enabled = true;
+
+					 InputMode1->Enabled = true; 
+					 CounterReset1->Enabled = true; 
+					 Debounce1->Enabled = true; SetDebounce1->Enabled = true;
+
+					 InputMode2->Enabled = true; 
+					 CounterReset2->Enabled = true; 
+					 Debounce2->Enabled = true; SetDebounce2->Enabled = true;
+
+					 InputMode3->Enabled = true; 
+					 CounterReset3->Enabled = true; 
+					 Debounce3->Enabled = true; SetDebounce3->Enabled = true;
+
+					 InputMode4->Enabled = true; 
+					 CounterReset4->Enabled = true; 
+					 Debounce4->Enabled = true; SetDebounce4->Enabled = true;
+
+					 InputMode5->Enabled = true; 
+					 CounterReset5->Enabled = true; 
+					 Debounce5->Enabled = true; SetDebounce5->Enabled = true;
+
+					 PWMBar1->Enabled = true;
+					 PWMBar2->Enabled = true;
+
+					 O1->Enabled = true;
+					 OutputMode1->Enabled = true;
+
+					 O2->Enabled = true;
+					 OutputMode2->Enabled = true;
+
+					 O3->Enabled = true;
+					 OutputMode3->Enabled = true;
+
+					 O4->Enabled = true;
+					 OutputMode4->Enabled = true;
+
+					 O5->Enabled = true;
+					 OutputMode5->Enabled = true;
+
+					 O6->Enabled = true;
+					 OutputMode6->Enabled = true;
+
+					 O7->Enabled = true;
+					 OutputMode7->Enabled = true;
+
+					 O8->Enabled = true;
+					 OutputMode8->Enabled = true;
+
 					 updateAllConfig();
 				 }
 			 }
@@ -1388,8 +1471,63 @@ private: System::Windows::Forms::Button^  buttonReset;
 
 				 Open8055_Close(cardHandle);
 				 cardHandle = NULL;
+				 updateAllConfig();
 				 timer1->Enabled = false;
 				 connectedMessage->Text = "Disconnected";
+
+				 buttonDisconnect->Enabled = false;
+				 buttonReset->Enabled = false;
+
+				 ADC1->Text = "?"; ADCBar1->Value = 0;
+				 ADC2->Text = "?"; ADCBar2->Value = 0;
+
+				 I1->Checked = false; InputMode1->Enabled = false; 
+				 Counter1->Text = "?"; CounterReset1->Enabled = false; 
+				 Debounce1->Text = "?"; Debounce1->Enabled = false; SetDebounce1->Enabled = false;
+
+				 I2->Checked = false; InputMode2->Enabled = false; 
+				 Counter2->Text = "?"; CounterReset2->Enabled = false; 
+				 Debounce2->Text = "?"; Debounce2->Enabled = false; SetDebounce2->Enabled = false;
+
+				 I3->Checked = false; InputMode3->Enabled = false; 
+				 Counter3->Text = "?"; CounterReset3->Enabled = false; 
+				 Debounce3->Text = "?"; Debounce3->Enabled = false; SetDebounce3->Enabled = false;
+
+				 I4->Checked = false; InputMode4->Enabled = false; 
+				 Counter4->Text = "?"; CounterReset4->Enabled = false; 
+				 Debounce4->Text = "?"; Debounce4->Enabled = false; SetDebounce4->Enabled = false;
+
+				 I5->Checked = false; InputMode5->Enabled = false; 
+				 Counter5->Text = "?"; CounterReset5->Enabled = false; 
+				 Debounce5->Text = "?"; Debounce5->Enabled = false; SetDebounce5->Enabled = false;
+
+				 PWM1->Text = "?"; PWMBar1->Value = 0; PWMBar1->Enabled = false;
+				 PWM2->Text = "?"; PWMBar2->Value = 0; PWMBar2->Enabled = false;
+
+				 O1->Checked = false; O1->Enabled = false;
+				 OutputMode1->Enabled = false;
+
+				 O2->Checked = false; O2->Enabled = false;
+				 OutputMode2->Enabled = false;
+
+				 O3->Checked = false; O3->Enabled = false;
+				 OutputMode3->Enabled = false;
+
+				 O4->Checked = false; O4->Enabled = false;
+				 OutputMode4->Enabled = false;
+
+				 O5->Checked = false; O5->Enabled = false;
+				 OutputMode5->Enabled = false;
+
+				 O6->Checked = false; O6->Enabled = false;
+				 OutputMode6->Enabled = false;
+
+				 O7->Checked = false; O7->Enabled = false;
+				 OutputMode7->Enabled = false;
+
+				 O8->Checked = false; O8->Enabled = false;
+				 OutputMode8->Enabled = false;
+
 			 }
 	private: System::Void buttonReset_Click(System::Object^  sender, System::EventArgs^  e) {
 				 if (cardHandle == NULL)
@@ -1397,8 +1535,63 @@ private: System::Windows::Forms::Button^  buttonReset;
 
 				 Open8055_Reset(cardHandle);
 				 cardHandle = NULL;
+				 updateAllConfig();
 				 timer1->Enabled = false;
 				 connectedMessage->Text = "Disconnected";
+
+				 buttonDisconnect->Enabled = false;
+				 buttonReset->Enabled = false;
+
+				 ADC1->Text = "?"; ADCBar1->Value = 0;
+				 ADC2->Text = "?"; ADCBar2->Value = 0;
+
+				 I1->Checked = false; InputMode1->Enabled = false; 
+				 Counter1->Text = "?"; CounterReset1->Enabled = false; 
+				 Debounce1->Text = "?"; Debounce1->Enabled = false; SetDebounce1->Enabled = false;
+
+				 I2->Checked = false; InputMode2->Enabled = false; 
+				 Counter2->Text = "?"; CounterReset2->Enabled = false; 
+				 Debounce2->Text = "?"; Debounce2->Enabled = false; SetDebounce2->Enabled = false;
+
+				 I3->Checked = false; InputMode3->Enabled = false; 
+				 Counter3->Text = "?"; CounterReset3->Enabled = false; 
+				 Debounce3->Text = "?"; Debounce3->Enabled = false; SetDebounce3->Enabled = false;
+
+				 I4->Checked = false; InputMode4->Enabled = false; 
+				 Counter4->Text = "?"; CounterReset4->Enabled = false; 
+				 Debounce4->Text = "?"; Debounce4->Enabled = false; SetDebounce4->Enabled = false;
+
+				 I5->Checked = false; InputMode5->Enabled = false; 
+				 Counter5->Text = "?"; CounterReset5->Enabled = false; 
+				 Debounce5->Text = "?"; Debounce5->Enabled = false; SetDebounce5->Enabled = false;
+
+				 PWM1->Text = "?"; PWMBar1->Value = 0; PWMBar1->Enabled = false;
+				 PWM2->Text = "?"; PWMBar2->Value = 0; PWMBar2->Enabled = false;
+
+				 O1->Checked = false; O1->Enabled = false;
+				 OutputMode1->Enabled = false;
+
+				 O2->Checked = false; O2->Enabled = false;
+				 OutputMode2->Enabled = false;
+
+				 O3->Checked = false; O3->Enabled = false;
+				 OutputMode3->Enabled = false;
+
+				 O4->Checked = false; O4->Enabled = false;
+				 OutputMode4->Enabled = false;
+
+				 O5->Checked = false; O5->Enabled = false;
+				 OutputMode5->Enabled = false;
+
+				 O6->Checked = false; O6->Enabled = false;
+				 OutputMode6->Enabled = false;
+
+				 O7->Checked = false; O7->Enabled = false;
+				 OutputMode7->Enabled = false;
+
+				 O8->Checked = false; O8->Enabled = false;
+				 OutputMode8->Enabled = false;
+
 			 }
 	private: System::Void timer1_Tick(System::Object^  sender, System::EventArgs^  e) {
 				 int	value;

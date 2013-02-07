@@ -1063,6 +1063,64 @@ Open8055_SetModeInput(OPEN8055_HANDLE h, int port, int mode)
 }
 
 
+/* ----
+ * Open8055_GetModeOutput()
+ *
+ *	Return the operation mode of a digital output.
+ * ----
+ */
+OPEN8055_EXTERN int OPEN8055_CDECL
+Open8055_GetModeOutput(OPEN8055_HANDLE h, int port)
+{
+	Open8055_card_t *card = (Open8055_card_t *)h;
+
+	CARD_VALID(card);
+
+	if (port < 0 || port > 7)
+		return 0;
+
+	return card->currentConfig1.modeOutput[port];
+}
+
+
+/* ----
+ * Open8055_SetModeOutput()
+ *
+ *	Set the operation mode of a digital output.
+ * ----
+ */
+OPEN8055_EXTERN int OPEN8055_CDECL
+Open8055_SetModeOutput(OPEN8055_HANDLE h, int port, int mode)
+{
+	Open8055_card_t *card = (Open8055_card_t *)h;
+	int				rc = 0;
+
+	CARD_VALID(card);
+
+	if (port < 0 || port > 7)
+		return 0;
+
+	if (mode == OPEN8055_MODE_OUTPUT || mode == OPEN8055_MODE_SERVO || mode == OPEN8055_MODE_ISERVO)
+	{
+	    card->currentConfig1.modeOutput[port] = mode;
+		if (card->autoFlush)
+		{
+			if (DeviceWrite(card, &(card->currentConfig1)) < 0)
+				rc = -1;
+
+			card->pendingConfig1 = FALSE;
+			card->currentOutput.resetCounter = 0x00;
+		}
+		else
+		{
+			card->pendingConfig1 = TRUE;
+		}
+	}
+
+	return rc;
+}
+
+
 /* ----------------------------------------------------------------------
  * Local functions follow
  * ----------------------------------------------------------------------
