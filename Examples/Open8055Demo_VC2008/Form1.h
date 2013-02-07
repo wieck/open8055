@@ -1439,28 +1439,28 @@ private: System::Windows::Forms::Button^  buttonReset;
 					 PWMBar2->Enabled = true;
 
 					 O1->Enabled = true;
-					 OutputMode1->Enabled = true;
+					 //OutputMode1->Enabled = true;
 
 					 O2->Enabled = true;
-					 OutputMode2->Enabled = true;
+					 //OutputMode2->Enabled = true;
 
 					 O3->Enabled = true;
-					 OutputMode3->Enabled = true;
+					 //OutputMode3->Enabled = true;
 
 					 O4->Enabled = true;
-					 OutputMode4->Enabled = true;
+					 //OutputMode4->Enabled = true;
 
 					 O5->Enabled = true;
-					 OutputMode5->Enabled = true;
+					 //OutputMode5->Enabled = true;
 
 					 O6->Enabled = true;
-					 OutputMode6->Enabled = true;
+					 //OutputMode6->Enabled = true;
 
 					 O7->Enabled = true;
-					 OutputMode7->Enabled = true;
+					 //OutputMode7->Enabled = true;
 
 					 O8->Enabled = true;
-					 OutputMode8->Enabled = true;
+					 //OutputMode8->Enabled = true;
 
 					 updateAllConfig();
 				 }
