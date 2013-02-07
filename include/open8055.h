@@ -72,7 +72,7 @@ extern "C" {
  * ----
  */
 
-#define OPEN8055_MAX_CARDS			3
+#define OPEN8055_MAX_CARDS			16
 #define OPEN8055_WAITFOR_MS			1
 #define OPEN8055_INFINITE			-1
 
