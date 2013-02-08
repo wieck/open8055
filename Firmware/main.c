@@ -996,14 +996,25 @@ static void processIO(void)
  *******************************************************************/
 static void resetDevice(void)
 {
+	unsigned short ms;
+	
+	// Give the application some time to close the device before we pull the plug.
+	for (ms = 0; ms < 200; ms++)
+	{
+		tickCounter = 0;
+		while (tickCounter < OPEN8055_TICKS_PER_MS)
+			Nop();
+	}	
+	
 	// Disable USB module.
 	USBDeviceDetach();
 	
 	// The comments in usb_device.h say that it is necessary to wait at least 80ms after
 	// USBDeviceDetach() before reattaching. Otherwise a host may not interpret this as
 	// a disconnect/reconnect but as a USB communication glitch. Since we are not returning
-	// to the main loop, we can abuse the ticker.
-	for (tickMillisecond = 0; tickMillisecond < 100; tickMillisecond++)
+	// to the main loop, we can abuse the ticker. We error on the far safe side and nap
+	// for 500ms.
+	for (ms = 0; ms < 500; ms++)
 	{
 		tickCounter = 0;
 		while (tickCounter < OPEN8055_TICKS_PER_MS)
