@@ -40,6 +40,7 @@
 #define _OPEN8055_H
 
 #include "open8055_compat.h"
+#include "open8055_common.h"
 
 #ifdef __cplusplus
 extern "C" {

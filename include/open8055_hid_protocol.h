@@ -2,6 +2,9 @@
 #define OPEN8055_HID_PROTOCOL_H
 
 
+#include "open8055_common.h"
+
+
 // We need a couple declarations from stdint.h, but
 // C18 doesn't have that header.
 
@@ -42,17 +45,6 @@ typedef unsigned short uint16_t;
 #define OPEN8055_HID_MESSAGE_RESET	0x7F	// Restart PIC
 
 #define OPEN8055_HID_MESSAGE_INPUT	0x81	// Report current input values
-
-
-#define OPEN8055_MODE_ADC		10	// A1,A2 - port is in ADC mode
-#define OPEN8055_MODE_INPUT		20	// I1..I5 - port is digital input
-#define OPEN8055_MODE_FREQUENCY		21	// I1..I5 - port is a frequency counter
-#define OPEN8055_MODE_EUSART		22	// I4&I5 - ports used as EUSART
-#define OPEN8055_MODE_OUTPUT		30	// O1..O8 - port is digital output
-#define OPEN8055_MODE_SERVO		31	// O1..O8 - port is in servo mode
-#define OPEN8055_MODE_ISERVO		32	// O1..O8 - port is in inverted servo mode
-#define OPEN8055_MODE_I2C		33	// O1&O2 - ports used as I2C bus.
-#define OPEN8055_MODE_PWM		40	// PWM1,PWM2 - port used as PWM output
 
 
 typedef union {
