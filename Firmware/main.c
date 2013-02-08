@@ -675,33 +675,96 @@ static void processIO(void)
 	switchStatus[3].currentState = OPEN8055sw4;
 	switchStatus[4].currentState = OPEN8055sw5;
 
-    for (i = 0; i < 5; i++)
-    {
-		if (switchStatus[i].lastState == switchStatus[i].currentState)
+	// Unfortunately the Microchip C18 compiler does not unroll loops and indexed
+	// access to arrays is a horribly expensive operation. So we have to unroll
+	// these loops manually. The following code is repeated 5 times for each
+	// digital input.
+	if (switchStatus[0].lastState == switchStatus[0].currentState)
+        // We see the same state that we remember, so the input either did
+        // not change at all, or it toggled back before the debounce counter
+        // has elapsed. This cancels the debounce countdown.
+		switchStatus[0].debounceCounter = 0;
+	else
+	{
+		// We see a different state. If the debounce config of this switch is
+		// set to zero milliseconds, bump the counter right away. If not, start
+		// a debounce countdown.
+		if (switchStatus[0].debounceCounter == 0)
 		{
-	        // We see the same state that we remember, so the input either did
-	        // not change at all, or it toggled back before the debounce counter
-	        // has elapsed. This cancels the debounce countdown.
-			switchStatus[i].debounceCounter = 0;
-		}
-		else
-		{
-			// We see a different state. If the debounce config of this switch is
-			// set to zero milliseconds, bump the counter right away. If not, start
-			// a debounce countdown.
-			if (switchStatus[i].debounceCounter == 0)
+			if (switchStatus[0].debounceConfig == 0)
 			{
-				if (switchStatus[i].debounceConfig == 0)
-				{
-					switchStatus[i].lastState = switchStatus[i].currentState;
-					if (switchStatus[i].currentState)
-						switchStatus[i].counter++;
-				}
-				else
-					switchStatus[i].debounceCounter = switchStatus[i].debounceConfig;
+				switchStatus[0].lastState = switchStatus[0].currentState;
+				if (switchStatus[0].currentState)
+					switchStatus[0].counter++;
 			}
+			else
+				switchStatus[0].debounceCounter = switchStatus[0].debounceConfig;
 		}	
-	}
+	}	
+	if (switchStatus[1].lastState == switchStatus[1].currentState)
+		switchStatus[1].debounceCounter = 0;
+	else
+	{
+		if (switchStatus[1].debounceCounter == 0)
+		{
+			if (switchStatus[1].debounceConfig == 0)
+			{
+				switchStatus[1].lastState = switchStatus[1].currentState;
+				if (switchStatus[1].currentState)
+					switchStatus[1].counter++;
+			}
+			else
+				switchStatus[1].debounceCounter = switchStatus[1].debounceConfig;
+		}	
+	}	
+	if (switchStatus[2].lastState == switchStatus[2].currentState)
+		switchStatus[2].debounceCounter = 0;
+	else
+	{
+		if (switchStatus[2].debounceCounter == 0)
+		{
+			if (switchStatus[2].debounceConfig == 0)
+			{
+				switchStatus[2].lastState = switchStatus[2].currentState;
+				if (switchStatus[2].currentState)
+					switchStatus[2].counter++;
+			}
+			else
+				switchStatus[2].debounceCounter = switchStatus[2].debounceConfig;
+		}	
+	}	
+	if (switchStatus[3].lastState == switchStatus[3].currentState)
+		switchStatus[3].debounceCounter = 0;
+	else
+	{
+		if (switchStatus[3].debounceCounter == 0)
+		{
+			if (switchStatus[3].debounceConfig == 0)
+			{
+				switchStatus[3].lastState = switchStatus[3].currentState;
+				if (switchStatus[3].currentState)
+					switchStatus[3].counter++;
+			}
+			else
+				switchStatus[3].debounceCounter = switchStatus[3].debounceConfig;
+		}	
+	}	
+	if (switchStatus[4].lastState == switchStatus[4].currentState)
+		switchStatus[4].debounceCounter = 0;
+	else
+	{
+		if (switchStatus[4].debounceCounter == 0)
+		{
+			if (switchStatus[4].debounceConfig == 0)
+			{
+				switchStatus[4].lastState = switchStatus[4].currentState;
+				if (switchStatus[4].currentState)
+					switchStatus[4].counter++;
+			}
+			else
+				switchStatus[4].debounceCounter = switchStatus[4].debounceConfig;
+		}	
+	}	
 
     // Check if data was received from the host.
     if(cardConnected && !HIDRxHandleBusy(outputHandle))
@@ -775,23 +838,76 @@ static void processIO(void)
 
 	// Handle counters
 	if (ticksSeen > 0)
-	{	
-	    for (i = 0; i < 5; i++)
-	    {
-			if (switchStatus[i].debounceCounter > 0)
+	{
+		if (switchStatus[0].debounceCounter > 0)
+		{
+			if (switchStatus[0].debounceCounter <= ticksSeen)
 			{
-				if (switchStatus[i].debounceCounter <= ticksSeen)
-				{
-					switchStatus[i].lastState = switchStatus[i].currentState;
-					if (switchStatus[i].currentState)
-					    switchStatus[i].counter++;
-					switchStatus[i].debounceCounter = 0;
-				}
-				else
-				{
-					switchStatus[i].debounceCounter -= ticksSeen;
-				}		
+				switchStatus[0].lastState = switchStatus[0].currentState;
+				if (switchStatus[0].currentState)
+				    switchStatus[0].counter++;
+				switchStatus[0].debounceCounter = 0;
 			}
+			else
+			{
+				switchStatus[0].debounceCounter -= ticksSeen;
+			}		
+		}
+		if (switchStatus[1].debounceCounter > 0)
+		{
+			if (switchStatus[1].debounceCounter <= ticksSeen)
+			{
+				switchStatus[1].lastState = switchStatus[1].currentState;
+				if (switchStatus[1].currentState)
+				    switchStatus[1].counter++;
+				switchStatus[1].debounceCounter = 0;
+			}
+			else
+			{
+				switchStatus[1].debounceCounter -= ticksSeen;
+			}		
+		}
+		if (switchStatus[2].debounceCounter > 0)
+		{
+			if (switchStatus[2].debounceCounter <= ticksSeen)
+			{
+				switchStatus[2].lastState = switchStatus[2].currentState;
+				if (switchStatus[2].currentState)
+				    switchStatus[2].counter++;
+				switchStatus[2].debounceCounter = 0;
+			}
+			else
+			{
+				switchStatus[2].debounceCounter -= ticksSeen;
+			}		
+		}
+		if (switchStatus[3].debounceCounter > 0)
+		{
+			if (switchStatus[3].debounceCounter <= ticksSeen)
+			{
+				switchStatus[3].lastState = switchStatus[3].currentState;
+				if (switchStatus[3].currentState)
+				    switchStatus[3].counter++;
+				switchStatus[3].debounceCounter = 0;
+			}
+			else
+			{
+				switchStatus[3].debounceCounter -= ticksSeen;
+			}		
+		}
+		if (switchStatus[4].debounceCounter > 0)
+		{
+			if (switchStatus[4].debounceCounter <= ticksSeen)
+			{
+				switchStatus[4].lastState = switchStatus[4].currentState;
+				if (switchStatus[4].currentState)
+				    switchStatus[4].counter++;
+				switchStatus[4].debounceCounter = 0;
+			}
+			else
+			{
+				switchStatus[4].debounceCounter -= ticksSeen;
+			}		
 		}
 	}	
 
@@ -855,20 +971,71 @@ static void processIO(void)
 		memset(&currentInput, 0, sizeof(currentInput));
 		currentInput.msgType			= OPEN8055_HID_MESSAGE_INPUT;
 
-		for (i = 0; i < 5; i++)
+		switch (currentConfig1.modeInput[0])
 		{
-			switch (currentConfig1.modeInput[i])
-			{
-				case OPEN8055_MODE_INPUT:
-					currentInput.inputBits |= (switchStatus[i].lastState << i);
-					currentInput.inputCounter[i] = htons(switchStatus[i].counter);
-					break;
-					
-				case OPEN8055_MODE_FREQUENCY:
-					currentInput.inputCounter[i] = htons(switchStatus[i].frequency);
-					break;
-			}	
-		}
+			case OPEN8055_MODE_INPUT:
+				if (switchStatus[0].lastState)
+					currentInput.inputBits |= 0x01;
+				currentInput.inputCounter[0] = htons(switchStatus[0].counter);
+				break;
+				
+			case OPEN8055_MODE_FREQUENCY:
+				currentInput.inputCounter[0] = htons(switchStatus[0].frequency);
+				break;
+		}	
+
+		switch (currentConfig1.modeInput[1])
+		{
+			case OPEN8055_MODE_INPUT:
+				if (switchStatus[1].lastState)
+					currentInput.inputBits |= 0x02;
+				currentInput.inputCounter[1] = htons(switchStatus[1].counter);
+				break;
+				
+			case OPEN8055_MODE_FREQUENCY:
+				currentInput.inputCounter[1] = htons(switchStatus[1].frequency);
+				break;
+		}	
+
+		switch (currentConfig1.modeInput[2])
+		{
+			case OPEN8055_MODE_INPUT:
+				if (switchStatus[2].lastState)
+					currentInput.inputBits |= 0x04;
+				currentInput.inputCounter[2] = htons(switchStatus[2].counter);
+				break;
+				
+			case OPEN8055_MODE_FREQUENCY:
+				currentInput.inputCounter[2] = htons(switchStatus[2].frequency);
+				break;
+		}	
+
+		switch (currentConfig1.modeInput[3])
+		{
+			case OPEN8055_MODE_INPUT:
+				if (switchStatus[3].lastState)
+					currentInput.inputBits |= 0x08;
+				currentInput.inputCounter[3] = htons(switchStatus[3].counter);
+				break;
+				
+			case OPEN8055_MODE_FREQUENCY:
+				currentInput.inputCounter[3] = htons(switchStatus[3].frequency);
+				break;
+		}	
+
+		switch (currentConfig1.modeInput[4])
+		{
+			case OPEN8055_MODE_INPUT:
+				if (switchStatus[4].lastState)
+					currentInput.inputBits |= 0x10;
+				currentInput.inputCounter[4] = htons(switchStatus[4].counter);
+				break;
+				
+			case OPEN8055_MODE_FREQUENCY:
+				currentInput.inputCounter[4] = htons(switchStatus[4].frequency);
+				break;
+		}	
+
 		currentInput.raw[12] = analogValue_1_high;
 		currentInput.raw[13] = analogValue_1_low;
 		currentInput.raw[14] = analogValue_2_high;
