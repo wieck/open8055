@@ -177,7 +177,6 @@ uint8_t		currentOutputRequested = FALSE;
 // Status data per digital input
 struct {
 	unsigned char	lastState;
-	unsigned char	currentState;
 	unsigned short	counter;
 	unsigned short	frequency;
 	unsigned short	debounceConfig;				// Debounce time in ticks/ms
@@ -281,6 +280,8 @@ void highPriorityISRCode()
 	//Service the interrupt
 	//Clear the interrupt flag
 	//Etc.
+	unsigned char	currentState;
+	
 	analogInterrupted = 1;
 	
 	if (PIR2bits.TMR3IF)
@@ -297,6 +298,111 @@ void highPriorityISRCode()
 		TMR3H = (increment >> 8) & 0xFF;
 		T3CONbits.TMR3ON = 1;
 		
+		// Digital input 1 handling
+		if (switchStatus[0].lastState == (currentState = OPEN8055sw1))
+		{
+			switchStatus[0].debounceCounter = 0;
+		}
+		else
+		{
+			if (switchStatus[0].debounceCounter == 0)
+			{
+				switchStatus[0].debounceCounter = switchStatus[0].debounceConfig;
+			}
+			if (--switchStatus[0].debounceCounter == 0)
+			{
+				switchStatus[0].lastState = currentState;
+				if (switchStatus[0].lastState)
+					switchStatus[0].counter++;
+			}	
+		}	
+		
+		// Digital input 2 handling
+		if (switchStatus[1].lastState == (currentState = OPEN8055sw2))
+		{
+			switchStatus[1].debounceCounter = 0;
+		}
+		else
+		{
+			if (switchStatus[1].debounceCounter == 0)
+			{
+				switchStatus[1].debounceCounter = switchStatus[1].debounceConfig;
+			}
+			if (--switchStatus[1].debounceCounter == 0)
+			{
+				switchStatus[1].lastState = currentState;
+				if (switchStatus[1].lastState)
+					switchStatus[1].counter++;
+			}	
+		}	
+		
+		// Digital input 3 handling
+		if (switchStatus[2].lastState == (currentState = OPEN8055sw3))
+		{
+			switchStatus[2].debounceCounter = 0;
+		}
+		else
+		{
+			if (switchStatus[2].debounceCounter == 0)
+			{
+				switchStatus[2].debounceCounter = switchStatus[2].debounceConfig;
+			}
+			if (--switchStatus[2].debounceCounter == 0)
+			{
+				switchStatus[2].lastState = currentState;
+				if (switchStatus[2].lastState)
+					switchStatus[2].counter++;
+			}	
+		}	
+		
+		// Digital input 4 handling
+		if (switchStatus[3].lastState == (currentState = OPEN8055sw4))
+		{
+			switchStatus[3].debounceCounter = 0;
+		}
+		else
+		{
+			if (switchStatus[3].debounceCounter == 0)
+			{
+				switchStatus[3].debounceCounter = switchStatus[3].debounceConfig;
+			}
+			if (--switchStatus[3].debounceCounter == 0)
+			{
+				switchStatus[3].lastState = currentState;
+				if (switchStatus[3].lastState)
+					switchStatus[3].counter++;
+			}	
+		}	
+		
+		// Digital input 5 handling
+		if (switchStatus[4].lastState == (currentState = OPEN8055sw5))
+		{
+			switchStatus[4].debounceCounter = 0;
+		}
+		else
+		{
+			if (switchStatus[4].debounceCounter == 0)
+			{
+				switchStatus[4].debounceCounter = switchStatus[4].debounceConfig;
+			}
+			if (--switchStatus[4].debounceCounter == 0)
+			{
+				switchStatus[4].lastState = currentState;
+				if (switchStatus[4].lastState)
+					switchStatus[4].counter++;
+			}	
+		}	
+		
+		// Check if we need to kick off an ADC.
+		if (analogGoDelay > 0)
+		{
+			if (--analogGoDelay == 0)
+			{
+				analogInterrupted = 0;
+				ADCON0bits.GO = 1;
+			}
+		}	
+
 		// Count ticks seen and clear the interrupt flag.
 		tickCounter++;
 		PIR2bits.TMR3IF = 0;
@@ -559,7 +665,7 @@ static void userInit(void)
 		switchStatus[i].lastState		= 0;
 		switchStatus[i].counter			= 0;
 		switchStatus[i].frequency		= 0;
-		switchStatus[i].debounceConfig	= OPEN8055_COUNTER_DEBOUNCE_DEFAULT * OPEN8055_TICKS_PER_MS;
+		switchStatus[i].debounceConfig	= OPEN8055_COUNTER_DEBOUNCE_DEFAULT * OPEN8055_TICKS_PER_MS + 1;
 		switchStatus[i].debounceCounter	= 0;
 		
 		currentConfig1.debounceValue[i] = htons(switchStatus[i].debounceConfig);
@@ -661,111 +767,13 @@ static void processIO(void)
 	uint8_t	ticksSeen;
 	uint8_t i;
 	uint16_t value;
-	
+
     // Check if we are USB connected
     if((USBDeviceState < CONFIGURED_STATE)||(USBSuspendControl==1))
     	cardConnected = 0;
 	else
     	cardConnected = 1;
     	
-    // Get the current state of all switches we maintain counters for
-	switchStatus[0].currentState = OPEN8055sw1;
-	switchStatus[1].currentState = OPEN8055sw2;
-	switchStatus[2].currentState = OPEN8055sw3;
-	switchStatus[3].currentState = OPEN8055sw4;
-	switchStatus[4].currentState = OPEN8055sw5;
-
-	// Unfortunately the Microchip C18 compiler does not unroll loops and indexed
-	// access to arrays is a horribly expensive operation. So we have to unroll
-	// these loops manually. The following code is repeated 5 times for each
-	// digital input.
-	if (switchStatus[0].lastState == switchStatus[0].currentState)
-        // We see the same state that we remember, so the input either did
-        // not change at all, or it toggled back before the debounce counter
-        // has elapsed. This cancels the debounce countdown.
-		switchStatus[0].debounceCounter = 0;
-	else
-	{
-		// We see a different state. If the debounce config of this switch is
-		// set to zero milliseconds, bump the counter right away. If not, start
-		// a debounce countdown.
-		if (switchStatus[0].debounceCounter == 0)
-		{
-			if (switchStatus[0].debounceConfig == 0)
-			{
-				switchStatus[0].lastState = switchStatus[0].currentState;
-				if (switchStatus[0].currentState)
-					switchStatus[0].counter++;
-			}
-			else
-				switchStatus[0].debounceCounter = switchStatus[0].debounceConfig;
-		}	
-	}	
-	if (switchStatus[1].lastState == switchStatus[1].currentState)
-		switchStatus[1].debounceCounter = 0;
-	else
-	{
-		if (switchStatus[1].debounceCounter == 0)
-		{
-			if (switchStatus[1].debounceConfig == 0)
-			{
-				switchStatus[1].lastState = switchStatus[1].currentState;
-				if (switchStatus[1].currentState)
-					switchStatus[1].counter++;
-			}
-			else
-				switchStatus[1].debounceCounter = switchStatus[1].debounceConfig;
-		}	
-	}	
-	if (switchStatus[2].lastState == switchStatus[2].currentState)
-		switchStatus[2].debounceCounter = 0;
-	else
-	{
-		if (switchStatus[2].debounceCounter == 0)
-		{
-			if (switchStatus[2].debounceConfig == 0)
-			{
-				switchStatus[2].lastState = switchStatus[2].currentState;
-				if (switchStatus[2].currentState)
-					switchStatus[2].counter++;
-			}
-			else
-				switchStatus[2].debounceCounter = switchStatus[2].debounceConfig;
-		}	
-	}	
-	if (switchStatus[3].lastState == switchStatus[3].currentState)
-		switchStatus[3].debounceCounter = 0;
-	else
-	{
-		if (switchStatus[3].debounceCounter == 0)
-		{
-			if (switchStatus[3].debounceConfig == 0)
-			{
-				switchStatus[3].lastState = switchStatus[3].currentState;
-				if (switchStatus[3].currentState)
-					switchStatus[3].counter++;
-			}
-			else
-				switchStatus[3].debounceCounter = switchStatus[3].debounceConfig;
-		}	
-	}	
-	if (switchStatus[4].lastState == switchStatus[4].currentState)
-		switchStatus[4].debounceCounter = 0;
-	else
-	{
-		if (switchStatus[4].debounceCounter == 0)
-		{
-			if (switchStatus[4].debounceConfig == 0)
-			{
-				switchStatus[4].lastState = switchStatus[4].currentState;
-				if (switchStatus[4].currentState)
-					switchStatus[4].counter++;
-			}
-			else
-				switchStatus[4].debounceCounter = switchStatus[4].debounceConfig;
-		}	
-	}	
-
     // Check if data was received from the host.
     if(cardConnected && !HIDRxHandleBusy(outputHandle))
     {   
@@ -836,95 +844,10 @@ static void processIO(void)
 	ticksSeen = tickCounter;
 	tickCounter -= ticksSeen;
 
-	// Handle counters
-	if (ticksSeen > 0)
-	{
-		if (switchStatus[0].debounceCounter > 0)
-		{
-			if (switchStatus[0].debounceCounter <= ticksSeen)
-			{
-				switchStatus[0].lastState = switchStatus[0].currentState;
-				if (switchStatus[0].currentState)
-				    switchStatus[0].counter++;
-				switchStatus[0].debounceCounter = 0;
-			}
-			else
-			{
-				switchStatus[0].debounceCounter -= ticksSeen;
-			}		
-		}
-		if (switchStatus[1].debounceCounter > 0)
-		{
-			if (switchStatus[1].debounceCounter <= ticksSeen)
-			{
-				switchStatus[1].lastState = switchStatus[1].currentState;
-				if (switchStatus[1].currentState)
-				    switchStatus[1].counter++;
-				switchStatus[1].debounceCounter = 0;
-			}
-			else
-			{
-				switchStatus[1].debounceCounter -= ticksSeen;
-			}		
-		}
-		if (switchStatus[2].debounceCounter > 0)
-		{
-			if (switchStatus[2].debounceCounter <= ticksSeen)
-			{
-				switchStatus[2].lastState = switchStatus[2].currentState;
-				if (switchStatus[2].currentState)
-				    switchStatus[2].counter++;
-				switchStatus[2].debounceCounter = 0;
-			}
-			else
-			{
-				switchStatus[2].debounceCounter -= ticksSeen;
-			}		
-		}
-		if (switchStatus[3].debounceCounter > 0)
-		{
-			if (switchStatus[3].debounceCounter <= ticksSeen)
-			{
-				switchStatus[3].lastState = switchStatus[3].currentState;
-				if (switchStatus[3].currentState)
-				    switchStatus[3].counter++;
-				switchStatus[3].debounceCounter = 0;
-			}
-			else
-			{
-				switchStatus[3].debounceCounter -= ticksSeen;
-			}		
-		}
-		if (switchStatus[4].debounceCounter > 0)
-		{
-			if (switchStatus[4].debounceCounter <= ticksSeen)
-			{
-				switchStatus[4].lastState = switchStatus[4].currentState;
-				if (switchStatus[4].currentState)
-				    switchStatus[4].counter++;
-				switchStatus[4].debounceCounter = 0;
-			}
-			else
-			{
-				switchStatus[4].debounceCounter -= ticksSeen;
-			}		
-		}
-	}	
-
 	while (ticksSeen-- > 0)
 	{
 		// Per 100 microsecond code comes here
 		
-		// Check if we need to kick off an ADC.
-		if (analogGoDelay > 0)
-		{
-			if (--analogGoDelay == 0)
-			{
-				analogInterrupted = 0;
-				ADCON0bits.GO = 1;
-			}
-		}	
-
 		if (++tickMillisecond >= OPEN8055_TICKS_PER_MS)
 		{
 			tickMillisecond = 0;

@@ -716,7 +716,7 @@ Open8055_GetDebounce(OPEN8055_HANDLE h, int port)
 	if (port < 0 || port > 4)
 		return 0.0;
 
-	rc = (double)ntohs(card->currentConfig1.debounceValue[port]) / 10.0;
+	rc = (double)(ntohs(card->currentConfig1.debounceValue[port]) - 1) / 10.0;
 
 	return rc;
 }
@@ -747,7 +747,7 @@ Open8055_SetDebounce(OPEN8055_HANDLE h, int port, double ms)
 	 * Set the value and send it if in autoFlush mode.
 	 * ----
 	 */
-	card->currentConfig1.debounceValue[port] = htons((uint16_t)floor(ms * 10.0));
+	card->currentConfig1.debounceValue[port] = htons((uint16_t)floor(ms * 10.0) + 1);
 	if (card->autoFlush)
 	{
 		if (DeviceWrite(card, &(card->currentConfig1)) < 0)
