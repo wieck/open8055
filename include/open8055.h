@@ -115,16 +115,13 @@ extern "C" {
  */
 OPEN8055_EXTERN char	*OPEN8055_CDECL Open8055_LastError(int h);
 OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_CardPresent(int cardNumber);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetSkipMessages(int h);
-OPEN8055_EXTERN void	OPEN8055_CDECL Open8055_SetSkipMessages(int h, int flag);
 
 OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_Connect(char *destination, char *password);
 OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_Close(int h);
 OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_Reset(int h);
 
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_Wait(int h, int timeout);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_WaitFor(int h, int mask, int timeout);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_WaitForReport(int h);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_Wait(int h);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_WaitEx(int h, int timeout, int skipMessages);
 OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetAutoFlush(int h);
 OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_SetAutoFlush(int h, int flag);
 OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_Flush(int h);

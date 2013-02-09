@@ -70,14 +70,12 @@ static void		displayCardError(void);
 
 %token		C_LastError
 %token		C_CardPresent
-%token		C_GetSkipMessages
-%token		C_SetSkipMessages
 
 %token		C_Close
 %token		C_Reset
 
 %token		C_Wait
-%token		C_WaitFor
+%token		C_WaitEx
 %token		C_GetAutoFlush
 %token		C_SetAutoFlush
 %token		C_Flush
@@ -113,12 +111,10 @@ static void		displayCardError(void);
 command					:
 						| cmd_LastError
 						| cmd_CardPresent
-						| cmd_GetSkipMessages
-						| cmd_SetSkipMessages
 						| cmd_Close
 						| cmd_Reset
 						| cmd_Wait
-						| cmd_WaitFor
+						| cmd_WaitEx
 						| cmd_GetAutoFlush
 						| cmd_SetAutoFlush
 						| cmd_Flush
@@ -152,16 +148,6 @@ cmd_CardPresent			: C_CardPresent ival
 							printf("%d\n", intRc);
 						}
 
-cmd_GetSkipMessages		: C_GetSkipMessages
-						{
-							printf("%d\n", Open8055_GetSkipMessages(cardHandle));
-						}
-
-cmd_SetSkipMessages		: C_SetSkipMessages ival
-						{
-							Open8055_SetSkipMessages(cardHandle, $2);
-						}
-
 cmd_Close				: C_Close
 						{
 							terminateFlag = TRUE;
@@ -174,17 +160,17 @@ cmd_Reset				: C_Reset
 							exit(0);
 						}
 
-cmd_Wait				: C_Wait ival
+cmd_Wait				: C_Wait
 						{
-							if ((intRc = Open8055_Wait(cardHandle, $2)) < 0)
+							if ((intRc = Open8055_Wait(cardHandle)) < 0)
 								displayCardError();
 							else
 								printf("%d\n", intRc);
 						}
 
-cmd_WaitFor				: C_WaitFor ival ival
+cmd_WaitEx				: C_WaitEx ival ival
 						{
-							if ((intRc = Open8055_WaitFor(cardHandle, $2, $3)) < 0)
+							if ((intRc = Open8055_WaitEx(cardHandle, $2, $3)) < 0)
 								displayCardError();
 							else
 								printf("%d\n", intRc);

@@ -60,7 +60,6 @@ typedef struct {
 	Open8055_hidMessage_t	currentInput;
 	int						currentInputUnconsumed;
 
-	int						skipMessages;
 	int						autoFlush;
 	int						pendingConfig1;
 	int						pendingOutput;
@@ -101,7 +100,6 @@ static void UnlockAndRefcount(Open8055_card_t *card);
 
 static int Open8055_Init(void);
 static void SetError(Open8055_card_t *card, char *fmt, ...);
-static int Open8055_WaitForInput(Open8055_card_t *card, int mask, int timeout);
 
 static int DeviceInit(void);
 static int DevicePresent(int cardNumber);
@@ -182,48 +180,6 @@ Open8055_CardPresent(int cardNumber)
 
 
 /* ----
- * Open8055_GetSkipMessages()
- *
- *	Return the current skipMessages flag of the card.
- * ----
- */
-OPEN8055_EXTERN int OPEN8055_CDECL
-Open8055_GetSkipMessages(int h)
-{
-	Open8055_card_t *card;
-	int				rc;
-
-	if ((card = LockAndRefcount(h)) == NULL)
-		return -1;
-
-	rc = (card->skipMessages) ? 1 : 0;
-
-	UnlockAndRefcount(card);
-	return rc;
-}
-
-
-/* ----
- * Open8055_SetSkipMessages()
- *
- *	Set the skipMessages flag of the card.
- * ----
- */
-OPEN8055_EXTERN void OPEN8055_CDECL
-Open8055_SetSkipMessages(int h, int flag)
-{
-	Open8055_card_t *card;
-
-	if ((card = LockAndRefcount(h)) == NULL)
-		return;
-
-	card->skipMessages = (flag != FALSE) ? 1 : 0;
-
-	UnlockAndRefcount(card);
-}
-
-
-/* ----
  * Open8055_Connect()
  *
  *	Attempts to open a local or remote Open8055 card.
@@ -290,7 +246,6 @@ Open8055_Connect(char *destination, char *password)
 	strncpy(card->destination, destination, sizeof(card->destination));
 	card->isLocal	= TRUE;
 	card->idLocal	= cardNumber;
-	card->skipMessages	= TRUE;
 	card->autoFlush = TRUE;
 	LockCreate(&(card->cardLock));
 	LockAcquire(&(card->cardLock));
@@ -596,76 +551,110 @@ Open8055_Reset(int h)
  * ----
  */
 OPEN8055_EXTERN int OPEN8055_CDECL
-Open8055_Wait(int h, int timeout)
+Open8055_Wait(int h)
 {
-	Open8055_card_t *card;
 	int				rc;
 
-	if ((card = LockAndRefcount(h)) == NULL)
-		return -1;
-
-	if (timeout < 0)
-		timeout = 0;
-	if (timeout > 3600000)
-		timeout = 3600000;
-
-	rc = Open8055_WaitForInput(card, OPEN8055_INPUT_ANY, timeout);
-
-	UnlockAndRefcount(card);
+	while ((rc = Open8055_WaitEx(h, 60000, 0)) == 0);
 	return rc;
 }
 
 
 /* ----
- * Open8055_WaitFor()
+ * Open8055_WaitEx()
  *
- *	Wait until specific input ports have changed.
+ *	Wait with timeout and skipMessages feature.
  * ----
  */
 OPEN8055_EXTERN int OPEN8055_CDECL
-Open8055_WaitFor(int h, int mask, int timeout)
-{
-	Open8055_card_t *card;
-	int				rc;
-
-	if ((card = LockAndRefcount(h)) == NULL)
-		return -1;
-
-	mask &= OPEN8055_INPUT_ANY;
-
-	if (timeout < 0)
-		timeout = 0;
-	if (timeout > 3600000)
-		timeout = 3600000;
-
-	rc = Open8055_WaitForInput(card, mask, timeout);
-
-	UnlockAndRefcount(card);
-	return rc;
-}
-
-
-/* ----
- * Open8055_WaitForReport()
- *
- *	Wait until we received an actual INPUT report.
- * ----
- */
-OPEN8055_EXTERN int OPEN8055_CDECL
-Open8055_WaitForReport(int h)
+Open8055_WaitEx(int h, int timeout, int skipMessages)
 {
 	Open8055_card_t			*card;
 	Open8055_hidMessage_t	inputMessage;
 	int						rc = 0;
 	int						haveInput = 0;
 
+	if (timeout < 0)
+		timeout = 0;
+
 	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
+	/* ----
+	 * If asked to skip messages, we keep reading with a zero timeout
+	 * until we get a timeout.
+	 * ----
+	 */
+	if (skipMessages)
+	{
+		while (rc == 0)
+		{
+			memset(&inputMessage, 0, sizeof(inputMessage));
+			rc = DeviceRead(card, &inputMessage, 0);
+
+			if (rc < 0 || card->cardClosed)
+			{
+				UnlockAndRefcount(card);
+				return -1;
+			}
+
+			if (rc == 0)
+				break;
+
+			/* ----
+			 * Handle by message type.
+			 * ----
+			 */
+			switch (inputMessage.msgType)
+			{
+				case OPEN8055_HID_MESSAGE_INPUT:
+					memcpy(&(card->currentInput), &inputMessage, sizeof(card->currentInput));
+					card->currentInputUnconsumed = OPEN8055_INPUT_ANY;
+					haveInput = 1;
+					rc = 0;
+					break;
+
+				case OPEN8055_HID_MESSAGE_SETCONFIG1:
+				case OPEN8055_HID_MESSAGE_OUTPUT:
+					rc = 0;
+					break;
+
+				default:
+					SetError(card, "Received unknown message type 0x%02x", inputMessage.msgType);
+					rc = -1;
+			}
+		}
+	}
+
+	/* ----
+	 * If we have received anything during the skip phase, we
+	 * are done. 
+	 * ----
+	 */
+	if (haveInput)
+	{
+		UnlockAndRefcount(card);
+		return 1;
+	}
+
+	/* ----
+	 * If the timeout is zero, we are done as well. 
+	 * ----
+	 */
+	if (timeout == 0)
+	{
+		UnlockAndRefcount(card);
+		return 0;
+	}
+
+	/* ----
+	 * Now we really have to wait with timeout.
+	 * ----
+	 */
 	while (rc == 0 && haveInput == 0)
 	{
 		memset(&inputMessage, 0, sizeof(inputMessage));
-		rc = DeviceRead(card, &inputMessage, 60000);
+		rc = DeviceRead(card, &inputMessage, timeout);
 
 		if (card->cardClosed)
 		{
@@ -690,6 +679,7 @@ Open8055_WaitForReport(int h)
 
 			case OPEN8055_HID_MESSAGE_SETCONFIG1:
 			case OPEN8055_HID_MESSAGE_OUTPUT:
+				rc = 0;
 				break;
 
 			default:
@@ -1574,113 +1564,6 @@ UnlockAndRefcount(Open8055_card_t *card)
 
 
 /* ----
- * Open8055_WaitForInput()
- *
- *	Wait until specific input ports have changed.
- * ----
- */
-static int
-Open8055_WaitForInput(Open8055_card_t *card, int mask, int timeout)
-{
-	Open8055_hidMessage_t	inputMessage;
-	int				rc = 0;
-
-	/* ----
-	 * Check for cardClosed condition.
-	 * ----
-	 */
-	if (card->cardClosed)
-		return -1;
-
-	/* ----
-	 * Check if we currently have the requested data unconsumed.
-	 * ----
-	 */
-	if ((card->currentInputUnconsumed & mask) != 0)
-		return 1;
-
-	/* ----
-	 * If skipMessages is set drain out old reports.
-	 * ----
-	 */
-	if (card->skipMessages)
-	{
-		for (;;)
-		{
-			rc = DeviceRead(card, &inputMessage, 0);
-
-			if (card->cardClosed)
-				rc = -1;
-			if (rc != 1)
-				break;
-
-			/* ----
-			 * Handle by message type.
-			 * ----
-			 */
-			switch (inputMessage.msgType)
-			{
-			case OPEN8055_HID_MESSAGE_INPUT:
-				memcpy(&(card->currentInput), &inputMessage, sizeof(card->currentInput));
-				card->currentInputUnconsumed = OPEN8055_INPUT_ANY;
-				break;
-
-			case OPEN8055_HID_MESSAGE_SETCONFIG1:
-			case OPEN8055_HID_MESSAGE_OUTPUT:
-				break;
-
-			default:
-				SetError(card, "Received unknown message type 0x%02x", inputMessage.msgType);
-				return -1;
-			}
-		}
-
-		if (rc < 0)
-			return -1;
-	}
-
-	/* ----
-	 * Check if we now have the requested data unconsumed.
-	 * ----
-	 */
-	if ((card->currentInputUnconsumed & mask) != 0)
-		return 1;
-
-	/* ----
-	 * Need to read a new HID report.
-	 * ----
-	 */
-	rc = DeviceRead(card, &inputMessage, timeout);
-	if (card->cardClosed)
-		return -1;
-	if (rc <= 0)
-		return rc;
-
-	/* ----
-	 * Handle by message type.
-	 * ----
-	 */
-	switch (inputMessage.msgType)
-	{
-		case OPEN8055_HID_MESSAGE_INPUT:
-			memcpy(&(card->currentInput), &inputMessage, sizeof(card->currentInput));
-			card->currentInputUnconsumed = OPEN8055_INPUT_ANY;
-			break;
-
-		case OPEN8055_HID_MESSAGE_SETCONFIG1:
-		case OPEN8055_HID_MESSAGE_OUTPUT:
-			break;
-
-		default:
-			SetError(card, "Received unknown message type 0x%02x", inputMessage.msgType);
-			return -1;
-	}
-
-	return (card->currentInputUnconsumed & mask) ? 1 : 0;
-}
-
-
-/* ----
  * SetError()
  *
  *	Save an error message in the lastErrorMessage buffer.
@@ -1940,6 +1823,9 @@ DeviceRead(Open8055_card_t *card, void *buffer, int timeout)
 
 			case WAIT_TIMEOUT:
 				return 0;
+
+			default:
+				return -1;
 		}
 	}
 

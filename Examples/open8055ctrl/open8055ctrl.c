@@ -69,14 +69,12 @@ static char				commandLine[CMDLINE_SIZE];
 static usage_help_t		usageHelp[] = {
 	{ C_LastError,			"LastError" },
 	{ C_CardPresent,		"CardPresent <cardNum>" },
-	{ C_GetSkipMessages,	"GetSkipMessages" },
-	{ C_SetSkipMessages,	"SetSkipMessages <flag>" },
 
 	{ C_Close,				"Close" },
 	{ C_Reset,				"Reset" },
 
-	{ C_Wait,				"Wait <milliseconds>" },
-	{ C_WaitFor,			"WaitFor <inputMask> <milliseconds>" },
+	{ C_Wait,				"Wait" },
+	{ C_WaitEx,				"WaitFor <milliseconds> <skipMesssages>" },
 	{ C_GetAutoFlush,		"GetAutoFlush" },
 	{ C_SetAutoFlush,		"SetAutoFlush <flag>" },
 	{ C_Flush,				"Flush" },

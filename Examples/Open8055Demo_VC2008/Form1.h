@@ -1766,7 +1766,7 @@ private: System::Void O8_CheckedChanged(System::Object^  sender, System::EventAr
 private: System::Void backgroundWorker1_DoWork(System::Object^  sender, System::ComponentModel::DoWorkEventArgs^  e) {
 			 while (cardHandle >= 0)
 			 {
-				 if (Open8055_WaitForReport(cardHandle) < 0)
+				 if (Open8055_Wait(cardHandle) < 0)
 				 {
 					 backgroundWorker1->ReportProgress(-1);
 					 break;
