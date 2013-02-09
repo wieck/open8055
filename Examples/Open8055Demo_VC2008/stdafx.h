@@ -7,4 +7,3 @@
 
 #include <stdio.h>
 #include "open8055.h"
-#include "open8055_hid_protocol.h"
