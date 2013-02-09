@@ -80,6 +80,7 @@ typedef struct {
 	struct libusb_transfer	*transfer;
 	int						transferPending;
 	int						transferDone;
+	pthread_mutex_t			cardLock;
 #endif
 
 } Open8055_card_t;
@@ -96,6 +97,11 @@ static void UnlockAndRefcount(Open8055_card_t *card);
 #define LockDestroy(_c)		DeleteCriticalSection((_c))
 #define LockAcquire(_c)		EnterCriticalSection((_c))
 #define LockRelease(_c)		LeaveCriticalSection((_c))
+#else
+#define LockCreate(_c)		pthread_mutex_init((_c), NULL)
+#define LockDestroy(_c)		pthread_mutex_destroy((_c))
+#define LockAcquire(_c)		pthread_mutex_lock((_c))
+#define LockRelease(_c)		pthread_mutex_unlock((_c))
 #endif
 
 static int Open8055_Init(void);
@@ -124,6 +130,8 @@ static int				connectionsSize = 0;
 static int				connectionsUsed = 0;
 #ifdef _WIN32
 static CRITICAL_SECTION	connectionsLock;
+#else
+static pthread_mutex_t	connectionsLock;
 #endif
 
 
@@ -2377,6 +2385,7 @@ static int
 DeviceRead(Open8055_card_t *card, void *buffer, int timeout)
 {
 	struct timeval	tv;
+	int				rc;
 
 	/* ----
 	 * transferDone is TRUE if a previously submitted transfer
@@ -2417,7 +2426,10 @@ DeviceRead(Open8055_card_t *card, void *buffer, int timeout)
 
 		tv.tv_sec = 0;
 		tv.tv_usec = 100;
-		if (libusb_handle_events_timeout(libusbCxt, &tv) != 0)
+		LockRelease(&(card->cardLock));
+		rc = libusb_handle_events_timeout(libusbCxt, &tv);
+		LockAcquire(&(card->cardLock));
+		if (rc != 0)
 		{
 			SetError(card, "libusb_handle_events_timeout(): %s",
 					ErrorString());
@@ -2466,7 +2478,10 @@ DeviceRead(Open8055_card_t *card, void *buffer, int timeout)
 	 * Call the libusb event handling with the requested timeout.
 	 * ----
 	 */
-	if (libusb_handle_events_timeout(libusbCxt, &tv) != 0)
+	LockRelease(&(card->cardLock));
+	rc = libusb_handle_events_timeout(libusbCxt, &tv);
+	LockAcquire(&(card->cardLock));
+	if (rc != 0)
 	{
 		SetError(card, "libusb_handle_events_timeout(): %s",
 				ErrorString());
@@ -2507,7 +2522,10 @@ DeviceRead(Open8055_card_t *card, void *buffer, int timeout)
 
 		tv.tv_sec = 0;
 		tv.tv_usec = 100;
-		if (libusb_handle_events_timeout(libusbCxt, &tv) != 0)
+		LockRelease(&(card->cardLock));
+		rc = libusb_handle_events_timeout(libusbCxt, &tv);
+		LockAcquire(&(card->cardLock));
+		if (rc != 0)
 		{
 			SetError(card, "libusb_handle_events_timeout(): %s",
 					ErrorString());
