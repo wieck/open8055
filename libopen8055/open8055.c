@@ -1056,10 +1056,7 @@ Open8055_SetDebounce(int h, int port, double ms)
 		if (DeviceWrite(card, &(card->currentConfig1)) < 0)
 			rc = -1;
 		else
-		{
 			card->pendingConfig1 = FALSE;
-			card->currentOutput.resetCounter = 0x00;
-		}
 	}
 	else
 	{
@@ -1404,14 +1401,30 @@ Open8055_SetModeInput(int h, int port, int mode)
 			if (DeviceWrite(card, &(card->currentConfig1)) < 0)
 				rc = -1;
 			else
-			{
 				card->pendingConfig1 = FALSE;
+		}
+		else
+		{
+			card->pendingConfig1 = TRUE;
+		}
+		/* ----
+		 * Changing input mode also causes a counter reset.
+		 * ----
+		 */
+		card->currentOutput.resetCounter |= (1 << port);
+		if (card->autoFlush)
+		{
+			if (DeviceWrite(card, &(card->currentOutput)) < 0)
+				rc = -1;
+			else
+			{
+				card->pendingOutput = FALSE;
 				card->currentOutput.resetCounter = 0x00;
 			}
 		}
 		else
 		{
-			card->pendingConfig1 = TRUE;
+			card->pendingOutput = TRUE;
 		}
 	}
 
@@ -1479,10 +1492,7 @@ Open8055_SetModeOutput(int h, int port, int mode)
 			if (DeviceWrite(card, &(card->currentConfig1)) < 0)
 				rc = -1;
 			else
-			{
 				card->pendingConfig1 = FALSE;
-				card->currentOutput.resetCounter = 0x00;
-			}
 		}
 		else
 		{
