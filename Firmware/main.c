@@ -639,8 +639,8 @@ static void userInit(void)
 	// Initialize global status data.
 	memset(&currentConfig1, 0, sizeof(currentConfig1));
 	currentConfig1.msgType			= OPEN8055_HID_MESSAGE_SETCONFIG1;
-	currentConfig1.modeADC[0]		= OPEN8055_MODE_ADC;
-	currentConfig1.modeADC[1]		= OPEN8055_MODE_ADC;
+	currentConfig1.modeADC[0]		= OPEN8055_MODE_ADC10;
+	currentConfig1.modeADC[1]		= OPEN8055_MODE_ADC10;
 	currentConfig1.modeInput[0]		= OPEN8055_MODE_INPUT;
 	currentConfig1.modeInput[1]		= OPEN8055_MODE_INPUT;
 	currentConfig1.modeInput[2]		= OPEN8055_MODE_INPUT;
@@ -960,9 +960,31 @@ static void processIO(void)
 		}	
 
 		currentInput.raw[12] = analogValue_1_high;
-		currentInput.raw[13] = analogValue_1_low;
+		switch (currentConfig1.modeADC[0])
+		{
+			case OPEN8055_MODE_ADC10:
+				currentInput.raw[13] = analogValue_1_low;
+				break;
+			case OPEN8055_MODE_ADC9:
+				currentInput.raw[13] = analogValue_1_low & 0xFE;
+				break;
+			case OPEN8055_MODE_ADC8:
+				currentInput.raw[13] = analogValue_1_low & 0xFC;
+				break;
+		}
 		currentInput.raw[14] = analogValue_2_high;
-		currentInput.raw[15] = analogValue_2_low;
+		switch (currentConfig1.modeADC[1])
+		{
+			case OPEN8055_MODE_ADC10:
+				currentInput.raw[15] = analogValue_2_low;
+				break;
+			case OPEN8055_MODE_ADC9:
+				currentInput.raw[15] = analogValue_2_low & 0xFE;
+				break;
+			case OPEN8055_MODE_ADC8:
+				currentInput.raw[15] = analogValue_2_low & 0xFC;
+				break;
+		}
 										  
 		// Suppress this report if nothing has changed and 100 ms didn't elapse.
 		if (!currentInputRequested && memcmp((void *)&currentInput, (void *)&toSendDataBuffer, sizeof(currentInput)) == 0)

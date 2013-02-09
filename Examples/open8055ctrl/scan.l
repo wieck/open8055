@@ -81,6 +81,8 @@ SetOutput				{ return command(C_SetOutput);			}
 SetOutputAll			{ return command(C_SetOutputAll);		}
 SetPWM					{ return command(C_SetPWM);				}
 
+GetModeADC				{ return command(C_GetModeADC);			}
+SetModeADC				{ return command(C_SetModeADC);			}
 GetModeInput			{ return command(C_GetModeInput);		}
 SetModeInput			{ return command(C_SetModeInput);		}
 

@@ -96,6 +96,8 @@ static usage_help_t		usageHelp[] = {
 	{ C_SetOutputAll,		"SetOutputAll <bits>" },
 	{ C_SetPWM,				"SetPWM <channel> <dutyCycle>" },
 
+	{ C_GetModeADC,			"GetModeADC <channel>" },
+	{ C_SetModeADC,			"SetModeADC <channel> <mode>" },
 	{ C_GetModeInput,		"GetModeInput <channel>" },
 	{ C_SetModeInput,		"SetModeInput <channel> <mode>" },
 

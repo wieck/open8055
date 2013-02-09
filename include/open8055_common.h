@@ -37,7 +37,9 @@
 #define _OPEN8055_COMMON_H
 
 
-#define OPEN8055_MODE_ADC			10	// A1,A2 - port is in ADC mode
+#define OPEN8055_MODE_ADC10			10	// A1,A2 - port is in ADC mode 10 bits resolution
+#define OPEN8055_MODE_ADC9			11	// A1,A2 - port is in ADC mode masked to 9 bits
+#define OPEN8055_MODE_ADC8			12	// A1,A2 - port is in ADC mode masked to 8 bits
 #define OPEN8055_MODE_INPUT			20	// I1..I5 - port is digital input
 #define OPEN8055_MODE_FREQUENCY		21	// I1..I5 - port is a frequency counter
 #define OPEN8055_MODE_EUSART		22	// I4&I5 - ports used as EUSART

@@ -1349,6 +1349,78 @@ Open8055_SetPWM(int h, int port, int value)
 
 
 /* ----
+ * Open8055_GetModeADC()
+ *
+ *	Return the operation mode of an analog input.
+ * ----
+ */
+OPEN8055_EXTERN int OPEN8055_CDECL
+Open8055_GetModeADC(int h, int port)
+{
+	Open8055_card_t *card;
+	int				rc;
+
+	if ((card = LockAndRefcount(h)) == NULL)
+		return -1;
+
+	if (port < 0 || port > 1)
+	{
+		SetError(card, "parameter invalid");
+		UnlockAndRefcount(card);
+		return -1;
+	}
+
+	rc = card->currentConfig1.modeADC[port];
+
+	UnlockAndRefcount(card);
+	return rc;
+}
+
+
+/* ----
+ * Open8055_SetModeADC()
+ *
+ *	Set the operation mode of an analog input.
+ * ----
+ */
+OPEN8055_EXTERN int OPEN8055_CDECL
+Open8055_SetModeADC(int h, int port, int mode)
+{
+	Open8055_card_t *card;
+	int				rc = 0;
+
+	if ((card = LockAndRefcount(h)) == NULL)
+		return -1;
+
+	if (port < 0 || port > 1)
+	{
+		SetError(card, "parameter error");
+		UnlockAndRefcount(card);
+		return -1;
+	}
+
+	if (mode == OPEN8055_MODE_ADC10 || mode == OPEN8055_MODE_ADC9 || mode == OPEN8055_MODE_ADC8)
+	{
+	    card->currentConfig1.modeADC[port] = mode;
+		if (card->autoFlush)
+		{
+			if (DeviceWrite(card, &(card->currentConfig1)) < 0)
+				rc = -1;
+			else
+				card->pendingConfig1 = FALSE;
+		}
+		else
+		{
+			card->pendingConfig1 = TRUE;
+		}
+	}
+
+	UnlockAndRefcount(card);
+	return rc;
+}
+
+
+/* ----
  * Open8055_GetModeInput()
  *
  *	Return the operation mode of a digital input.
