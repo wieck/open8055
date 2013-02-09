@@ -59,7 +59,8 @@ Quit					{ return command(C_Close);				}
 Reset					{ return command(C_Reset);				}
 
 Wait					{ return command(C_Wait);				}
-WaitEx					{ return command(C_WaitEx);			}
+WaitTimeout				{ return command(C_WaitTimeout);		}
+WaitEx					{ return command(C_WaitEx);				}
 GetAutoFlush			{ return command(C_GetAutoFlush);		}
 SetAutoFlush			{ return command(C_SetAutoFlush);		}
 Flush					{ return command(C_Flush);				}

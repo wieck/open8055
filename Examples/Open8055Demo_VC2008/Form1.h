@@ -1390,6 +1390,8 @@ private: System::ComponentModel::BackgroundWorker^  backgroundWorker1;
 						 "' failed: " + 
 						 Marshal::PtrToStringAnsi((System::IntPtr)Open8055_LastError(NULL));
 				 } else {
+					 int	value;
+
 					 connectedMessage->Text = "Connected to '" + cardDestination->Text + "'";
 					 backgroundWorker1->RunWorkerAsync();
 
@@ -1464,6 +1466,24 @@ private: System::ComponentModel::BackgroundWorker^  backgroundWorker1;
 					 //OutputMode8->Enabled = true;
 
 					 updateAllConfig();
+
+					 value = Open8055_GetInputAll(cardHandle);
+					 I1->Checked = (value & 0x01) != 0;
+					 I2->Checked = (value & 0x02) != 0;
+					 I3->Checked = (value & 0x04) != 0;
+					 I4->Checked = (value & 0x08) != 0;
+					 I5->Checked = (value & 0x10) != 0;
+
+					 ADCBar1->Value = Open8055_GetADC(cardHandle, 0);
+					 ADC1->Text = ADCBar1->Value.ToString();
+					 ADCBar2->Value = Open8055_GetADC(cardHandle, 1);
+					 ADC2->Text = ADCBar2->Value.ToString();
+
+					 Counter1->Text = Open8055_GetCounter(cardHandle, 0).ToString();
+					 Counter2->Text = Open8055_GetCounter(cardHandle, 1).ToString();
+					 Counter3->Text = Open8055_GetCounter(cardHandle, 2).ToString();
+					 Counter4->Text = Open8055_GetCounter(cardHandle, 3).ToString();
+					 Counter5->Text = Open8055_GetCounter(cardHandle, 4).ToString();
 				 }
 			 }
 	private: System::Void buttonDisconnect_Click(System::Object^  sender, System::EventArgs^  e) {

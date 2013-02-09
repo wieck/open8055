@@ -561,6 +561,22 @@ Open8055_Wait(int h)
 
 
 /* ----
+ * Open8055_WaitTimeout()
+ *
+ *	Wait with timeout until any new input becomes available
+ * ----
+ */
+OPEN8055_EXTERN int OPEN8055_CDECL
+Open8055_WaitTimeout(int h, int timeout)
+{
+	int				rc;
+
+	while ((rc = Open8055_WaitEx(h, timeout, 0)) == 0);
+	return rc;
+}
+
+
+/* ----
  * Open8055_WaitEx()
  *
  *	Wait with timeout and skipMessages feature.

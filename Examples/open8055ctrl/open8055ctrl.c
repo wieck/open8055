@@ -74,7 +74,8 @@ static usage_help_t		usageHelp[] = {
 	{ C_Reset,				"Reset" },
 
 	{ C_Wait,				"Wait" },
-	{ C_WaitEx,				"WaitFor <milliseconds> <skipMesssages>" },
+	{ C_WaitTimeout,		"WaitTimeout <milliseconds>" },
+	{ C_WaitEx,				"WaitEx <milliseconds> <skipMesssages>" },
 	{ C_GetAutoFlush,		"GetAutoFlush" },
 	{ C_SetAutoFlush,		"SetAutoFlush <flag>" },
 	{ C_Flush,				"Flush" },

@@ -75,6 +75,7 @@ static void		displayCardError(void);
 %token		C_Reset
 
 %token		C_Wait
+%token		C_WaitTimeout
 %token		C_WaitEx
 %token		C_GetAutoFlush
 %token		C_SetAutoFlush
@@ -114,6 +115,7 @@ command					:
 						| cmd_Close
 						| cmd_Reset
 						| cmd_Wait
+						| cmd_WaitTimeout
 						| cmd_WaitEx
 						| cmd_GetAutoFlush
 						| cmd_SetAutoFlush
@@ -163,6 +165,14 @@ cmd_Reset				: C_Reset
 cmd_Wait				: C_Wait
 						{
 							if ((intRc = Open8055_Wait(cardHandle)) < 0)
+								displayCardError();
+							else
+								printf("%d\n", intRc);
+						}
+
+cmd_WaitTimeout			: C_WaitTimeout ival
+						{
+							if ((intRc = Open8055_WaitTimeout(cardHandle, $2)) < 0)
 								displayCardError();
 							else
 								printf("%d\n", intRc);
