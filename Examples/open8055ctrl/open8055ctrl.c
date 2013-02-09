@@ -45,7 +45,7 @@
  */
 int			terminateFlag = FALSE;
 int			commandTag;
-OPEN8055_HANDLE		cardHandle;
+int			cardHandle;
 
 /* ----
  * Local definitions
@@ -184,9 +184,9 @@ main(const int argc, char * const argv[])
 	 * Connect to the Open8055 board.
 	 * ----
 	 */
-	if ((cardHandle = Open8055_Connect(boardDestination, NULL)) == NULL)
+	if ((cardHandle = Open8055_Connect(boardDestination, NULL)) < 0)
 	{
-		printf("ERROR Open8055_Connect(): %s\n", Open8055_LastError(NULL));
+		printf("ERROR Open8055_Connect(): %s\n", Open8055_LastError(-1));
 		return 2;
 	}
 
@@ -234,7 +234,7 @@ main(const int argc, char * const argv[])
 	 */
 	if (Open8055_Close(cardHandle) < 0)
 	{
-		printf("ERROR Open8055_Close(): %s\n", Open8055_LastError(NULL));
+		printf("ERROR Open8055_Close(): %s\n", Open8055_LastError(-1));
 		return 3;
 	}
 

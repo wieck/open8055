@@ -37,7 +37,7 @@
 
 extern int	terminateFlag;
 extern int	commandTag;
-extern OPEN8055_HANDLE	cardHandle;
+extern int	cardHandle;
 
 extern int	yyparse(void);
 extern void yyerror(const char *msg);

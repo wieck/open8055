@@ -77,7 +77,6 @@ extern "C" {
 #define OPEN8055_WAITFOR_MS			1
 #define OPEN8055_INFINITE			-1
 
-typedef void *OPEN8055_HANDLE;
 
 /* ----
  * The following bits define unique input items in the reports.
@@ -114,43 +113,43 @@ typedef void *OPEN8055_HANDLE;
  * Public functions in open8055.c
  * ----
  */
-OPEN8055_EXTERN char *	OPEN8055_CDECL Open8055_LastError(OPEN8055_HANDLE h);
+OPEN8055_EXTERN char	*OPEN8055_CDECL Open8055_LastError(int h);
 OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_CardPresent(int cardNumber);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetSkipMessages(OPEN8055_HANDLE h);
-OPEN8055_EXTERN void	OPEN8055_CDECL Open8055_SetSkipMessages(OPEN8055_HANDLE h, int flag);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetSkipMessages(int h);
+OPEN8055_EXTERN void	OPEN8055_CDECL Open8055_SetSkipMessages(int h, int flag);
 
-OPEN8055_EXTERN OPEN8055_HANDLE OPEN8055_CDECL Open8055_Connect(char *destination, char *password);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_Close(OPEN8055_HANDLE h);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_Reset(OPEN8055_HANDLE h);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_Connect(char *destination, char *password);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_Close(int h);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_Reset(int h);
 
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_Wait(OPEN8055_HANDLE h, int timeout);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_WaitFor(OPEN8055_HANDLE h, int mask, int timeout);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetAutoFlush(OPEN8055_HANDLE h);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_SetAutoFlush(OPEN8055_HANDLE h, int flag);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_Flush(OPEN8055_HANDLE h);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_Wait(int h, int timeout);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_WaitFor(int h, int mask, int timeout);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetAutoFlush(int h);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_SetAutoFlush(int h, int flag);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_Flush(int h);
 
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetInput(OPEN8055_HANDLE h, int port);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetInputAll(OPEN8055_HANDLE h);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetCounter(OPEN8055_HANDLE h, int port);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_ResetCounter(OPEN8055_HANDLE h, int port);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_ResetCounterAll(OPEN8055_HANDLE h);
-OPEN8055_EXTERN double	OPEN8055_CDECL Open8055_GetDebounce(OPEN8055_HANDLE h, int port);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_SetDebounce(OPEN8055_HANDLE h, int port, double value);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetADC(OPEN8055_HANDLE h, int port);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetInput(int h, int port);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetInputAll(int h);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetCounter(int h, int port);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_ResetCounter(int h, int port);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_ResetCounterAll(int h);
+OPEN8055_EXTERN double	OPEN8055_CDECL Open8055_GetDebounce(int h, int port);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_SetDebounce(int h, int port, double value);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetADC(int h, int port);
 
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetOutput(OPEN8055_HANDLE h, int port);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetOutputAll(OPEN8055_HANDLE h);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetOutputValue(OPEN8055_HANDLE h, int port);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetPWM(OPEN8055_HANDLE h, int port);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_SetOutput(OPEN8055_HANDLE h, int port, int val);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_SetOutputAll(OPEN8055_HANDLE h, int val);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_SetOutputValue(OPEN8055_HANDLE h, int port, int val);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_SetPWM(OPEN8055_HANDLE h, int port, int val);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetOutput(int h, int port);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetOutputAll(int h);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetOutputValue(int h, int port);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetPWM(int h, int port);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_SetOutput(int h, int port, int val);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_SetOutputAll(int h, int val);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_SetOutputValue(int h, int port, int val);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_SetPWM(int h, int port, int val);
 
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetModeInput(OPEN8055_HANDLE h, int port);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_SetModeInput(OPEN8055_HANDLE h, int port, int mode);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetModeOutput(OPEN8055_HANDLE h, int port);
-OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_SetModeOutput(OPEN8055_HANDLE h, int port, int mode);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetModeInput(int h, int port);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_SetModeInput(int h, int port, int mode);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_GetModeOutput(int h, int port);
+OPEN8055_EXTERN int		OPEN8055_CDECL Open8055_SetModeOutput(int h, int port, int mode);
 
 
 #ifdef __cplusplus
