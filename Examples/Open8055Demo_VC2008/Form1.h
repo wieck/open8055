@@ -158,6 +158,17 @@ private: System::Windows::Forms::CheckBox^  O8;
 private: System::Windows::Forms::Button^  buttonDisconnect;
 private: System::Windows::Forms::Button^  buttonReset;
 private: System::ComponentModel::BackgroundWorker^  backgroundWorker1;
+private: System::Windows::Forms::Panel^  ADC1_Mode;
+private: System::Windows::Forms::RadioButton^  ADC1_8;
+private: System::Windows::Forms::RadioButton^  ADC1_9;
+private: System::Windows::Forms::RadioButton^  ADC1_10;
+private: System::Windows::Forms::Panel^  ADC2_Mode;
+private: System::Windows::Forms::RadioButton^  ADC2_8;
+
+private: System::Windows::Forms::RadioButton^  ADC2_9;
+
+private: System::Windows::Forms::RadioButton^  ADC2_10;
+
 
 
 
@@ -280,6 +291,16 @@ private: System::ComponentModel::BackgroundWorker^  backgroundWorker1;
 			this->buttonDisconnect = (gcnew System::Windows::Forms::Button());
 			this->buttonReset = (gcnew System::Windows::Forms::Button());
 			this->backgroundWorker1 = (gcnew System::ComponentModel::BackgroundWorker());
+			this->ADC1_Mode = (gcnew System::Windows::Forms::Panel());
+			this->ADC1_8 = (gcnew System::Windows::Forms::RadioButton());
+			this->ADC1_9 = (gcnew System::Windows::Forms::RadioButton());
+			this->ADC1_10 = (gcnew System::Windows::Forms::RadioButton());
+			this->ADC2_Mode = (gcnew System::Windows::Forms::Panel());
+			this->ADC2_8 = (gcnew System::Windows::Forms::RadioButton());
+			this->ADC2_9 = (gcnew System::Windows::Forms::RadioButton());
+			this->ADC2_10 = (gcnew System::Windows::Forms::RadioButton());
+			this->ADC1_Mode->SuspendLayout();
+			this->ADC2_Mode->SuspendLayout();
 			this->SuspendLayout();
 			// 
 			// cardDestination
@@ -1182,12 +1203,113 @@ private: System::ComponentModel::BackgroundWorker^  backgroundWorker1;
 			this->backgroundWorker1->WorkerReportsProgress = true;
 			this->backgroundWorker1->DoWork += gcnew System::ComponentModel::DoWorkEventHandler(this, &Form1::backgroundWorker1_DoWork);
 			this->backgroundWorker1->ProgressChanged += gcnew System::ComponentModel::ProgressChangedEventHandler(this, &Form1::backgroundWorker1_ProgressChanged);
+			this->backgroundWorker1->RunWorkerCompleted += gcnew System::ComponentModel::RunWorkerCompletedEventHandler(this, &Form1::backgroundWorker1_RunWorkerCompleted);
+			// 
+			// ADC1_Mode
+			// 
+			this->ADC1_Mode->Controls->Add(this->ADC1_8);
+			this->ADC1_Mode->Controls->Add(this->ADC1_9);
+			this->ADC1_Mode->Controls->Add(this->ADC1_10);
+			this->ADC1_Mode->Location = System::Drawing::Point(656, 93);
+			this->ADC1_Mode->Name = L"ADC1_Mode";
+			this->ADC1_Mode->Size = System::Drawing::Size(157, 19);
+			this->ADC1_Mode->TabIndex = 90;
+			// 
+			// ADC1_8
+			// 
+			this->ADC1_8->AutoSize = true;
+			this->ADC1_8->Enabled = false;
+			this->ADC1_8->Location = System::Drawing::Point(108, 1);
+			this->ADC1_8->Name = L"ADC1_8";
+			this->ADC1_8->Size = System::Drawing::Size(45, 17);
+			this->ADC1_8->TabIndex = 2;
+			this->ADC1_8->TabStop = true;
+			this->ADC1_8->Text = L"8 bit";
+			this->ADC1_8->UseVisualStyleBackColor = true;
+			this->ADC1_8->CheckedChanged += gcnew System::EventHandler(this, &Form1::ADC1_8_CheckedChanged);
+			// 
+			// ADC1_9
+			// 
+			this->ADC1_9->AutoSize = true;
+			this->ADC1_9->Enabled = false;
+			this->ADC1_9->Location = System::Drawing::Point(57, 1);
+			this->ADC1_9->Name = L"ADC1_9";
+			this->ADC1_9->Size = System::Drawing::Size(45, 17);
+			this->ADC1_9->TabIndex = 1;
+			this->ADC1_9->TabStop = true;
+			this->ADC1_9->Text = L"9 bit";
+			this->ADC1_9->UseVisualStyleBackColor = true;
+			this->ADC1_9->CheckedChanged += gcnew System::EventHandler(this, &Form1::ADC1_9_CheckedChanged);
+			// 
+			// ADC1_10
+			// 
+			this->ADC1_10->AutoSize = true;
+			this->ADC1_10->Enabled = false;
+			this->ADC1_10->Location = System::Drawing::Point(0, 1);
+			this->ADC1_10->Name = L"ADC1_10";
+			this->ADC1_10->Size = System::Drawing::Size(51, 17);
+			this->ADC1_10->TabIndex = 0;
+			this->ADC1_10->TabStop = true;
+			this->ADC1_10->Text = L"10 bit";
+			this->ADC1_10->UseVisualStyleBackColor = true;
+			this->ADC1_10->CheckedChanged += gcnew System::EventHandler(this, &Form1::ADC1_10_CheckedChanged);
+			// 
+			// ADC2_Mode
+			// 
+			this->ADC2_Mode->Controls->Add(this->ADC2_8);
+			this->ADC2_Mode->Controls->Add(this->ADC2_9);
+			this->ADC2_Mode->Controls->Add(this->ADC2_10);
+			this->ADC2_Mode->Location = System::Drawing::Point(656, 120);
+			this->ADC2_Mode->Name = L"ADC2_Mode";
+			this->ADC2_Mode->Size = System::Drawing::Size(157, 19);
+			this->ADC2_Mode->TabIndex = 91;
+			// 
+			// ADC2_8
+			// 
+			this->ADC2_8->AutoSize = true;
+			this->ADC2_8->Enabled = false;
+			this->ADC2_8->Location = System::Drawing::Point(108, 1);
+			this->ADC2_8->Name = L"ADC2_8";
+			this->ADC2_8->Size = System::Drawing::Size(45, 17);
+			this->ADC2_8->TabIndex = 2;
+			this->ADC2_8->TabStop = true;
+			this->ADC2_8->Text = L"8 bit";
+			this->ADC2_8->UseVisualStyleBackColor = true;
+			this->ADC2_8->CheckedChanged += gcnew System::EventHandler(this, &Form1::ADC2_8_CheckedChanged);
+			// 
+			// ADC2_9
+			// 
+			this->ADC2_9->AutoSize = true;
+			this->ADC2_9->Enabled = false;
+			this->ADC2_9->Location = System::Drawing::Point(57, 1);
+			this->ADC2_9->Name = L"ADC2_9";
+			this->ADC2_9->Size = System::Drawing::Size(45, 17);
+			this->ADC2_9->TabIndex = 1;
+			this->ADC2_9->TabStop = true;
+			this->ADC2_9->Text = L"9 bit";
+			this->ADC2_9->UseVisualStyleBackColor = true;
+			this->ADC2_9->CheckedChanged += gcnew System::EventHandler(this, &Form1::ADC2_9_CheckedChanged);
+			// 
+			// ADC2_10
+			// 
+			this->ADC2_10->AutoSize = true;
+			this->ADC2_10->Enabled = false;
+			this->ADC2_10->Location = System::Drawing::Point(0, 1);
+			this->ADC2_10->Name = L"ADC2_10";
+			this->ADC2_10->Size = System::Drawing::Size(51, 17);
+			this->ADC2_10->TabIndex = 0;
+			this->ADC2_10->TabStop = true;
+			this->ADC2_10->Text = L"10 bit";
+			this->ADC2_10->UseVisualStyleBackColor = true;
+			this->ADC2_10->CheckedChanged += gcnew System::EventHandler(this, &Form1::ADC2_10_CheckedChanged);
 			// 
 			// Form1
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
 			this->ClientSize = System::Drawing::Size(892, 553);
+			this->Controls->Add(this->ADC2_Mode);
+			this->Controls->Add(this->ADC1_Mode);
 			this->Controls->Add(this->buttonReset);
 			this->Controls->Add(this->buttonDisconnect);
 			this->Controls->Add(this->OutputMode8);
@@ -1280,6 +1402,10 @@ private: System::ComponentModel::BackgroundWorker^  backgroundWorker1;
 			this->Name = L"Form1";
 			this->Text = L"Open8055Demo";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
+			this->ADC1_Mode->ResumeLayout(false);
+			this->ADC1_Mode->PerformLayout();
+			this->ADC2_Mode->ResumeLayout(false);
+			this->ADC2_Mode->PerformLayout();
 			this->ResumeLayout(false);
 			this->PerformLayout();
 
@@ -1355,6 +1481,31 @@ private: System::ComponentModel::BackgroundWorker^  backgroundWorker1;
 				 OutputMode6->SelectedIndex = modeOutputToIndex(Open8055_GetModeOutput(cardHandle, 5));
 				 OutputMode7->SelectedIndex = modeOutputToIndex(Open8055_GetModeOutput(cardHandle, 6));
 				 OutputMode8->SelectedIndex = modeOutputToIndex(Open8055_GetModeOutput(cardHandle, 7));
+
+				 switch(Open8055_GetModeADC(cardHandle, 0))
+				 {
+					 case OPEN8055_MODE_ADC10:
+						 ADC1_10->Checked = true;
+						 break;
+					 case OPEN8055_MODE_ADC9:
+						 ADC1_9->Checked = true;
+						 break;
+					 case OPEN8055_MODE_ADC8:
+						 ADC1_8->Checked = true;
+						 break;
+				 }
+				 switch(Open8055_GetModeADC(cardHandle, 1))
+				 {
+					 case OPEN8055_MODE_ADC10:
+						 ADC2_10->Checked = true;
+						 break;
+					 case OPEN8055_MODE_ADC9:
+						 ADC2_9->Checked = true;
+						 break;
+					 case OPEN8055_MODE_ADC8:
+						 ADC2_8->Checked = true;
+						 break;
+				 }
 			 }
 
 	private: System::Void Form1_Load(System::Object^  sender, System::EventArgs^  e) {
@@ -1415,12 +1566,22 @@ private: System::ComponentModel::BackgroundWorker^  backgroundWorker1;
 					 O7->Checked = Open8055_GetOutput(cardHandle, 6) != 0;
 					 O8->Checked = Open8055_GetOutput(cardHandle, 7) != 0;
 
+					 buttonConnect->Enabled = false;
+					 cardDestination->Enabled = false;
 					 buttonDisconnect->Enabled = true;
 					 buttonReset->Enabled = true;
 
 					 InputMode1->Enabled = true; 
 					 CounterReset1->Enabled = true; 
 					 Debounce1->Enabled = true; SetDebounce1->Enabled = true;
+
+					 ADC1_10->Enabled = true;
+					 ADC1_9->Enabled = true;
+					 ADC1_8->Enabled = true;
+
+					 ADC2_10->Enabled = true;
+					 ADC2_9->Enabled = true;
+					 ADC2_8->Enabled = true;
 
 					 InputMode2->Enabled = true; 
 					 CounterReset2->Enabled = true; 
@@ -1505,6 +1666,14 @@ private: System::ComponentModel::BackgroundWorker^  backgroundWorker1;
 				 Counter1->Text = "?"; CounterReset1->Enabled = false; 
 				 Debounce1->Text = "?"; Debounce1->Enabled = false; SetDebounce1->Enabled = false;
 
+				 ADC1_10->Enabled = true; ADC1_10->Checked = false;
+				 ADC1_9->Enabled = true; ADC1_9->Checked = false;
+				 ADC1_8->Enabled = true; ADC1_8->Checked = false;
+
+				 ADC2_10->Enabled = true; ADC2_10->Checked = false;
+				 ADC2_9->Enabled = true; ADC2_9->Checked = false;
+				 ADC2_8->Enabled = true; ADC2_8->Checked = false;
+
 				 I2->Checked = false; InputMode2->Enabled = false; 
 				 Counter2->Text = "?"; CounterReset2->Enabled = false; 
 				 Debounce2->Text = "?"; Debounce2->Enabled = false; SetDebounce2->Enabled = false;
@@ -1563,6 +1732,14 @@ private: System::ComponentModel::BackgroundWorker^  backgroundWorker1;
 
 				 ADC1->Text = "?"; ADCBar1->Value = 0;
 				 ADC2->Text = "?"; ADCBar2->Value = 0;
+
+				 ADC1_10->Enabled = true; ADC1_10->Checked = false;
+				 ADC1_9->Enabled = true; ADC1_9->Checked = false;
+				 ADC1_8->Enabled = true; ADC1_8->Checked = false;
+
+				 ADC2_10->Enabled = true; ADC2_10->Checked = false;
+				 ADC2_9->Enabled = true; ADC2_9->Checked = false;
+				 ADC2_8->Enabled = true; ADC2_8->Checked = false;
 
 				 I1->Checked = false; InputMode1->Enabled = false; 
 				 Counter1->Text = "?"; CounterReset1->Enabled = false; 
@@ -1832,6 +2009,34 @@ private: System::Void backgroundWorker1_ProgressChanged(System::Object^  sender,
 			 Counter3->Text = Open8055_GetCounter(cardHandle, 2).ToString();
 			 Counter4->Text = Open8055_GetCounter(cardHandle, 3).ToString();
 			 Counter5->Text = Open8055_GetCounter(cardHandle, 4).ToString();
+		 }
+private: System::Void backgroundWorker1_RunWorkerCompleted(System::Object^  sender, RunWorkerCompletedEventArgs^  e) {
+			 buttonConnect->Enabled = true;
+			 cardDestination->Enabled = true;
+		 }
+private: System::Void ADC1_10_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
+			 if (cardHandle >= 0 && ADC1_10->Checked)
+				 Open8055_SetModeADC(cardHandle, 0, OPEN8055_MODE_ADC10);
+		 }
+private: System::Void ADC1_9_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
+			 if (cardHandle >= 0 && ADC1_9->Checked)
+				 Open8055_SetModeADC(cardHandle, 0, OPEN8055_MODE_ADC9);
+		 }
+private: System::Void ADC1_8_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
+			 if (cardHandle >= 0 && ADC1_8->Checked)
+				 Open8055_SetModeADC(cardHandle, 0, OPEN8055_MODE_ADC8);
+		 }
+private: System::Void ADC2_10_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
+			 if (cardHandle >= 0 && ADC2_10->Checked)
+				 Open8055_SetModeADC(cardHandle, 1, OPEN8055_MODE_ADC10);
+		 }
+private: System::Void ADC2_9_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
+			 if (cardHandle >= 0 && ADC2_9->Checked)
+				 Open8055_SetModeADC(cardHandle, 1, OPEN8055_MODE_ADC9);
+		 }
+private: System::Void ADC2_8_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
+			 if (cardHandle >= 0 && ADC2_8->Checked)
+				 Open8055_SetModeADC(cardHandle, 1, OPEN8055_MODE_ADC8);
 		 }
 };
 }
