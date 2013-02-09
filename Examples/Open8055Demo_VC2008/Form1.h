@@ -1285,7 +1285,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 		}
 #pragma endregion
 
-	static OPEN8055_HANDLE		cardHandle = NULL;
+	static int		cardHandle = -1;
 
 	private: int modeInputToIndex(int mode) {
 				 switch (mode)
@@ -1359,7 +1359,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 	private: System::Void Form1_Load(System::Object^  sender, System::EventArgs^  e) {
 			 }
 	private: System::Void Form1_Destroy(void) {
-				 if (cardHandle != NULL)
+				 if (cardHandle >= 0)
 					 Open8055_Close(cardHandle);
 			 }
 	private: System::Void cardDestination_TextChanged(System::Object^  sender, System::EventArgs^  e) {
@@ -1370,7 +1370,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 				 char *password = (char *)(void *)Marshal::StringToHGlobalAnsi(cardPassword->Text);
 
 				 // Close any previously open card
-				 if (cardHandle != NULL)
+				 if (cardHandle >= 0)
 				 {
 					 buttonDisconnect_Click(sender, e);
 				 }
@@ -1383,7 +1383,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 				 Marshal::FreeHGlobal((System::IntPtr)password);
 				 
 				 // See if we actually found the requested card
-				 if (cardHandle == NULL)
+				 if (cardHandle < 0)
 				 {
 					 connectedMessage->Text = "Connection to '" + cardDestination->Text +
 						 "' failed: " + 
@@ -1466,11 +1466,11 @@ private: System::Windows::Forms::Button^  buttonReset;
 				 }
 			 }
 	private: System::Void buttonDisconnect_Click(System::Object^  sender, System::EventArgs^  e) {
-				 if (cardHandle == NULL)
+				 if (cardHandle < 0)
 					 return;
 
 				 Open8055_Close(cardHandle);
-				 cardHandle = NULL;
+				 cardHandle = -1;
 				 updateAllConfig();
 				 timer1->Enabled = false;
 				 connectedMessage->Text = "Disconnected";
@@ -1530,11 +1530,11 @@ private: System::Windows::Forms::Button^  buttonReset;
 
 			 }
 	private: System::Void buttonReset_Click(System::Object^  sender, System::EventArgs^  e) {
-				 if (cardHandle == NULL)
+				 if (cardHandle < 0)
 					 return;
 
 				 Open8055_Reset(cardHandle);
-				 cardHandle = NULL;
+				 cardHandle = -1;
 				 updateAllConfig();
 				 timer1->Enabled = false;
 				 connectedMessage->Text = "Disconnected";
@@ -1596,7 +1596,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 	private: System::Void timer1_Tick(System::Object^  sender, System::EventArgs^  e) {
 				 int	value;
 			
-				 if (cardHandle == NULL)
+				 if (cardHandle < 0)
 					 return;
 
 				 value = Open8055_GetInputAll(cardHandle);
@@ -1626,29 +1626,29 @@ private: System::Windows::Forms::Button^  buttonReset;
 				 Counter5->Text = Open8055_GetCounter(cardHandle, 4).ToString();
 			 }
 private: System::Void CounterReset1_Click(System::Object^  sender, System::EventArgs^  e) {
-			 if (cardHandle != NULL)
+			 if (cardHandle >= 0)
 				 Open8055_ResetCounter(cardHandle, 0);
 		 }
 private: System::Void CounterReset2_Click(System::Object^  sender, System::EventArgs^  e) {
-			 if (cardHandle != NULL)
+			 if (cardHandle >= 0)
 				 Open8055_ResetCounter(cardHandle, 1);
 		 }
 private: System::Void CounterReset3_Click(System::Object^  sender, System::EventArgs^  e) {
-			 if (cardHandle != NULL)
+			 if (cardHandle >= 0)
 				 Open8055_ResetCounter(cardHandle, 2);
 		 }
 private: System::Void CounterReset4_Click(System::Object^  sender, System::EventArgs^  e) {
-			 if (cardHandle != NULL)
+			 if (cardHandle >= 0)
 				 Open8055_ResetCounter(cardHandle, 3);
 		 }
 private: System::Void CounterReset5_Click(System::Object^  sender, System::EventArgs^  e) {
-			 if (cardHandle != NULL)
+			 if (cardHandle >= 0)
 				 Open8055_ResetCounter(cardHandle, 4);
 		 }
 private: System::Void SetDebounce1_Click(System::Object^  sender, System::EventArgs^  e) {
 			 Double	value = 0.0;
 
-			 if (cardHandle == NULL)
+			 if (cardHandle < 0)
 				 return;
 
 			 try {
@@ -1660,7 +1660,7 @@ private: System::Void SetDebounce1_Click(System::Object^  sender, System::EventA
 private: System::Void SetDebounce2_Click(System::Object^  sender, System::EventArgs^  e) {
 			 Double	value = 0.0;
 
-			 if (cardHandle == NULL)
+			 if (cardHandle < 0)
 				 return;
 
 			 try {
@@ -1672,7 +1672,7 @@ private: System::Void SetDebounce2_Click(System::Object^  sender, System::EventA
 private: System::Void SetDebounce3_Click(System::Object^  sender, System::EventArgs^  e) {
 			 Double	value = 0.0;
 
-			 if (cardHandle == NULL)
+			 if (cardHandle < 0)
 				 return;
 
 			 try {
@@ -1684,7 +1684,7 @@ private: System::Void SetDebounce3_Click(System::Object^  sender, System::EventA
 private: System::Void SetDebounce4_Click(System::Object^  sender, System::EventArgs^  e) {
 			 Double	value = 0.0;
 
-			 if (cardHandle == NULL)
+			 if (cardHandle < 0)
 				 return;
 
 			 try {
@@ -1696,7 +1696,7 @@ private: System::Void SetDebounce4_Click(System::Object^  sender, System::EventA
 private: System::Void SetDebounce5_Click(System::Object^  sender, System::EventArgs^  e) {
 			 Double	value = 0.0;
 
-			 if (cardHandle == NULL)
+			 if (cardHandle < 0)
 				 return;
 
 			 try {
@@ -1727,70 +1727,70 @@ private: System::Void InputMode5_SelectedIndexChanged(System::Object^  sender, S
 			 updateAllConfig();
 		 }
 private: System::Void PWMBar1_Scroll(System::Object^  sender, System::Windows::Forms::ScrollEventArgs^  e) {
-			 if (cardHandle != NULL)
+			 if (cardHandle >= 0)
 			 {
 				 Open8055_SetPWM(cardHandle, 0, PWMBar1->Value);
 				 PWM1->Text = Open8055_GetPWM(cardHandle, 0).ToString("d");
 			 }
 		 }
 private: System::Void PWMBar2_Scroll(System::Object^  sender, System::Windows::Forms::ScrollEventArgs^  e) {
-			 if (cardHandle != NULL)
+			 if (cardHandle >= 0)
 			 {
 				 Open8055_SetPWM(cardHandle, 1, PWMBar2->Value);
 				 PWM2->Text = Open8055_GetPWM(cardHandle, 1).ToString("d");
 			 }
 		 }
 private: System::Void O1_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
-			 if (cardHandle != NULL)
+			 if (cardHandle >= 0)
 			 {
 				 Open8055_SetOutput(cardHandle, 0, O1->Checked);
 				 O1->Checked = Open8055_GetOutput(cardHandle, 0) != 0;
 			 }
 		 }
 private: System::Void O2_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
-			 if (cardHandle != NULL)
+			 if (cardHandle >= 0)
 			 {
 				 Open8055_SetOutput(cardHandle, 1, O2->Checked);
 				 O2->Checked = Open8055_GetOutput(cardHandle, 1) != 0;
 			 }
 		 }
 private: System::Void O3_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
-			 if (cardHandle != NULL)
+			 if (cardHandle >= 0)
 			 {
 				 Open8055_SetOutput(cardHandle, 2, O3->Checked);
 				 O3->Checked = Open8055_GetOutput(cardHandle, 2) != 0;
 			 }
 		 }
 private: System::Void O4_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
-			 if (cardHandle != NULL)
+			 if (cardHandle >= 0)
 			 {
 				 Open8055_SetOutput(cardHandle, 3, O4->Checked);
 				 O4->Checked = Open8055_GetOutput(cardHandle, 3) != 0;
 			 }
 		 }
 private: System::Void O5_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
-			 if (cardHandle != NULL)
+			 if (cardHandle >= 0)
 			 {
 				 Open8055_SetOutput(cardHandle, 4, O5->Checked);
 				 O5->Checked = Open8055_GetOutput(cardHandle, 4) != 0;
 			 }
 		 }
 private: System::Void O6_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
-			 if (cardHandle != NULL)
+			 if (cardHandle >= 0)
 			 {
 				 Open8055_SetOutput(cardHandle, 5, O6->Checked);
 				 O6->Checked = Open8055_GetOutput(cardHandle, 5) != 0;
 			 }
 		 }
 private: System::Void O7_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
-			 if (cardHandle != NULL)
+			 if (cardHandle >= 0)
 			 {
 				 Open8055_SetOutput(cardHandle, 6, O7->Checked);
 				 O7->Checked = Open8055_GetOutput(cardHandle, 6) != 0;
 			 }
 		 }
 private: System::Void O8_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
-			 if (cardHandle != NULL)
+			 if (cardHandle >= 0)
 			 {
 				 Open8055_SetOutput(cardHandle, 7, O8->Checked);
 				 O8->Checked = Open8055_GetOutput(cardHandle, 7) != 0;

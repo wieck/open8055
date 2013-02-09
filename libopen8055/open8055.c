@@ -36,6 +36,8 @@
  * ----------------------------------------------------------------------
  */
 
+#include <unistd.h>
+
 #include "open8055_compat.h"
 #include "open8055.h"
 #include "open8055_hid_protocol.h"
@@ -62,6 +64,8 @@ typedef struct {
 	int						autoFlush;
 	int						pendingConfig1;
 	int						pendingOutput;
+	int						cardClosed;
+	int						cardRefcount;
 
 #ifdef _WIN32
 	unsigned char			writeBuffer[OPEN8055_HID_MESSAGE_SIZE + 1];
@@ -69,6 +73,7 @@ typedef struct {
 	HANDLE					readEvent;
 	int						readPending;
 	OVERLAPPED				readOverlapped;
+	CRITICAL_SECTION		cardLock;
 #else
 	unsigned char			readBuffer[OPEN8055_HID_MESSAGE_SIZE];
 	libusb_device_handle	*cardHandle;
@@ -85,8 +90,14 @@ typedef struct {
  * Local functions
  * ----------------------------------------------------------------------
  */
-static Open8055_card_t *LockCard(int h);
-static void UnlockCard(Open8055_card_t *card);
+static Open8055_card_t *LockAndRefcount(int h);
+static void UnlockAndRefcount(Open8055_card_t *card);
+#ifdef _WIN32
+#define LockCreate(_c)		InitializeCriticalSection((_c))
+#define LockDestroy(_c)		DeleteCriticalSection((_c))
+#define LockAcquire(_c)		EnterCriticalSection((_c))
+#define LockRelease(_c)		LeaveCriticalSection((_c))
+#endif
 
 static int Open8055_Init(void);
 static void SetError(Open8055_card_t *card, char *fmt, ...);
@@ -113,6 +124,9 @@ static int				openLocalCards[OPEN8055_MAX_CARDS];
 static Open8055_card_t	**connections = NULL;
 static int				connectionsSize = 0;
 static int				connectionsUsed = 0;
+#ifdef _WIN32
+static CRITICAL_SECTION	connectionsLock;
+#endif
 
 
 /* ----------------------------------------------------------------------
@@ -132,14 +146,18 @@ OPEN8055_EXTERN char * OPEN8055_CDECL
 Open8055_LastError(int h)
 {
 	Open8055_card_t *card;
+	char			*result;
 
 	if (h < 0)
 		return lastErrorMessage;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return lastErrorMessage;
 
-	return card->errorMessage;
+	result = card->errorMessage;
+
+	UnlockAndRefcount(card);
+	return result;
 }
 
 
@@ -173,11 +191,15 @@ OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_GetSkipMessages(int h)
 {
 	Open8055_card_t *card;
+	int				rc;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
-	return (card->skipMessages) ? 1 : 0;
+	rc = (card->skipMessages) ? 1 : 0;
+
+	UnlockAndRefcount(card);
+	return rc;
 }
 
 
@@ -192,10 +214,12 @@ Open8055_SetSkipMessages(int h, int flag)
 {
 	Open8055_card_t *card;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return;
 
 	card->skipMessages = (flag != FALSE) ? 1 : 0;
+
+	UnlockAndRefcount(card);
 }
 
 
@@ -268,6 +292,7 @@ Open8055_Connect(char *destination, char *password)
 	card->idLocal	= cardNumber;
 	card->skipMessages	= TRUE;
 	card->autoFlush = TRUE;
+	LockCreate(&(card->cardLock));
 
 	/* ----
 	 * Try to open the actual local card.
@@ -276,6 +301,7 @@ Open8055_Connect(char *destination, char *password)
 	if (DeviceOpen(card) < 0)
 	{
 		strncpy(lastErrorMessage, card->errorMessage, sizeof(lastErrorMessage));
+		LockDestroy(&(card->cardLock));
 		free(card);
 		return -1;
 	}
@@ -290,6 +316,7 @@ Open8055_Connect(char *destination, char *password)
 	{
 		SetError(NULL, "Sending of GETCONFIG failed - %s", ErrorString());
 		DeviceClose(card);
+		LockDestroy(&(card->cardLock));
 		free(card);
 		return -1;
 	}
@@ -301,6 +328,7 @@ Open8055_Connect(char *destination, char *password)
 		{
 			SetError(NULL, "DeviceRead failed - %s", ErrorString());
 			DeviceClose(card);
+			LockDestroy(&(card->cardLock));
 			free(card);
 			return -1;
 		}
@@ -342,6 +370,7 @@ Open8055_Connect(char *destination, char *password)
 			initialized = 0;
 			SetError(NULL, "out of memory");
 			DeviceClose(card);
+			LockDestroy(&(card->cardLock));
 			free(card);
 			return -1;
 		}
@@ -370,20 +399,80 @@ Open8055_Close(int h)
 	Open8055_card_t		*card;
 	int					rc = 0;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	/* ----
+	 * Guard against concurrent calls of Close/Reset.
+	 * ----
+	 */
+	if (card->cardClosed)
+	{
+		UnlockAndRefcount(card);
+		return -1;
+	}
+	strcpy(card->errorMessage, "card closed");
+	card->cardClosed = 1;
+
+	/* ----
+	 * We need both locks, the one of the card as well as the one for the
+	 * global connections list. To avoid deadlock we must first release
+	 * the card lock, then acquire the connectionsLock and re-acquire the
+	 * card lock.
+	 * ----
+	 */
+	LockRelease(&(card->cardLock));
+	LockAcquire(&connectionsLock);
+	LockAcquire(&(card->cardLock));
+
+	/* ----
+	 * We now can safely mark the handle slot empty, so that no other calls
+	 * for this card can be done. 
+	 * ----
+	 */
+	connections[h] = NULL;
+	LockRelease(&connectionsLock);
+
+	/* ----
+	 * It is possible that some other call is currently accessing the card.
+	 * Worst case that could be a blocking WaitForInput(). We request INPUT
+	 * reports from the card until the reference count drops to one (our
+	 * own count).
+	 * ----
+	 */
+	while(card->cardRefcount > 1)
+	{
+		Open8055_hidMessage_t	message;
+
+		memset(&message, 0, sizeof(message));
+		message.msgType = OPEN8055_HID_MESSAGE_GETINPUT;
+
+		if (DeviceWrite(card, &message) < 0)
+		{
+			UnlockAndRefcount(card);
+			return -1;
+		}
+
+		LockRelease(&(card->cardLock));
+		usleep(1000);
+		LockAcquire(&(card->cardLock));
+	}
+
+	/* ----
+	 * At this point we should be the only one left using this card.
 	 * Close the device and free the card structure.
 	 * ----
 	 */
 	if (DeviceClose(card) < 0)
 	{
 		strncpy(lastErrorMessage, card->errorMessage, sizeof(lastErrorMessage));
+		UnlockAndRefcount(card);
 		rc = -1;
 	}
+
+	UnlockAndRefcount(card);
+	LockDestroy(&(card->cardLock));
 	free(card);
-	connections[h] = NULL;
 
 	return rc;
 }
@@ -403,8 +492,64 @@ Open8055_Reset(int h)
 	int						rc = 0;
 	Open8055_hidMessage_t	message;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
+
+	/* ----
+	 * Guard against concurrent calls of Close/Reset.
+	 * ----
+	 */
+	if (card->cardClosed)
+	{
+		UnlockAndRefcount(card);
+		return -1;
+	}
+	strcpy(card->errorMessage, "card closed");
+	card->cardClosed = 1;
+
+	/* ----
+	 * We need both locks, the one of the card as well as the one for the
+	 * global connections list. To avoid deadlock we must first release
+	 * the card lock, then acquire the connectionsLock and re-acquire the
+	 * card lock.
+	 * ----
+	 */
+	LockRelease(&(card->cardLock));
+	LockAcquire(&connectionsLock);
+	LockAcquire(&(card->cardLock));
+
+	/* ----
+	 * We now can safely mark the handle slot empty, so that no other calls
+	 * for this card can be done. 
+	 * ----
+	 */
+	connections[h] = NULL;
+	LockRelease(&connectionsLock);
+
+	/* ----
+	 * It is possible that some other call is currently accessing the card.
+	 * Worst case that could be a blocking WaitForInput(). We request INPUT
+	 * reports from the card until the reference count drops to one (our
+	 * own count).
+	 * ----
+	 */
+	while(card->cardRefcount > 1)
+	{
+		Open8055_hidMessage_t	message;
+
+		memset(&message, 0, sizeof(message));
+		message.msgType = OPEN8055_HID_MESSAGE_GETINPUT;
+
+		if (DeviceWrite(card, &message) < 0)
+		{
+			UnlockAndRefcount(card);
+			return -1;
+		}
+
+		LockRelease(&(card->cardLock));
+		usleep(1000);
+		LockAcquire(&(card->cardLock));
+	}
 
 	/* ----
 	 * Send it the RESET command.
@@ -415,6 +560,7 @@ Open8055_Reset(int h)
 	if (DeviceWrite(card, &message) < 0)
 	{
 		strncpy(lastErrorMessage, card->errorMessage, sizeof(lastErrorMessage));
+		UnlockAndRefcount(card);
 		rc = -1;
 	}
 
@@ -425,10 +571,13 @@ Open8055_Reset(int h)
 	if (DeviceClose(card) < 0)
 	{
 		strncpy(lastErrorMessage, card->errorMessage, sizeof(lastErrorMessage));
+		UnlockAndRefcount(card);
 		rc = -1;
 	}
+
+	UnlockAndRefcount(card);
+	LockDestroy(&(card->cardLock));
 	free(card);
-	connections[h] = NULL;
 
 	return rc;
 }
@@ -444,8 +593,9 @@ OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_Wait(int h, int timeout)
 {
 	Open8055_card_t *card;
+	int				rc;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	if (timeout < 0)
@@ -453,7 +603,10 @@ Open8055_Wait(int h, int timeout)
 	if (timeout > 3600000)
 		timeout = 3600000;
 
-	return Open8055_WaitForInput(card, OPEN8055_INPUT_ANY, timeout);
+	rc = Open8055_WaitForInput(card, OPEN8055_INPUT_ANY, timeout);
+
+	UnlockAndRefcount(card);
+	return rc;
 }
 
 
@@ -467,8 +620,9 @@ OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_WaitFor(int h, int mask, int timeout)
 {
 	Open8055_card_t *card;
+	int				rc;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	mask &= OPEN8055_INPUT_ANY;
@@ -478,7 +632,10 @@ Open8055_WaitFor(int h, int mask, int timeout)
 	if (timeout > 3600000)
 		timeout = 3600000;
 
-	return Open8055_WaitForInput(card, mask, timeout);
+	rc = Open8055_WaitForInput(card, mask, timeout);
+
+	UnlockAndRefcount(card);
+	return rc;
 }
 
 
@@ -492,14 +649,16 @@ OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_GetAutoFlush(int h)
 {
 	Open8055_card_t *card;
+	int 			rc = 0;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	if(card->autoFlush)
-		return 1;
+		rc = 1;
 
-	return 0;
+	UnlockAndRefcount(card);
+	return rc;
 }
 
 
@@ -513,16 +672,37 @@ OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_SetAutoFlush(int h, int flag)
 {
 	Open8055_card_t *card;
+	int				rc = 0;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	card->autoFlush = (flag != FALSE);
 
 	if (card->autoFlush)
-		return Open8055_Flush(h);
+	{
+		if (card->pendingConfig1)
+		{
+			if (DeviceWrite(card, &(card->currentConfig1)) < 0)
+				rc = -1;
+			else
+				card->pendingConfig1 = FALSE;
+		}
 
-	return 0;
+		if (rc == 0 && card->pendingOutput)
+		{
+			if (DeviceWrite(card, &(card->currentOutput)) < 0)
+				rc = -1;
+			else
+			{
+				card->pendingOutput = FALSE;
+				card->currentOutput.resetCounter = 0x00;
+			}
+		}
+	}
+
+	UnlockAndRefcount(card);
+	return rc;
 }
 
 
@@ -538,24 +718,26 @@ Open8055_Flush(int h)
 	Open8055_card_t *card;
 	int			rc = 0;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	if (card->pendingConfig1)
 	{
 		if (DeviceWrite(card, &(card->currentConfig1)) < 0)
-			return -1;
-
-		card->pendingConfig1 = FALSE;
+			rc = -1;
+		else
+			card->pendingConfig1 = FALSE;
 	}
 
-	if (card->pendingOutput)
+	if (rc == 0 && card->pendingOutput)
 	{
 		if (DeviceWrite(card, &(card->currentOutput)) < 0)
 			return -1;
-
-		card->pendingOutput = FALSE;
-		card->currentOutput.resetCounter = 0x00;
+		else
+		{
+			card->pendingOutput = FALSE;
+			card->currentOutput.resetCounter = 0x00;
+		}
 	}
 
 	return rc;
@@ -574,18 +756,25 @@ Open8055_GetInput(int h, int port)
 	Open8055_card_t *card;
 	int			rc = 0;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	if (port < 0 || port > 4)
-		return 0;
+	{
+		SetError(card, "parameter invalid");
+		UnlockAndRefcount(card);
+		return -1;
+	}
 
 	/* ----
 	 * Make sure we have current input data.
 	 * ----
 	 */
 	if (Open8055_WaitForInput(card, OPEN8055_INPUT_I1 << port, OPEN8055_WAITFOR_MS) < 0)
+	{
+		UnlockAndRefcount(card);
 		return -1;
+	}
 
 	/* ----
 	 * Mark all digital inputs as consumed and return the current state.
@@ -594,6 +783,7 @@ Open8055_GetInput(int h, int port)
 	rc = (card->currentInput.inputBits & (1 << port)) ? 1 : 0;
 	card->currentInputUnconsumed &= ~(OPEN8055_INPUT_I1 << port);
 
+	UnlockAndRefcount(card);
 	return rc;
 }
 
@@ -610,7 +800,7 @@ Open8055_GetInputAll(int h)
 	Open8055_card_t *card;
 	int			rc = 0;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	/* ----
@@ -618,7 +808,10 @@ Open8055_GetInputAll(int h)
 	 * ----
 	 */
 	if (Open8055_WaitForInput(card, OPEN8055_INPUT_I_ANY, OPEN8055_WAITFOR_MS) < 0)
+	{
+		UnlockAndRefcount(card);
 		return -1;
+	}
 
 	/* ----
 	 * Mark all digital inputs as consumed and return the current state.
@@ -627,6 +820,7 @@ Open8055_GetInputAll(int h)
 	card->currentInputUnconsumed &= ~OPEN8055_INPUT_I_ANY;
 	rc = card->currentInput.inputBits;
 
+	UnlockAndRefcount(card);
 	return rc;
 }
 
@@ -643,18 +837,25 @@ Open8055_GetCounter(int h, int port)
 	Open8055_card_t *card;
 	int			rc = 0;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	if (port < 0 || port > 4)
-		return 0;
+	{
+		SetError(card, "parameter invalid");
+		UnlockAndRefcount(card);
+		return -1;
+	}
 
 	/* ----
 	 * Make sure we have current input data.
 	 * ----
 	 */
 	if (Open8055_WaitForInput(card, OPEN8055_INPUT_COUNT1 << port, OPEN8055_WAITFOR_MS) < 0)
+	{
+		UnlockAndRefcount(card);
 		return -1;
+	}
 
 	/* ----
 	 * Mark the counter consumed.
@@ -663,6 +864,7 @@ Open8055_GetCounter(int h, int port)
 	card->currentInputUnconsumed &= ~(OPEN8055_INPUT_COUNT1 << port);
 	rc = ntohs(card->currentInput.inputCounter[port]);
 
+	UnlockAndRefcount(card);
 	return rc;
 }
 
@@ -679,11 +881,15 @@ Open8055_ResetCounter(int h, int port)
 	Open8055_card_t *card;
 	int			rc = 0;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	if (port < 0 || port > 4)
-		return 0;
+	{
+		SetError(card, "parameter invalid");
+		UnlockAndRefcount(card);
+		return -1;
+	}
 
 	/* ----
 	 * Set the value and send it if in autoFlush mode.
@@ -694,15 +900,18 @@ Open8055_ResetCounter(int h, int port)
 	{
 		if (DeviceWrite(card, &(card->currentOutput)) < 0)
 			rc = -1;
-
-		card->pendingOutput = FALSE;
-		card->currentOutput.resetCounter = 0x00;
+		else
+		{
+			card->pendingOutput = FALSE;
+			card->currentOutput.resetCounter = 0x00;
+		}
 	}
 	else
 	{
 		card->pendingOutput = TRUE;
 	}
 
+	UnlockAndRefcount(card);
 	return rc;
 }
 
@@ -719,7 +928,7 @@ Open8055_ResetCounterAll(int h)
 	Open8055_card_t *card;
 	int			rc = 0;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	/* ----
@@ -731,15 +940,18 @@ Open8055_ResetCounterAll(int h)
 	{
 		if (DeviceWrite(card, &(card->currentOutput)) < 0)
 			rc = -1;
-
-		card->pendingOutput = FALSE;
-		card->currentOutput.resetCounter = 0x00;
+		else
+		{
+			card->pendingOutput = FALSE;
+			card->currentOutput.resetCounter = 0x00;
+		}
 	}
 	else
 	{
 		card->pendingOutput = TRUE;
 	}
 
+	UnlockAndRefcount(card);
 	return rc;
 }
 
@@ -756,14 +968,19 @@ Open8055_GetDebounce(int h, int port)
 	Open8055_card_t *card;
 	double		rc;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	if (port < 0 || port > 4)
-		return 0.0;
+	{
+		SetError(card, "parameter invalid");
+		UnlockAndRefcount(card);
+		return -1.0;
+	}
 
 	rc = (double)(ntohs(card->currentConfig1.debounceValue[port]) - 1) / 10.0;
 
+	UnlockAndRefcount(card);
 	return rc;
 }
 
@@ -780,11 +997,16 @@ Open8055_SetDebounce(int h, int port, double ms)
 	Open8055_card_t *card;
 	int			rc = 0;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	if (port < 0 || port > 4)
-		return 0;
+	{
+		SetError(card, "parameter invalid");
+		UnlockAndRefcount(card);
+		return -1;
+	}
+
 	if (ms < 0.0)
 		ms = 0.0;
 	if (ms > 5000.0)
@@ -799,15 +1021,18 @@ Open8055_SetDebounce(int h, int port, double ms)
 	{
 		if (DeviceWrite(card, &(card->currentConfig1)) < 0)
 			rc = -1;
-
-		card->pendingConfig1 = FALSE;
-		card->currentOutput.resetCounter = 0x00;
+		else
+		{
+			card->pendingConfig1 = FALSE;
+			card->currentOutput.resetCounter = 0x00;
+		}
 	}
 	else
 	{
 		card->pendingConfig1 = TRUE;
 	}
 
+	UnlockAndRefcount(card);
 	return rc;
 }
 
@@ -824,18 +1049,25 @@ Open8055_GetADC(int h, int port)
 	Open8055_card_t *card;
 	int			rc = 0;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	if (port < 0 || port > 1)
-		return 0;
+	{
+		SetError(card, "parameter error");
+		UnlockAndRefcount(card);
+		return -1;
+	}
 
 	/* ----
 	 * Make sure we have current input data.
 	 * ----
 	 */
 	if (Open8055_WaitForInput(card, OPEN8055_INPUT_ADC1 << port, OPEN8055_WAITFOR_MS) < 0)
+	{
+		UnlockAndRefcount(card);
 		return -1;
+	}
 
 	/* ----
 	 * Mark the counter consumed.
@@ -844,6 +1076,7 @@ Open8055_GetADC(int h, int port)
 	card->currentInputUnconsumed &= ~(OPEN8055_INPUT_ADC1 << port);
 	rc = ntohs(card->currentInput.inputAdcValue[port]);
 
+	UnlockAndRefcount(card);
 	return rc;
 }
 
@@ -860,11 +1093,15 @@ Open8055_GetOutput(int h, int port)
 	Open8055_card_t *card;
 	int			rc = 0;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	if (port < 0 || port > 7)
-		return 0;
+	{
+		SetError(card, "parameter invalid");
+		UnlockAndRefcount(card);
+		return -1;
+	}
 
 	/* ----
 	 * We have queried them at Connect and tracked them all the time.
@@ -872,6 +1109,7 @@ Open8055_GetOutput(int h, int port)
 	 */
 	rc = (card->currentOutput.outputBits & (1 << port)) ? 1 : 0;
 
+	UnlockAndRefcount(card);
 	return rc;
 }
 
@@ -889,7 +1127,7 @@ Open8055_GetOutputAll(int h)
 	Open8055_card_t *card;
 	int			rc = 0;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	/* ----
@@ -898,6 +1136,7 @@ Open8055_GetOutputAll(int h)
 	 */
 	rc = card->currentOutput.outputBits;
 
+	UnlockAndRefcount(card);
 	return rc;
 }
 
@@ -915,11 +1154,15 @@ Open8055_GetPWM(int h, int port)
 	Open8055_card_t *card;
 	int			rc = 0;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	if (port < 0 || port > 1)
-		return 0;
+	{
+		SetError(card, "parameter invalid");
+		UnlockAndRefcount(card);
+		return -1;
+	}
 
 	/* ----
 	 * We have queried them at Connect and tracked them all the time.
@@ -927,6 +1170,7 @@ Open8055_GetPWM(int h, int port)
 	 */
 	rc = ntohs(card->currentOutput.outputPwmValue[port]);
 
+	UnlockAndRefcount(card);
 	return rc;
 }
 
@@ -943,11 +1187,15 @@ Open8055_SetOutput(int h, int port, int val)
 	Open8055_card_t *card;
 	int			rc = 0;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	if (port < 0 || port > 7)
-		return 0;
+	{
+		SetError(card, "parameter invalid");
+		UnlockAndRefcount(card);
+		return -1;
+	}
 
 	/* ----
 	 * Set or clear the bit and send the new info if in autoFlush mode.
@@ -962,15 +1210,18 @@ Open8055_SetOutput(int h, int port, int val)
 	{
 		if (DeviceWrite(card, &(card->currentOutput)) < 0)
 			rc = -1;
-
-		card->pendingOutput = FALSE;
-		card->currentOutput.resetCounter = 0x00;
+		else
+		{
+			card->pendingOutput = FALSE;
+			card->currentOutput.resetCounter = 0x00;
+		}
 	}
 	else
 	{
 		card->pendingOutput = TRUE;
 	}
 
+	UnlockAndRefcount(card);
 	return rc;
 }
 
@@ -987,7 +1238,7 @@ Open8055_SetOutputAll(int h, int bits)
 	Open8055_card_t *card;
 	int			rc = 0;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	bits &= 0xff;
@@ -1001,15 +1252,18 @@ Open8055_SetOutputAll(int h, int bits)
 	{
 		if (DeviceWrite(card, &(card->currentOutput)) < 0)
 			rc = -1;
-
-		card->pendingOutput = FALSE;
-		card->currentOutput.resetCounter = 0x00;
+		else
+		{
+			card->pendingOutput = FALSE;
+			card->currentOutput.resetCounter = 0x00;
+		}
 	}
 	else
 	{
 		card->pendingOutput = TRUE;
 	}
 
+	UnlockAndRefcount(card);
 	return rc;
 }
 
@@ -1026,11 +1280,16 @@ Open8055_SetPWM(int h, int port, int value)
 	Open8055_card_t *card;
 	int			rc = 0;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	if (port < 0 || port > 1)
+	{
+		SetError(card, "parameter invalid");
+		UnlockAndRefcount(card);
 		return 0;
+	}
+
 	if (value < 0)
 		value = 0;
 	if (value > 1023)
@@ -1045,15 +1304,18 @@ Open8055_SetPWM(int h, int port, int value)
 	{
 		if (DeviceWrite(card, &(card->currentOutput)) < 0)
 			rc = -1;
-
-		card->pendingOutput = FALSE;
-		card->currentOutput.resetCounter = 0x00;
+		else
+		{
+			card->pendingOutput = FALSE;
+			card->currentOutput.resetCounter = 0x00;
+		}
 	}
 	else
 	{
 		card->pendingOutput = TRUE;
 	}
 
+	UnlockAndRefcount(card);
 	return rc;
 }
 
@@ -1069,14 +1331,22 @@ OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_GetModeInput(int h, int port)
 {
 	Open8055_card_t *card;
+	int				rc;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	if (port < 0 || port > 4)
-		return 0;
+	{
+		SetError(card, "parameter invalid");
+		UnlockAndRefcount(card);
+		return -1;
+	}
 
-	return card->currentConfig1.modeInput[port];
+	rc = card->currentConfig1.modeInput[port];
+
+	UnlockAndRefcount(card);
+	return rc;
 }
 
 
@@ -1092,11 +1362,15 @@ Open8055_SetModeInput(int h, int port, int mode)
 	Open8055_card_t *card;
 	int				rc = 0;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	if (port < 0 || port > 4)
-		return 0;
+	{
+		SetError(card, "parameter error");
+		UnlockAndRefcount(card);
+		return -1;
+	}
 
 	if (mode == OPEN8055_MODE_INPUT || mode == OPEN8055_MODE_FREQUENCY)
 	{
@@ -1105,9 +1379,11 @@ Open8055_SetModeInput(int h, int port, int mode)
 		{
 			if (DeviceWrite(card, &(card->currentConfig1)) < 0)
 				rc = -1;
-
-			card->pendingConfig1 = FALSE;
-			card->currentOutput.resetCounter = 0x00;
+			else
+			{
+				card->pendingConfig1 = FALSE;
+				card->currentOutput.resetCounter = 0x00;
+			}
 		}
 		else
 		{
@@ -1115,6 +1391,7 @@ Open8055_SetModeInput(int h, int port, int mode)
 		}
 	}
 
+	UnlockAndRefcount(card);
 	return rc;
 }
 
@@ -1129,14 +1406,22 @@ OPEN8055_EXTERN int OPEN8055_CDECL
 Open8055_GetModeOutput(int h, int port)
 {
 	Open8055_card_t *card;
+	int				rc;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	if (port < 0 || port > 7)
-		return 0;
+	{
+		SetError(card, "parameter invalid");
+		UnlockAndRefcount(card);
+		return -1;
+	}
 
-	return card->currentConfig1.modeOutput[port];
+	rc = card->currentConfig1.modeOutput[port];
+
+	UnlockAndRefcount(card);
+	return rc;
 }
 
 
@@ -1152,11 +1437,15 @@ Open8055_SetModeOutput(int h, int port, int mode)
 	Open8055_card_t *card;
 	int				rc = 0;
 
-	if ((card = LockCard(h)) == NULL)
+	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
 
 	if (port < 0 || port > 7)
-		return 0;
+	{
+		SetError(card, "parameter invalid");
+		UnlockAndRefcount(card);
+		return -1;
+	}
 
 	if (mode == OPEN8055_MODE_OUTPUT || mode == OPEN8055_MODE_SERVO || mode == OPEN8055_MODE_ISERVO)
 	{
@@ -1165,9 +1454,11 @@ Open8055_SetModeOutput(int h, int port, int mode)
 		{
 			if (DeviceWrite(card, &(card->currentConfig1)) < 0)
 				rc = -1;
-
-			card->pendingConfig1 = FALSE;
-			card->currentOutput.resetCounter = 0x00;
+			else
+			{
+				card->pendingConfig1 = FALSE;
+				card->currentOutput.resetCounter = 0x00;
+			}
 		}
 		else
 		{
@@ -1175,6 +1466,7 @@ Open8055_SetModeOutput(int h, int port, int mode)
 		}
 	}
 
+	UnlockAndRefcount(card);
 	return rc;
 }
 
@@ -1190,6 +1482,8 @@ Open8055_Init(void)
 {
 	if (initialized)
 		return 0;
+
+	LockCreate(&connectionsLock);
 
 	connectionsSize = 16;
 	connections = (Open8055_card_t **)malloc(sizeof(Open8055_card_t *) * 16);
@@ -1208,20 +1502,40 @@ Open8055_Init(void)
 
 
 static Open8055_card_t *
-LockCard(int h)
+LockAndRefcount(int h)
 {
+	Open8055_card_t		*card;
+
+	if (!initialized)
+	{
+		if (Open8055_Init() < 0)
+			return NULL;
+	}
+
+	LockAcquire(&connectionsLock);
+
 	if (h < 0 || h >= connectionsUsed || connections[h] == NULL)
 	{
 		SetError(NULL, "invalid card handle %d", h);
+		LockRelease(&connectionsLock);
 		return NULL;
 	}
-	return connections[h];
+
+	card = connections[h];
+	LockAcquire(&(card->cardLock));
+	LockRelease(&connectionsLock);
+	card->cardRefcount++;
+
+	return card;
 }
 
 
 static void
-UnlockCard(Open8055_card_t *card)
+UnlockAndRefcount(Open8055_card_t *card)
 {
+	card->cardRefcount--;
+	LockRelease(&(card->cardLock));
+	return;
 }
 
 
@@ -1238,6 +1552,13 @@ Open8055_WaitForInput(Open8055_card_t *card, int mask, int timeout)
 	int				rc = 0;
 
 	/* ----
+	 * Check for cardClosed condition.
+	 * ----
+	 */
+	if (card->cardClosed)
+		return -1;
+
+	/* ----
 	 * Check if we currently have the requested data unconsumed.
 	 * ----
 	 */
@@ -1250,8 +1571,17 @@ Open8055_WaitForInput(Open8055_card_t *card, int mask, int timeout)
 	 */
 	if (card->skipMessages)
 	{
-		while ((rc = DeviceRead(card, &inputMessage, 0)) == 1)
+		for (;;)
 		{
+			LockRelease(&(card->cardLock));
+			rc = DeviceRead(card, &inputMessage, 0);
+			LockAcquire(&(card->cardLock));
+
+			if (card->cardClosed)
+				rc = -1;
+			if (rc != 1)
+				break;
+
 			/* ----
 			 * Handle by message type.
 			 * ----
@@ -1288,7 +1618,11 @@ Open8055_WaitForInput(Open8055_card_t *card, int mask, int timeout)
 	 * Need to read a new HID report.
 	 * ----
 	 */
+	LockRelease(&(card->cardLock));
 	rc = DeviceRead(card, &inputMessage, timeout);
+	LockAcquire(&(card->cardLock));
+	if (card->cardClosed)
+		return -1;
 	if (rc <= 0)
 		return rc;
 
