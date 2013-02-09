@@ -293,6 +293,7 @@ Open8055_Connect(char *destination, char *password)
 	card->skipMessages	= TRUE;
 	card->autoFlush = TRUE;
 	LockCreate(&(card->cardLock));
+	LockAcquire(&(card->cardLock));
 
 	/* ----
 	 * Try to open the actual local card.
@@ -301,6 +302,7 @@ Open8055_Connect(char *destination, char *password)
 	if (DeviceOpen(card) < 0)
 	{
 		strncpy(lastErrorMessage, card->errorMessage, sizeof(lastErrorMessage));
+		LockRelease(&(card->cardLock));
 		LockDestroy(&(card->cardLock));
 		free(card);
 		return -1;
@@ -316,6 +318,7 @@ Open8055_Connect(char *destination, char *password)
 	{
 		SetError(NULL, "Sending of GETCONFIG failed - %s", ErrorString());
 		DeviceClose(card);
+		LockRelease(&(card->cardLock));
 		LockDestroy(&(card->cardLock));
 		free(card);
 		return -1;
@@ -328,6 +331,7 @@ Open8055_Connect(char *destination, char *password)
 		{
 			SetError(NULL, "DeviceRead failed - %s", ErrorString());
 			DeviceClose(card);
+			LockRelease(&(card->cardLock));
 			LockDestroy(&(card->cardLock));
 			free(card);
 			return -1;
@@ -370,6 +374,7 @@ Open8055_Connect(char *destination, char *password)
 			initialized = 0;
 			SetError(NULL, "out of memory");
 			DeviceClose(card);
+			LockRelease(&(card->cardLock));
 			LockDestroy(&(card->cardLock));
 			free(card);
 			return -1;
@@ -378,6 +383,7 @@ Open8055_Connect(char *destination, char *password)
 	if (handle == connectionsUsed)
 		connectionsUsed++;
 	connections[handle] = card;
+	LockRelease(&(card->cardLock));
 
 	/* ----
 	 * Success.
@@ -640,6 +646,64 @@ Open8055_WaitFor(int h, int mask, int timeout)
 
 
 /* ----
+ * Open8055_WaitForReport()
+ *
+ *	Wait until we received an actual INPUT report.
+ * ----
+ */
+OPEN8055_EXTERN int OPEN8055_CDECL
+Open8055_WaitForReport(int h)
+{
+	Open8055_card_t			*card;
+	Open8055_hidMessage_t	inputMessage;
+	int						rc = 0;
+	int						haveInput = 0;
+
+	if ((card = LockAndRefcount(h)) == NULL)
+		return -1;
+
+	while (rc == 0 && haveInput == 0)
+	{
+		memset(&inputMessage, 0, sizeof(inputMessage));
+		rc = DeviceRead(card, &inputMessage, 60000);
+
+		if (card->cardClosed)
+		{
+			rc = -1;
+			break;
+		}
+
+		if (rc == 0)
+			continue;
+
+		/* ----
+		 * Handle by message type.
+		 * ----
+		 */
+		switch (inputMessage.msgType)
+		{
+			case OPEN8055_HID_MESSAGE_INPUT:
+				memcpy(&(card->currentInput), &inputMessage, sizeof(card->currentInput));
+				card->currentInputUnconsumed = OPEN8055_INPUT_ANY;
+				haveInput = 1;
+				break;
+
+			case OPEN8055_HID_MESSAGE_SETCONFIG1:
+			case OPEN8055_HID_MESSAGE_OUTPUT:
+				break;
+
+			default:
+				SetError(card, "Received unknown message type 0x%02x", inputMessage.msgType);
+				rc = -1;
+		}
+	}
+
+	UnlockAndRefcount(card);
+	return rc;
+}
+
+
+/* ----
  * Open8055_GetAutoFlush()
  *
  *	Return the current autoFlush setting.
@@ -767,16 +831,6 @@ Open8055_GetInput(int h, int port)
 	}
 
 	/* ----
-	 * Make sure we have current input data.
-	 * ----
-	 */
-	if (Open8055_WaitForInput(card, OPEN8055_INPUT_I1 << port, OPEN8055_WAITFOR_MS) < 0)
-	{
-		UnlockAndRefcount(card);
-		return -1;
-	}
-
-	/* ----
 	 * Mark all digital inputs as consumed and return the current state.
 	 * ----
 	 */
@@ -802,16 +856,6 @@ Open8055_GetInputAll(int h)
 
 	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
-
-	/* ----
-	 * Make sure we have current input data.
-	 * ----
-	 */
-	if (Open8055_WaitForInput(card, OPEN8055_INPUT_I_ANY, OPEN8055_WAITFOR_MS) < 0)
-	{
-		UnlockAndRefcount(card);
-		return -1;
-	}
 
 	/* ----
 	 * Mark all digital inputs as consumed and return the current state.
@@ -843,16 +887,6 @@ Open8055_GetCounter(int h, int port)
 	if (port < 0 || port > 4)
 	{
 		SetError(card, "parameter invalid");
-		UnlockAndRefcount(card);
-		return -1;
-	}
-
-	/* ----
-	 * Make sure we have current input data.
-	 * ----
-	 */
-	if (Open8055_WaitForInput(card, OPEN8055_INPUT_COUNT1 << port, OPEN8055_WAITFOR_MS) < 0)
-	{
 		UnlockAndRefcount(card);
 		return -1;
 	}
@@ -1055,16 +1089,6 @@ Open8055_GetADC(int h, int port)
 	if (port < 0 || port > 1)
 	{
 		SetError(card, "parameter error");
-		UnlockAndRefcount(card);
-		return -1;
-	}
-
-	/* ----
-	 * Make sure we have current input data.
-	 * ----
-	 */
-	if (Open8055_WaitForInput(card, OPEN8055_INPUT_ADC1 << port, OPEN8055_WAITFOR_MS) < 0)
-	{
 		UnlockAndRefcount(card);
 		return -1;
 	}
@@ -1573,9 +1597,7 @@ Open8055_WaitForInput(Open8055_card_t *card, int mask, int timeout)
 	{
 		for (;;)
 		{
-			LockRelease(&(card->cardLock));
 			rc = DeviceRead(card, &inputMessage, 0);
-			LockAcquire(&(card->cardLock));
 
 			if (card->cardClosed)
 				rc = -1;
@@ -1618,9 +1640,7 @@ Open8055_WaitForInput(Open8055_card_t *card, int mask, int timeout)
 	 * Need to read a new HID report.
 	 * ----
 	 */
-	LockRelease(&(card->cardLock));
 	rc = DeviceRead(card, &inputMessage, timeout);
-	LockAcquire(&(card->cardLock));
 	if (card->cardClosed)
 		return -1;
 	if (rc <= 0)
@@ -1864,7 +1884,7 @@ static int
 DeviceRead(Open8055_card_t *card, void *buffer, int timeout)
 {
 	unsigned char	   *ioBuf = card->readBuffer;
-	DWORD			bytesRead;
+	DWORD				bytesRead;
 
 	if (!card->readPending)
 	{
@@ -1897,7 +1917,12 @@ DeviceRead(Open8055_card_t *card, void *buffer, int timeout)
 
 	if (card->readPending)
 	{
-		switch(WaitForSingleObject(card->readEvent, timeout))
+		int		rc;
+
+		LockRelease(&(card->cardLock));
+		rc = WaitForSingleObject(card->readEvent, timeout);
+		LockAcquire(&(card->cardLock));
+		switch(rc)
 		{
 			case WAIT_OBJECT_0:
 				ResetEvent(card->readEvent);

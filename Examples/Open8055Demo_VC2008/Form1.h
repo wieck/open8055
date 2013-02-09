@@ -54,7 +54,7 @@ namespace Open8055Demo {
 	private: System::Windows::Forms::Label^  connectedMessage;
 	private: System::Windows::Forms::TextBox^  cardPassword;
 	private: System::Windows::Forms::Label^  label2;
-	private: System::Windows::Forms::Timer^  timer1;
+
 	private: System::Windows::Forms::Label^  label3;
 	private: System::Windows::Forms::TextBox^  ADC1;
 	private: System::Windows::Forms::TextBox^  ADC2;
@@ -157,6 +157,7 @@ private: System::Windows::Forms::Label^  label29;
 private: System::Windows::Forms::CheckBox^  O8;
 private: System::Windows::Forms::Button^  buttonDisconnect;
 private: System::Windows::Forms::Button^  buttonReset;
+private: System::ComponentModel::BackgroundWorker^  backgroundWorker1;
 
 
 
@@ -189,14 +190,12 @@ private: System::Windows::Forms::Button^  buttonReset;
 		/// </summary>
 		void InitializeComponent(void)
 		{
-			this->components = (gcnew System::ComponentModel::Container());
 			this->cardDestination = (gcnew System::Windows::Forms::TextBox());
 			this->label1 = (gcnew System::Windows::Forms::Label());
 			this->buttonConnect = (gcnew System::Windows::Forms::Button());
 			this->connectedMessage = (gcnew System::Windows::Forms::Label());
 			this->cardPassword = (gcnew System::Windows::Forms::TextBox());
 			this->label2 = (gcnew System::Windows::Forms::Label());
-			this->timer1 = (gcnew System::Windows::Forms::Timer(this->components));
 			this->label3 = (gcnew System::Windows::Forms::Label());
 			this->ADC1 = (gcnew System::Windows::Forms::TextBox());
 			this->ADC2 = (gcnew System::Windows::Forms::TextBox());
@@ -280,6 +279,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 			this->O8 = (gcnew System::Windows::Forms::CheckBox());
 			this->buttonDisconnect = (gcnew System::Windows::Forms::Button());
 			this->buttonReset = (gcnew System::Windows::Forms::Button());
+			this->backgroundWorker1 = (gcnew System::ComponentModel::BackgroundWorker());
 			this->SuspendLayout();
 			// 
 			// cardDestination
@@ -335,11 +335,6 @@ private: System::Windows::Forms::Button^  buttonReset;
 			this->label2->Size = System::Drawing::Size(56, 13);
 			this->label2->TabIndex = 5;
 			this->label2->Text = L"Password:";
-			// 
-			// timer1
-			// 
-			this->timer1->Interval = 1;
-			this->timer1->Tick += gcnew System::EventHandler(this, &Form1::timer1_Tick);
 			// 
 			// label3
 			// 
@@ -1182,6 +1177,12 @@ private: System::Windows::Forms::Button^  buttonReset;
 			this->buttonReset->UseVisualStyleBackColor = true;
 			this->buttonReset->Click += gcnew System::EventHandler(this, &Form1::buttonReset_Click);
 			// 
+			// backgroundWorker1
+			// 
+			this->backgroundWorker1->WorkerReportsProgress = true;
+			this->backgroundWorker1->DoWork += gcnew System::ComponentModel::DoWorkEventHandler(this, &Form1::backgroundWorker1_DoWork);
+			this->backgroundWorker1->ProgressChanged += gcnew System::ComponentModel::ProgressChangedEventHandler(this, &Form1::backgroundWorker1_ProgressChanged);
+			// 
 			// Form1
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
@@ -1285,7 +1286,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 		}
 #pragma endregion
 
-	static int		cardHandle = -1;
+	static int					cardHandle = -1;
 
 	private: int modeInputToIndex(int mode) {
 				 switch (mode)
@@ -1390,7 +1391,7 @@ private: System::Windows::Forms::Button^  buttonReset;
 						 Marshal::PtrToStringAnsi((System::IntPtr)Open8055_LastError(NULL));
 				 } else {
 					 connectedMessage->Text = "Connected to '" + cardDestination->Text + "'";
-					 timer1->Enabled = true;
+					 backgroundWorker1->RunWorkerAsync();
 
 					 Debounce1->Text = Open8055_GetDebounce(cardHandle, 0).ToString("f1");
 					 Debounce2->Text = Open8055_GetDebounce(cardHandle, 1).ToString("f1");
@@ -1472,7 +1473,6 @@ private: System::Windows::Forms::Button^  buttonReset;
 				 Open8055_Close(cardHandle);
 				 cardHandle = -1;
 				 updateAllConfig();
-				 timer1->Enabled = false;
 				 connectedMessage->Text = "Disconnected";
 
 				 buttonDisconnect->Enabled = false;
@@ -1536,7 +1536,6 @@ private: System::Windows::Forms::Button^  buttonReset;
 				 Open8055_Reset(cardHandle);
 				 cardHandle = -1;
 				 updateAllConfig();
-				 timer1->Enabled = false;
 				 connectedMessage->Text = "Disconnected";
 
 				 buttonDisconnect->Enabled = false;
@@ -1592,38 +1591,6 @@ private: System::Windows::Forms::Button^  buttonReset;
 				 O8->Checked = false; O8->Enabled = false;
 				 OutputMode8->Enabled = false;
 
-			 }
-	private: System::Void timer1_Tick(System::Object^  sender, System::EventArgs^  e) {
-				 int	value;
-			
-				 if (cardHandle < 0)
-					 return;
-
-				 value = Open8055_GetInputAll(cardHandle);
-
-				 if (value < 0)
-				 {
-					 connectedMessage->Text = "Connection lost";
-					 timer1->Enabled = false;
-					 return;
-				 }
-
-				 I1->Checked = (value & 0x01) != 0;
-				 I2->Checked = (value & 0x02) != 0;
-				 I3->Checked = (value & 0x04) != 0;
-				 I4->Checked = (value & 0x08) != 0;
-				 I5->Checked = (value & 0x10) != 0;
-
-				 ADCBar1->Value = Open8055_GetADC(cardHandle, 0);
-				 ADC1->Text = ADCBar1->Value.ToString();
-				 ADCBar2->Value = Open8055_GetADC(cardHandle, 1);
-				 ADC2->Text = ADCBar2->Value.ToString();
-
-				 Counter1->Text = Open8055_GetCounter(cardHandle, 0).ToString();
-				 Counter2->Text = Open8055_GetCounter(cardHandle, 1).ToString();
-				 Counter3->Text = Open8055_GetCounter(cardHandle, 2).ToString();
-				 Counter4->Text = Open8055_GetCounter(cardHandle, 3).ToString();
-				 Counter5->Text = Open8055_GetCounter(cardHandle, 4).ToString();
 			 }
 private: System::Void CounterReset1_Click(System::Object^  sender, System::EventArgs^  e) {
 			 if (cardHandle >= 0)
@@ -1795,6 +1762,57 @@ private: System::Void O8_CheckedChanged(System::Object^  sender, System::EventAr
 				 Open8055_SetOutput(cardHandle, 7, O8->Checked);
 				 O8->Checked = Open8055_GetOutput(cardHandle, 7) != 0;
 			 }
+		 }
+private: System::Void backgroundWorker1_DoWork(System::Object^  sender, System::ComponentModel::DoWorkEventArgs^  e) {
+			 while (cardHandle >= 0)
+			 {
+				 if (Open8055_WaitForReport(cardHandle) < 0)
+				 {
+					 backgroundWorker1->ReportProgress(-1);
+					 Sleep(1000);
+					 continue;
+				 }
+
+				 backgroundWorker1->ReportProgress(0);
+			 }
+		 }
+private: System::Void backgroundWorker1_ProgressChanged(System::Object^  sender, ProgressChangedEventArgs^  e) {
+			 int	value;
+		
+			 if (cardHandle < 0)
+				 return;
+
+			 if (e->ProgressPercentage < 0)
+			 {
+				 connectedMessage->Text = "BGworker: " +
+						 Marshal::PtrToStringAnsi((System::IntPtr)Open8055_LastError(cardHandle));
+				 return;
+			 }
+
+			 value = Open8055_GetInputAll(cardHandle);
+
+			 if (value < 0)
+			 {
+				 connectedMessage->Text = "Connection lost";
+				 return;
+			 }
+
+			 I1->Checked = (value & 0x01) != 0;
+			 I2->Checked = (value & 0x02) != 0;
+			 I3->Checked = (value & 0x04) != 0;
+			 I4->Checked = (value & 0x08) != 0;
+			 I5->Checked = (value & 0x10) != 0;
+
+			 ADCBar1->Value = Open8055_GetADC(cardHandle, 0);
+			 ADC1->Text = ADCBar1->Value.ToString();
+			 ADCBar2->Value = Open8055_GetADC(cardHandle, 1);
+			 ADC2->Text = ADCBar2->Value.ToString();
+
+			 Counter1->Text = Open8055_GetCounter(cardHandle, 0).ToString();
+			 Counter2->Text = Open8055_GetCounter(cardHandle, 1).ToString();
+			 Counter3->Text = Open8055_GetCounter(cardHandle, 2).ToString();
+			 Counter4->Text = Open8055_GetCounter(cardHandle, 3).ToString();
+			 Counter5->Text = Open8055_GetCounter(cardHandle, 4).ToString();
 		 }
 };
 }
