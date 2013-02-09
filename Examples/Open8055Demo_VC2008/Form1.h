@@ -1769,8 +1769,7 @@ private: System::Void backgroundWorker1_DoWork(System::Object^  sender, System::
 				 if (Open8055_WaitForReport(cardHandle) < 0)
 				 {
 					 backgroundWorker1->ReportProgress(-1);
-					 Sleep(1000);
-					 continue;
+					 break;
 				 }
 
 				 backgroundWorker1->ReportProgress(0);
