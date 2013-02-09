@@ -72,6 +72,7 @@ ALL_OBJS=	$(OPEN8055_A_OBJS) $(OPEN8055_DLL_OBJS)
 # Default target is to build all my stuff.
 # ----
 all:		$(ALL)
+	cp $(OPEN8055_DLL) ../Examples/Open8055Demo_VC2008/Release/$(OPEN8055_DLL)
 
 
 # ----
