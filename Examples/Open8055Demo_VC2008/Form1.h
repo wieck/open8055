@@ -168,6 +168,11 @@ private: System::Windows::Forms::RadioButton^  ADC2_8;
 private: System::Windows::Forms::RadioButton^  ADC2_9;
 
 private: System::Windows::Forms::RadioButton^  ADC2_10;
+private: System::Windows::Forms::HScrollBar^  OutputBar1;
+
+private: System::Windows::Forms::TextBox^  OutputValue1;
+
+private: System::Windows::Forms::Label^  label30;
 
 
 
@@ -299,6 +304,9 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 			this->ADC2_8 = (gcnew System::Windows::Forms::RadioButton());
 			this->ADC2_9 = (gcnew System::Windows::Forms::RadioButton());
 			this->ADC2_10 = (gcnew System::Windows::Forms::RadioButton());
+			this->OutputBar1 = (gcnew System::Windows::Forms::HScrollBar());
+			this->OutputValue1 = (gcnew System::Windows::Forms::TextBox());
+			this->label30 = (gcnew System::Windows::Forms::Label());
 			this->ADC1_Mode->SuspendLayout();
 			this->ADC2_Mode->SuspendLayout();
 			this->SuspendLayout();
@@ -373,7 +381,6 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 			this->ADC1->Name = L"ADC1";
 			this->ADC1->Size = System::Drawing::Size(57, 20);
 			this->ADC1->TabIndex = 7;
-			this->ADC1->Text = L"\?";
 			this->ADC1->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// ADC2
@@ -383,7 +390,6 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 			this->ADC2->Name = L"ADC2";
 			this->ADC2->Size = System::Drawing::Size(57, 20);
 			this->ADC2->TabIndex = 8;
-			this->ADC2->Text = L"\?";
 			this->ADC2->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// label4
@@ -430,7 +436,6 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 			this->Counter1->Name = L"Counter1";
 			this->Counter1->Size = System::Drawing::Size(57, 20);
 			this->Counter1->TabIndex = 13;
-			this->Counter1->Text = L"\?";
 			this->Counter1->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// label7
@@ -449,7 +454,6 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 			this->Debounce1->Name = L"Debounce1";
 			this->Debounce1->Size = System::Drawing::Size(57, 20);
 			this->Debounce1->TabIndex = 15;
-			this->Debounce1->Text = L"\?";
 			this->Debounce1->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// SetDebounce1
@@ -489,7 +493,6 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 			this->Counter2->Name = L"Counter2";
 			this->Counter2->Size = System::Drawing::Size(57, 20);
 			this->Counter2->TabIndex = 19;
-			this->Counter2->Text = L"\?";
 			this->Counter2->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// label9
@@ -517,7 +520,6 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 			this->Debounce2->Name = L"Debounce2";
 			this->Debounce2->Size = System::Drawing::Size(57, 20);
 			this->Debounce2->TabIndex = 22;
-			this->Debounce2->Text = L"\?";
 			this->Debounce2->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// SetDebounce2
@@ -549,7 +551,6 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 			this->Debounce3->Name = L"Debounce3";
 			this->Debounce3->Size = System::Drawing::Size(57, 20);
 			this->Debounce3->TabIndex = 29;
-			this->Debounce3->Text = L"\?";
 			this->Debounce3->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// label11
@@ -568,7 +569,6 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 			this->Counter3->Name = L"Counter3";
 			this->Counter3->Size = System::Drawing::Size(57, 20);
 			this->Counter3->TabIndex = 27;
-			this->Counter3->Text = L"\?";
 			this->Counter3->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// label12
@@ -617,7 +617,6 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 			this->Debounce4->Name = L"Debounce4";
 			this->Debounce4->Size = System::Drawing::Size(57, 20);
 			this->Debounce4->TabIndex = 36;
-			this->Debounce4->Text = L"\?";
 			this->Debounce4->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// label14
@@ -636,7 +635,6 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 			this->Counter4->Name = L"Counter4";
 			this->Counter4->Size = System::Drawing::Size(57, 20);
 			this->Counter4->TabIndex = 34;
-			this->Counter4->Text = L"\?";
 			this->Counter4->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// label15
@@ -685,7 +683,6 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 			this->Debounce5->Name = L"Debounce5";
 			this->Debounce5->Size = System::Drawing::Size(57, 20);
 			this->Debounce5->TabIndex = 43;
-			this->Debounce5->Text = L"\?";
 			this->Debounce5->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// label17
@@ -704,7 +701,6 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 			this->Counter5->Name = L"Counter5";
 			this->Counter5->Size = System::Drawing::Size(57, 20);
 			this->Counter5->TabIndex = 41;
-			this->Counter5->Text = L"\?";
 			this->Counter5->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// label18
@@ -884,7 +880,6 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 			this->PWM1->Name = L"PWM1";
 			this->PWM1->Size = System::Drawing::Size(57, 20);
 			this->PWM1->TabIndex = 58;
-			this->PWM1->Text = L"\?";
 			this->PWM1->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// PWM2
@@ -894,7 +889,6 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 			this->PWM2->Name = L"PWM2";
 			this->PWM2->Size = System::Drawing::Size(57, 20);
 			this->PWM2->TabIndex = 61;
-			this->PWM2->Text = L"\?";
 			this->PWM2->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
 			// 
 			// label21
@@ -953,11 +947,12 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 			this->OutputMode1->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
 			this->OutputMode1->Enabled = false;
 			this->OutputMode1->FormattingEnabled = true;
-			this->OutputMode1->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Mode Normal", L"Mode Servo"});
+			this->OutputMode1->Items->AddRange(gcnew cli::array< System::Object^  >(3) {L"Mode Normal", L"Mode Servo", L"Mode IServo"});
 			this->OutputMode1->Location = System::Drawing::Point(85, 324);
 			this->OutputMode1->Name = L"OutputMode1";
 			this->OutputMode1->Size = System::Drawing::Size(121, 21);
 			this->OutputMode1->TabIndex = 66;
+			this->OutputMode1->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::OutputMode1_SelectedIndexChanged);
 			// 
 			// OutputMode2
 			// 
@@ -1302,11 +1297,45 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 			this->ADC2_10->UseVisualStyleBackColor = true;
 			this->ADC2_10->CheckedChanged += gcnew System::EventHandler(this, &Form1::ADC2_10_CheckedChanged);
 			// 
+			// OutputBar1
+			// 
+			this->OutputBar1->Enabled = false;
+			this->OutputBar1->Location = System::Drawing::Point(325, 325);
+			this->OutputBar1->Maximum = 2009;
+			this->OutputBar1->Minimum = 1000;
+			this->OutputBar1->Name = L"OutputBar1";
+			this->OutputBar1->Size = System::Drawing::Size(325, 20);
+			this->OutputBar1->TabIndex = 94;
+			this->OutputBar1->TabStop = true;
+			this->OutputBar1->Value = 1500;
+			this->OutputBar1->Scroll += gcnew System::Windows::Forms::ScrollEventHandler(this, &Form1::OutputBar1_Scroll);
+			// 
+			// OutputValue1
+			// 
+			this->OutputValue1->Enabled = false;
+			this->OutputValue1->Location = System::Drawing::Point(265, 325);
+			this->OutputValue1->Name = L"OutputValue1";
+			this->OutputValue1->Size = System::Drawing::Size(57, 20);
+			this->OutputValue1->TabIndex = 93;
+			this->OutputValue1->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
+			// 
+			// label30
+			// 
+			this->label30->AutoSize = true;
+			this->label30->Location = System::Drawing::Point(213, 328);
+			this->label30->Name = L"label30";
+			this->label30->Size = System::Drawing::Size(37, 13);
+			this->label30->TabIndex = 92;
+			this->label30->Text = L"Value:";
+			// 
 			// Form1
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
 			this->ClientSize = System::Drawing::Size(892, 553);
+			this->Controls->Add(this->OutputBar1);
+			this->Controls->Add(this->OutputValue1);
+			this->Controls->Add(this->label30);
 			this->Controls->Add(this->ADC2_Mode);
 			this->Controls->Add(this->ADC1_Mode);
 			this->Controls->Add(this->buttonReset);
@@ -1466,6 +1495,9 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 			 }
 
 	private: System::Void updateAllConfig(void) {
+				 if (cardHandle < 0)
+					 return;
+
 				 InputMode1->SelectedIndex = modeInputToIndex(Open8055_GetModeInput(cardHandle, 0));
 				 InputMode2->SelectedIndex = modeInputToIndex(Open8055_GetModeInput(cardHandle, 1));
 				 InputMode3->SelectedIndex = modeInputToIndex(Open8055_GetModeInput(cardHandle, 2));
@@ -1505,8 +1537,109 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 						 ADC2_8->Checked = true;
 						 break;
 				 }
+
+				 switch (Open8055_GetModeOutput(cardHandle, 0))
+				 {
+					 case OPEN8055_MODE_SERVO:
+						 OutputMode1->SelectedIndex = 1;
+						 O1->Checked = false; O1->Enabled = false;
+						 OutputValue1->Text = ((double)Open8055_GetOutputValue(cardHandle, 0) / 12.0).ToString("F1") + " ms";
+						 OutputBar1->Minimum = 6000; OutputBar1->Maximum = 30009;
+						 OutputBar1->Value = Open8055_GetOutputValue(cardHandle, 0); OutputBar1->Enabled = true;
+						 break;
+					 case OPEN8055_MODE_ISERVO:
+						 OutputMode1->SelectedIndex = 2;
+						 O1->Checked = false; O1->Enabled = false;
+						 OutputValue1->Text = ((double)Open8055_GetOutputValue(cardHandle, 0) / 12.0).ToString("F1") + " ms";
+						 OutputBar1->Minimum = 6000; OutputBar1->Maximum = 30009;
+						 OutputBar1->Value = Open8055_GetOutputValue(cardHandle, 0); OutputBar1->Enabled = true;
+						 break;
+					 default:
+						 OutputMode1->SelectedIndex = 0;
+						 O1->Checked = Open8055_GetOutput(cardHandle, 0) != 0; O1->Enabled = true;
+						 OutputValue1->Text = L"";
+						 OutputBar1->Enabled = false;
+						 break;
+				 }
 			 }
 
+	private: System::Void disableControls(void)
+			 {
+				 ADC1->Text = L""; ADCBar1->Value = 0;
+				 ADC2->Text = L""; ADCBar2->Value = 0;
+
+				 ADC1_10->Enabled = true; ADC1_10->Checked = false;
+				 ADC1_9->Enabled = true; ADC1_9->Checked = false;
+				 ADC1_8->Enabled = true; ADC1_8->Checked = false;
+
+				 ADC2_10->Enabled = true; ADC2_10->Checked = false;
+				 ADC2_9->Enabled = true; ADC2_9->Checked = false;
+				 ADC2_8->Enabled = true; ADC2_8->Checked = false;
+
+				 I1->Checked = false; InputMode1->Enabled = false; InputMode1->SelectedIndex = -1; 
+				 Counter1->Text = L""; CounterReset1->Enabled = false; 
+				 Debounce1->Text = L""; Debounce1->Enabled = false; SetDebounce1->Enabled = false;
+
+				 I2->Checked = false; InputMode2->Enabled = false; InputMode2->SelectedIndex = -1; 
+				 Counter2->Text = L""; CounterReset2->Enabled = false; 
+				 Debounce2->Text = L""; Debounce2->Enabled = false; SetDebounce2->Enabled = false;
+
+				 I3->Checked = false; InputMode3->Enabled = false; InputMode3->SelectedIndex = -1; 
+				 Counter3->Text = L""; CounterReset3->Enabled = false; 
+				 Debounce3->Text = L""; Debounce3->Enabled = false; SetDebounce3->Enabled = false;
+
+				 I4->Checked = false; InputMode4->Enabled = false; InputMode4->SelectedIndex = -1; 
+				 Counter4->Text = L""; CounterReset4->Enabled = false; 
+				 Debounce4->Text = L""; Debounce4->Enabled = false; SetDebounce4->Enabled = false;
+
+				 I5->Checked = false; InputMode5->Enabled = false; InputMode5->SelectedIndex = -1; 
+				 Counter5->Text = L""; CounterReset5->Enabled = false; 
+				 Debounce5->Text = L""; Debounce5->Enabled = false; SetDebounce5->Enabled = false;
+
+				 PWM1->Text = L""; PWMBar1->Enabled = false;
+				 PWM2->Text = L""; PWMBar2->Enabled = false;
+
+				 O1->Enabled = false; O1->Checked = false;
+				 OutputMode1->Enabled = false; OutputMode1->SelectedIndex = -1; 
+				 OutputValue1->Text = L"";
+				 OutputBar1->Enabled = false;
+
+				 O2->Enabled = false; O2->Checked = false;
+				 OutputMode2->Enabled = false; OutputMode2->SelectedIndex = -1; 
+				 //OutputValue2->Text = L"";
+				 //OutputBar2->Enabled = false;
+
+				 O3->Enabled = false; O3->Checked = false;
+				 OutputMode3->Enabled = false; OutputMode3->SelectedIndex = -1; 
+				 //OutputValue3->Text = L"";
+				 //OutputBar3->Enabled = false;
+
+				 O4->Enabled = false; O4->Checked = false;
+				 OutputMode4->Enabled = false; OutputMode4->SelectedIndex = -1; 
+				 //OutputValue4->Text = L"";
+				 //OutputBar4->Enabled = false;
+
+				 O5->Enabled = false; O5->Checked = false;
+				 OutputMode5->Enabled = false; OutputMode5->SelectedIndex = -1; 
+				 //OutputValue5->Text = L"";
+				 //OutputBar5->Enabled = false;
+
+				 O6->Enabled = false; O6->Checked = false;
+				 OutputMode6->Enabled = false; OutputMode6->SelectedIndex = -1; 
+				 //OutputValue6->Text = L"";
+				 //OutputBar6->Enabled = false;
+
+				 O7->Enabled = false; O7->Checked = false;
+				 OutputMode7->Enabled = false; OutputMode7->SelectedIndex = -1; 
+				 //OutputValue7->Text = L"";
+				 //OutputBar7->Enabled = false;
+
+				 O8->Enabled = false; O8->Checked = false;
+				 OutputMode8->Enabled = false; OutputMode8->SelectedIndex = -1; 
+				 //OutputValue8->Text = L"";
+				 //OutputBar8->Enabled = false;
+
+			 }
 	private: System::Void Form1_Load(System::Object^  sender, System::EventArgs^  e) {
 				 backgroundWorker1->RunWorkerCompleted += gcnew System::ComponentModel::RunWorkerCompletedEventHandler(this, &Form1::backgroundWorker1_RunWorkerCompleted);
 			 }
@@ -1602,8 +1735,7 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 					 PWMBar1->Enabled = true;
 					 PWMBar2->Enabled = true;
 
-					 O1->Enabled = true;
-					 //OutputMode1->Enabled = true;
+					 O1->Enabled = true; OutputMode1->Enabled = true;
 
 					 O2->Enabled = true;
 					 //OutputMode2->Enabled = true;
@@ -1653,70 +1785,12 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 
 				 Open8055_Close(cardHandle);
 				 cardHandle = -1;
-				 updateAllConfig();
 				 connectedMessage->Text = "Disconnected";
 
 				 buttonDisconnect->Enabled = false;
 				 buttonReset->Enabled = false;
-
-				 ADC1->Text = "?"; ADCBar1->Value = 0;
-				 ADC2->Text = "?"; ADCBar2->Value = 0;
-
-				 I1->Checked = false; InputMode1->Enabled = false; 
-				 Counter1->Text = "?"; CounterReset1->Enabled = false; 
-				 Debounce1->Text = "?"; Debounce1->Enabled = false; SetDebounce1->Enabled = false;
-
-				 ADC1_10->Enabled = true; ADC1_10->Checked = false;
-				 ADC1_9->Enabled = true; ADC1_9->Checked = false;
-				 ADC1_8->Enabled = true; ADC1_8->Checked = false;
-
-				 ADC2_10->Enabled = true; ADC2_10->Checked = false;
-				 ADC2_9->Enabled = true; ADC2_9->Checked = false;
-				 ADC2_8->Enabled = true; ADC2_8->Checked = false;
-
-				 I2->Checked = false; InputMode2->Enabled = false; 
-				 Counter2->Text = "?"; CounterReset2->Enabled = false; 
-				 Debounce2->Text = "?"; Debounce2->Enabled = false; SetDebounce2->Enabled = false;
-
-				 I3->Checked = false; InputMode3->Enabled = false; 
-				 Counter3->Text = "?"; CounterReset3->Enabled = false; 
-				 Debounce3->Text = "?"; Debounce3->Enabled = false; SetDebounce3->Enabled = false;
-
-				 I4->Checked = false; InputMode4->Enabled = false; 
-				 Counter4->Text = "?"; CounterReset4->Enabled = false; 
-				 Debounce4->Text = "?"; Debounce4->Enabled = false; SetDebounce4->Enabled = false;
-
-				 I5->Checked = false; InputMode5->Enabled = false; 
-				 Counter5->Text = "?"; CounterReset5->Enabled = false; 
-				 Debounce5->Text = "?"; Debounce5->Enabled = false; SetDebounce5->Enabled = false;
-
-				 PWM1->Text = "?"; PWMBar1->Value = 0; PWMBar1->Enabled = false;
-				 PWM2->Text = "?"; PWMBar2->Value = 0; PWMBar2->Enabled = false;
-
-				 O1->Checked = false; O1->Enabled = false;
-				 OutputMode1->Enabled = false;
-
-				 O2->Checked = false; O2->Enabled = false;
-				 OutputMode2->Enabled = false;
-
-				 O3->Checked = false; O3->Enabled = false;
-				 OutputMode3->Enabled = false;
-
-				 O4->Checked = false; O4->Enabled = false;
-				 OutputMode4->Enabled = false;
-
-				 O5->Checked = false; O5->Enabled = false;
-				 OutputMode5->Enabled = false;
-
-				 O6->Checked = false; O6->Enabled = false;
-				 OutputMode6->Enabled = false;
-
-				 O7->Checked = false; O7->Enabled = false;
-				 OutputMode7->Enabled = false;
-
-				 O8->Checked = false; O8->Enabled = false;
-				 OutputMode8->Enabled = false;
-
+				
+				 disableControls();
 			 }
 	private: System::Void buttonReset_Click(System::Object^  sender, System::EventArgs^  e) {
 				 if (cardHandle < 0)
@@ -1724,70 +1798,12 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 
 				 Open8055_Reset(cardHandle);
 				 cardHandle = -1;
-				 updateAllConfig();
 				 connectedMessage->Text = "Disconnected";
 
 				 buttonDisconnect->Enabled = false;
 				 buttonReset->Enabled = false;
 
-				 ADC1->Text = "?"; ADCBar1->Value = 0;
-				 ADC2->Text = "?"; ADCBar2->Value = 0;
-
-				 ADC1_10->Enabled = true; ADC1_10->Checked = false;
-				 ADC1_9->Enabled = true; ADC1_9->Checked = false;
-				 ADC1_8->Enabled = true; ADC1_8->Checked = false;
-
-				 ADC2_10->Enabled = true; ADC2_10->Checked = false;
-				 ADC2_9->Enabled = true; ADC2_9->Checked = false;
-				 ADC2_8->Enabled = true; ADC2_8->Checked = false;
-
-				 I1->Checked = false; InputMode1->Enabled = false; 
-				 Counter1->Text = "?"; CounterReset1->Enabled = false; 
-				 Debounce1->Text = "?"; Debounce1->Enabled = false; SetDebounce1->Enabled = false;
-
-				 I2->Checked = false; InputMode2->Enabled = false; 
-				 Counter2->Text = "?"; CounterReset2->Enabled = false; 
-				 Debounce2->Text = "?"; Debounce2->Enabled = false; SetDebounce2->Enabled = false;
-
-				 I3->Checked = false; InputMode3->Enabled = false; 
-				 Counter3->Text = "?"; CounterReset3->Enabled = false; 
-				 Debounce3->Text = "?"; Debounce3->Enabled = false; SetDebounce3->Enabled = false;
-
-				 I4->Checked = false; InputMode4->Enabled = false; 
-				 Counter4->Text = "?"; CounterReset4->Enabled = false; 
-				 Debounce4->Text = "?"; Debounce4->Enabled = false; SetDebounce4->Enabled = false;
-
-				 I5->Checked = false; InputMode5->Enabled = false; 
-				 Counter5->Text = "?"; CounterReset5->Enabled = false; 
-				 Debounce5->Text = "?"; Debounce5->Enabled = false; SetDebounce5->Enabled = false;
-
-				 PWM1->Text = "?"; PWMBar1->Value = 0; PWMBar1->Enabled = false;
-				 PWM2->Text = "?"; PWMBar2->Value = 0; PWMBar2->Enabled = false;
-
-				 O1->Checked = false; O1->Enabled = false;
-				 OutputMode1->Enabled = false;
-
-				 O2->Checked = false; O2->Enabled = false;
-				 OutputMode2->Enabled = false;
-
-				 O3->Checked = false; O3->Enabled = false;
-				 OutputMode3->Enabled = false;
-
-				 O4->Checked = false; O4->Enabled = false;
-				 OutputMode4->Enabled = false;
-
-				 O5->Checked = false; O5->Enabled = false;
-				 OutputMode5->Enabled = false;
-
-				 O6->Checked = false; O6->Enabled = false;
-				 OutputMode6->Enabled = false;
-
-				 O7->Checked = false; O7->Enabled = false;
-				 OutputMode7->Enabled = false;
-
-				 O8->Checked = false; O8->Enabled = false;
-				 OutputMode8->Enabled = false;
-
+				 disableControls();
 			 }
 private: System::Void CounterReset1_Click(System::Object^  sender, System::EventArgs^  e) {
 			 if (cardHandle >= 0)
@@ -2037,6 +2053,24 @@ private: System::Void ADC2_9_CheckedChanged(System::Object^  sender, System::Eve
 private: System::Void ADC2_8_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
 			 if (cardHandle >= 0 && ADC2_8->Checked)
 				 Open8055_SetModeADC(cardHandle, 1, OPEN8055_MODE_ADC8);
+		 }
+private: System::Void OutputMode1_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+			 Open8055_SetModeOutput(cardHandle, 0, modeOutputFromIndex(OutputMode1->SelectedIndex));
+			 updateAllConfig();
+		 }
+private: System::Void OutputBar1_Scroll(System::Object^  sender, System::Windows::Forms::ScrollEventArgs^  e) {
+			 Open8055_SetOutputValue(cardHandle, 0, OutputBar1->Value);
+			 OutputBar1->Value = Open8055_GetOutputValue(cardHandle, 0);
+			 switch (Open8055_GetModeOutput(cardHandle, 0))
+			 {
+			 case OPEN8055_MODE_SERVO:
+			 case OPEN8055_MODE_ISERVO:
+				 OutputValue1->Text = ((double)Open8055_GetOutputValue(cardHandle, 0) / 12.0).ToString("F1");
+				 break;
+
+			 default:
+				 OutputValue1->Text = Open8055_GetOutputValue(cardHandle, 0).ToString();
+			 }
 		 }
 };
 }
