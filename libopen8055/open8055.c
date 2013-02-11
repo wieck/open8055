@@ -1178,6 +1178,40 @@ Open8055_GetOutputAll(int h)
 
 
 /* ----
+ * Open8055_GetOutputValue()
+ *
+ *	Return the current digital output value used for modes like SERVO.
+ * ----
+ */
+OPEN8055_EXTERN int OPEN8055_CDECL
+Open8055_GetOutputValue(int h, int port)
+{
+	Open8055_card_t *card;
+	int			rc = 0;
+
+	if ((card = LockAndRefcount(h)) == NULL)
+		return -1;
+
+	if (port < 0 || port > 7)
+	{
+		SetError(card, "parameter invalid");
+		UnlockAndRefcount(card);
+		return -1;
+	}
+
+	/* ----
+	 * We have queried them at Connect and tracked them all the time.
+	 * ----
+	 */
+	rc = card->currentOutput.outputValue[port];
+
+	UnlockAndRefcount(card);
+	return rc;
+}
+
+
+
+/* ----
  * Open8055_GetPWM()
  *
  *	Return the current setting of a PWM output
@@ -1283,6 +1317,73 @@ Open8055_SetOutputAll(int h, int bits)
 	 * ----
 	 */
 	card->currentOutput.outputBits = bits;
+	if (card->autoFlush)
+	{
+		if (DeviceWrite(card, &(card->currentOutput)) < 0)
+			rc = -1;
+		else
+		{
+			card->pendingOutput = FALSE;
+			card->currentOutput.resetCounter = 0x00;
+		}
+	}
+	else
+	{
+		card->pendingOutput = TRUE;
+	}
+
+	UnlockAndRefcount(card);
+	return rc;
+}
+
+
+/* ----
+ * Open8055_SetOutputValue()
+ *
+ *	Change one digital output value used in modes like SERVO.
+ * ----
+ */
+OPEN8055_EXTERN int OPEN8055_CDECL
+Open8055_SetOutputValue(int h, int port, int val)
+{
+	Open8055_card_t *card;
+	int			rc = 0;
+
+	if ((card = LockAndRefcount(h)) == NULL)
+		return -1;
+
+	if (port < 0 || port > 7)
+	{
+		SetError(card, "parameter invalid");
+		UnlockAndRefcount(card);
+		return -1;
+	}
+
+	switch(card->currentConfig1.modeOutput[port])
+	{
+		case OPEN8055_MODE_OUTPUT:		// value makes no sense in OUTPUT mode.
+			val = 0;
+			break;
+
+		case OPEN8055_MODE_SERVO:		// limit value to 500..2500ms in SERVO modes.
+		case OPEN8055_MODE_ISERVO:
+			if (val < 6000)
+				val = 6000;
+			if (val > 30000)
+				val = 30000;
+			break;
+
+		default:
+			val = 0;
+			break;
+	}
+
+	/* ----
+	 * Set the value in currentOutput and send the new info if in autoFlush mode.
+	 * ----
+	 */
+	card->currentOutput.outputValue[port] = val;
+
 	if (card->autoFlush)
 	{
 		if (DeviceWrite(card, &(card->currentOutput)) < 0)
@@ -1559,6 +1660,7 @@ Open8055_SetModeOutput(int h, int port, int mode)
 {
 	Open8055_card_t *card;
 	int				rc = 0;
+	int				val;
 
 	if ((card = LockAndRefcount(h)) == NULL)
 		return -1;
@@ -1568,6 +1670,26 @@ Open8055_SetModeOutput(int h, int port, int mode)
 		SetError(card, "parameter invalid");
 		UnlockAndRefcount(card);
 		return -1;
+	}
+
+	val = card->currentOutput.outputValue[port];
+	switch (mode)
+	{
+		case OPEN8055_MODE_OUTPUT:
+			val = 0;
+			break;
+
+		case OPEN8055_MODE_SERVO:
+		case OPEN8055_MODE_ISERVO:
+			if (val < 6000)
+				val = 6000;
+			if (val > 30000)
+				val = 30000;
+			break;
+
+		default:
+			val = 0;
+			break;
 	}
 
 	if (mode == OPEN8055_MODE_OUTPUT || mode == OPEN8055_MODE_SERVO || mode == OPEN8055_MODE_ISERVO)
@@ -1583,6 +1705,22 @@ Open8055_SetModeOutput(int h, int port, int mode)
 		else
 		{
 			card->pendingConfig1 = TRUE;
+		}
+
+		if (val != card->currentOutput.outputValue[port])
+		{
+			card->currentOutput.outputValue[port] = val;
+			if (card->autoFlush)
+			{
+				if (DeviceWrite(card, &(card->currentOutput)) < 0)
+					rc = -1;
+				else
+					card->pendingOutput = FALSE;
+			}
+			else
+			{
+				card->pendingOutput = TRUE;
+			}
 		}
 	}
 
