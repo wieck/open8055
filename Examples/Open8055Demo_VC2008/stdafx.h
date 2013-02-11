@@ -7,3 +7,10 @@
 
 #include <stdio.h>
 #include "open8055.h"
+
+#ifndef MAX
+#define		MAX(_a,_b)	(((_a) > (_b)) ? (_a) : (_b))
+#endif
+#ifndef MIN
+#define		MIN(_a,_b)	(((_a) < (_b)) ? (_a) : (_b))
+#endif

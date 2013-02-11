@@ -183,6 +183,14 @@ struct {
 	unsigned short	debounceCounter;
 } switchStatus[5];
 
+// Standard PWM servo control variables
+static unsigned char	servoCycles = 0;		// Number of timer cycles left in this pulse
+static unsigned int		servoLast;				// Timer counter for the last cycle
+static unsigned int		servoNext;				// Timer counter for the cycle after last
+static unsigned char	servoBit;				// PORTB bit to pulse
+static unsigned char	servoPulseHigh;			// Flag if this pulse is high/low
+static unsigned char	servoTicker = 0;		// Servo ticker controlling when to start pulses
+
 
 /** PRIVATE PROTOTYPES *********************************************/
 void highPriorityISRCode();
@@ -288,8 +296,50 @@ void highPriorityISRCode()
 	{
 		unsigned int increment;
 		
-		increment = OPEN8055_TICK_TIMER_CYCLES;
-		
+		switch (servoCycles)
+		{
+			case 2:
+				// This is the last cycle in the servo pulse. We 
+				// use the adjusted Timer3 countdown value so that
+				// the next interrupt happens exactly when we need
+				// to end the pulse.
+				increment = servoLast;
+				servoCycles--;
+				break;
+				
+			case 1:
+				// End the pulse and use the adjusted Timer3 countdown
+				// for the next cycle. The last and the next cycle
+				// together are the same length as two default cycles.
+				increment = servoNext;
+				
+				if (servoPulseHigh)
+					PORTB &= ~servoBit;
+				else
+					PORTB |= servoBit;
+				servoCycles--;
+				break;
+			
+			case 0:
+				// We are NOT in a servo cycle at all. Just wind up the
+				// Timer3 counter for 100 microseconds.
+				increment = OPEN8055_TICK_TIMER_CYCLES;
+				break;
+				
+			default:
+				// We start or are in the middle of a servo pulse. Make
+				// sure the pulse is on (high or low as requested). But
+				// let Timer3 tick in 100 microsecond steps as usual.
+				increment = OPEN8055_TICK_TIMER_CYCLES;
+
+				if (servoPulseHigh)
+					PORTB |= servoBit;
+				else
+					PORTB &= ~servoBit;
+				servoCycles--;
+				break;
+		}
+			
 		// Set Timer3 to the next ticker timeout. We do all the math
 		// with the timer disabled to avoid roll-over issues.
 		T3CONbits.TMR3ON = 0;
@@ -786,7 +836,19 @@ static void processIO(void)
 			    memcpy((void *)&currentOutput, (void *)&receivedDataBuffer, sizeof(currentConfig1));
 								
 				PORTB = currentOutput.outputBits;
-				
+
+				for (i = 0; i < 5; i++)
+				{
+					if (currentConfig1.modeOutput[i] == OPEN8055_MODE_SERVO ||
+						currentConfig1.modeOutput[i] == OPEN8055_MODE_ISERVO)
+					{
+						if (ntohs(currentOutput.outputValue[i]) < 6000)
+							currentOutput.outputValue[i] = htons(6000);
+						if (ntohs(currentOutput.outputValue[i]) > 30000)
+							currentOutput.outputValue[i] = htons(30000);
+					}		
+				}
+									
 				value = ntohs(currentOutput.outputPwmValue[0]);
 				CCPR1L = value >> 2;
 				CCP1CON = (CCP1CON & 0xCF) | 
@@ -854,13 +916,59 @@ static void processIO(void)
 			
 			// Per 1 millisecond code comes here
 
+			// Handle Servo ports. We use a 24 microsecond cycle. Every 3 microseconds we check
+			// if one of the ports is configured as servo. If so we let the timer code know to
+			// output a pulse of the desired width.
+			if ((servoTicker % 3) == 0 && servoCycles == 0)
+			{
+				unsigned char	servo = servoTicker / 3;
+				
+				// See if this port is configured as servo.
+				if (currentConfig1.modeOutput[servo] == OPEN8055_MODE_SERVO ||
+					currentConfig1.modeOutput[servo] == OPEN8055_MODE_ISERVO)
+				{
+					uint16_t	pulse;
+					uint16_t	cycles;
+					
+					pulse = ntohs(currentOutput.outputValue[servo]);
+					cycles = pulse / OPEN8055_TICK_TIMER_CYCLES;
+					servoLast = pulse - cycles * OPEN8055_TICK_TIMER_CYCLES;
+					
+					if (servoLast < 600)
+					{
+						servoNext = OPEN8055_TICK_TIMER_CYCLES - servoLast;
+						servoLast = OPEN8055_TICK_TIMER_CYCLES + servoLast;
+					}
+					else
+					{
+						servoNext = OPEN8055_TICK_TIMER_CYCLES + servoLast;
+						servoLast = servoLast;
+						cycles++;
+					}
+					
+					servoBit = 0x01 << servo;
+					if (currentConfig1.modeOutput[servo] == OPEN8055_MODE_SERVO)
+						servoPulseHigh = 1;
+					else
+						servoPulseHigh = 0;
+					servoCycles = cycles;
+				}
+			}
+			servoTicker++;
+			if (servoTicker >= 24)
+				servoTicker = 0;
+	
+
 			if (++tickSecond >= 1000)
 			{
 				tickSecond = 0;
 				
+
 				// Per 1 second code comes here
 				for (i = 0; i < 5; i++)
 				{
+					// For digital inputs in frequency mode, copy and reset the
+					// current counter value.
 					if (currentConfig1.modeInput[i] == OPEN8055_MODE_FREQUENCY)
 					{
 						switchStatus[i].frequency = switchStatus[i].counter;

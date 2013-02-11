@@ -1301,7 +1301,7 @@ private: System::Windows::Forms::Label^  label30;
 			// 
 			this->OutputBar1->Enabled = false;
 			this->OutputBar1->Location = System::Drawing::Point(325, 325);
-			this->OutputBar1->Maximum = 2009;
+			this->OutputBar1->Maximum = 2000;
 			this->OutputBar1->Minimum = 1000;
 			this->OutputBar1->Name = L"OutputBar1";
 			this->OutputBar1->Size = System::Drawing::Size(325, 20);
@@ -1544,15 +1544,17 @@ private: System::Windows::Forms::Label^  label30;
 						 OutputMode1->SelectedIndex = 1;
 						 O1->Checked = false; O1->Enabled = false;
 						 OutputValue1->Text = ((double)Open8055_GetOutputValue(cardHandle, 0) / 12.0).ToString("F1") + " ms";
-						 OutputBar1->Minimum = 6000; OutputBar1->Maximum = 30009;
-						 OutputBar1->Value = Open8055_GetOutputValue(cardHandle, 0); OutputBar1->Enabled = true;
+						 OutputBar1->Minimum = 12000; OutputBar1->Maximum = 24119;
+						 OutputBar1->LargeChange = 120; OutputBar1->SmallChange = 1;
+						 OutputBar1->Value = MIN(MAX(Open8055_GetOutputValue(cardHandle, 0),12000),24000); OutputBar1->Enabled = true;
 						 break;
 					 case OPEN8055_MODE_ISERVO:
 						 OutputMode1->SelectedIndex = 2;
 						 O1->Checked = false; O1->Enabled = false;
 						 OutputValue1->Text = ((double)Open8055_GetOutputValue(cardHandle, 0) / 12.0).ToString("F1") + " ms";
-						 OutputBar1->Minimum = 6000; OutputBar1->Maximum = 30009;
-						 OutputBar1->Value = Open8055_GetOutputValue(cardHandle, 0); OutputBar1->Enabled = true;
+						 OutputBar1->Minimum = 12000; OutputBar1->Maximum = 24009;
+						 OutputBar1->LargeChange = 120; OutputBar1->SmallChange = 1;
+						 OutputBar1->Value = MIN(MAX(Open8055_GetOutputValue(cardHandle, 0),12000),24000); OutputBar1->Enabled = true;
 						 break;
 					 default:
 						 OutputMode1->SelectedIndex = 0;
@@ -2059,17 +2061,21 @@ private: System::Void OutputMode1_SelectedIndexChanged(System::Object^  sender, 
 			 updateAllConfig();
 		 }
 private: System::Void OutputBar1_Scroll(System::Object^  sender, System::Windows::Forms::ScrollEventArgs^  e) {
+			 int value;
+			 
 			 Open8055_SetOutputValue(cardHandle, 0, OutputBar1->Value);
-			 OutputBar1->Value = Open8055_GetOutputValue(cardHandle, 0);
+
+			 value = Open8055_GetOutputValue(cardHandle, 0);
 			 switch (Open8055_GetModeOutput(cardHandle, 0))
 			 {
-			 case OPEN8055_MODE_SERVO:
-			 case OPEN8055_MODE_ISERVO:
-				 OutputValue1->Text = ((double)Open8055_GetOutputValue(cardHandle, 0) / 12.0).ToString("F1");
-				 break;
+				 case OPEN8055_MODE_SERVO:
+				 case OPEN8055_MODE_ISERVO:
+					 OutputValue1->Text = ((double)Open8055_GetOutputValue(cardHandle, 0) / 12.0).ToString("F1") + L" ms";
+					 OutputBar1->Value = MIN(MAX(value, 12000), 24000);
+					 break;
 
-			 default:
-				 OutputValue1->Text = Open8055_GetOutputValue(cardHandle, 0).ToString();
+				 default:
+					 OutputValue1->Text = Open8055_GetOutputValue(cardHandle, 0).ToString();
 			 }
 		 }
 };

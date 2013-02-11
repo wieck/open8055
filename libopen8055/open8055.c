@@ -1203,7 +1203,7 @@ Open8055_GetOutputValue(int h, int port)
 	 * We have queried them at Connect and tracked them all the time.
 	 * ----
 	 */
-	rc = card->currentOutput.outputValue[port];
+	rc = ntohs(card->currentOutput.outputValue[port]);
 
 	UnlockAndRefcount(card);
 	return rc;
@@ -1382,7 +1382,7 @@ Open8055_SetOutputValue(int h, int port, int val)
 	 * Set the value in currentOutput and send the new info if in autoFlush mode.
 	 * ----
 	 */
-	card->currentOutput.outputValue[port] = val;
+	card->currentOutput.outputValue[port] = htons(val);
 
 	if (card->autoFlush)
 	{
@@ -1672,7 +1672,7 @@ Open8055_SetModeOutput(int h, int port, int mode)
 		return -1;
 	}
 
-	val = card->currentOutput.outputValue[port];
+	val = ntohs(card->currentOutput.outputValue[port]);
 	switch (mode)
 	{
 		case OPEN8055_MODE_OUTPUT:
@@ -1681,16 +1681,30 @@ Open8055_SetModeOutput(int h, int port, int mode)
 
 		case OPEN8055_MODE_SERVO:
 		case OPEN8055_MODE_ISERVO:
-			if (val < 6000)
-				val = 6000;
-			if (val > 30000)
-				val = 30000;
+			/* ----
+			 * When we enter SERVO mode, we set the pulse width to center.
+			 * Otherwise we constrain the pulse width to 0.5 .. 2.5 ms.
+			 * ----
+			 */
+			if (card->currentConfig1.modeOutput[port] != OPEN8055_MODE_SERVO &&
+				card->currentConfig1.modeOutput[port] != OPEN8055_MODE_ISERVO)
+			{
+				val = 18000;
+			}
+			else
+			{
+				if (val < 6000)
+					val = 6000;
+				if (val > 30000)
+					val = 30000;
+			}
 			break;
 
 		default:
 			val = 0;
 			break;
 	}
+	val = htons(val);
 
 	if (mode == OPEN8055_MODE_OUTPUT || mode == OPEN8055_MODE_SERVO || mode == OPEN8055_MODE_ISERVO)
 	{
@@ -1733,7 +1747,6 @@ Open8055_SetModeOutput(int h, int port, int mode)
  * Local functions follow
  * ----------------------------------------------------------------------
  */
-
 
 static int
 Open8055_Init(void)
