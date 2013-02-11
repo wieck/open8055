@@ -173,6 +173,39 @@ private: System::Windows::Forms::HScrollBar^  OutputBar1;
 private: System::Windows::Forms::TextBox^  OutputValue1;
 
 private: System::Windows::Forms::Label^  label30;
+private: System::Windows::Forms::HScrollBar^  OutputBar2;
+private: System::Windows::Forms::TextBox^  OutputValue2;
+private: System::Windows::Forms::Label^  label31;
+private: System::Windows::Forms::HScrollBar^  OutputBar3;
+
+private: System::Windows::Forms::TextBox^  OutputValue3;
+
+private: System::Windows::Forms::Label^  label32;
+private: System::Windows::Forms::HScrollBar^  OutputBar4;
+
+private: System::Windows::Forms::TextBox^  OutputValue4;
+
+private: System::Windows::Forms::Label^  label33;
+private: System::Windows::Forms::HScrollBar^  OutputBar5;
+
+private: System::Windows::Forms::TextBox^  OutputValue5;
+
+private: System::Windows::Forms::Label^  label34;
+private: System::Windows::Forms::HScrollBar^  OutputBar6;
+
+private: System::Windows::Forms::TextBox^  OutputValue6;
+
+private: System::Windows::Forms::Label^  label35;
+private: System::Windows::Forms::HScrollBar^  OutputBar7;
+
+private: System::Windows::Forms::TextBox^  OutputValue7;
+
+private: System::Windows::Forms::Label^  label36;
+private: System::Windows::Forms::HScrollBar^  OutputBar8;
+
+private: System::Windows::Forms::TextBox^  OutputValue8;
+
+private: System::Windows::Forms::Label^  label37;
 
 
 
@@ -307,6 +340,27 @@ private: System::Windows::Forms::Label^  label30;
 			this->OutputBar1 = (gcnew System::Windows::Forms::HScrollBar());
 			this->OutputValue1 = (gcnew System::Windows::Forms::TextBox());
 			this->label30 = (gcnew System::Windows::Forms::Label());
+			this->OutputBar2 = (gcnew System::Windows::Forms::HScrollBar());
+			this->OutputValue2 = (gcnew System::Windows::Forms::TextBox());
+			this->label31 = (gcnew System::Windows::Forms::Label());
+			this->OutputBar3 = (gcnew System::Windows::Forms::HScrollBar());
+			this->OutputValue3 = (gcnew System::Windows::Forms::TextBox());
+			this->label32 = (gcnew System::Windows::Forms::Label());
+			this->OutputBar4 = (gcnew System::Windows::Forms::HScrollBar());
+			this->OutputValue4 = (gcnew System::Windows::Forms::TextBox());
+			this->label33 = (gcnew System::Windows::Forms::Label());
+			this->OutputBar5 = (gcnew System::Windows::Forms::HScrollBar());
+			this->OutputValue5 = (gcnew System::Windows::Forms::TextBox());
+			this->label34 = (gcnew System::Windows::Forms::Label());
+			this->OutputBar6 = (gcnew System::Windows::Forms::HScrollBar());
+			this->OutputValue6 = (gcnew System::Windows::Forms::TextBox());
+			this->label35 = (gcnew System::Windows::Forms::Label());
+			this->OutputBar7 = (gcnew System::Windows::Forms::HScrollBar());
+			this->OutputValue7 = (gcnew System::Windows::Forms::TextBox());
+			this->label36 = (gcnew System::Windows::Forms::Label());
+			this->OutputBar8 = (gcnew System::Windows::Forms::HScrollBar());
+			this->OutputValue8 = (gcnew System::Windows::Forms::TextBox());
+			this->label37 = (gcnew System::Windows::Forms::Label());
 			this->ADC1_Mode->SuspendLayout();
 			this->ADC2_Mode->SuspendLayout();
 			this->SuspendLayout();
@@ -926,7 +980,7 @@ private: System::Windows::Forms::Label^  label30;
 			// 
 			this->O1->AutoSize = true;
 			this->O1->Enabled = false;
-			this->O1->Location = System::Drawing::Point(64, 327);
+			this->O1->Location = System::Drawing::Point(64, 330);
 			this->O1->Name = L"O1";
 			this->O1->Size = System::Drawing::Size(15, 14);
 			this->O1->TabIndex = 64;
@@ -936,7 +990,7 @@ private: System::Windows::Forms::Label^  label30;
 			// label22
 			// 
 			this->label22->AutoSize = true;
-			this->label22->Location = System::Drawing::Point(12, 327);
+			this->label22->Location = System::Drawing::Point(12, 330);
 			this->label22->Name = L"label22";
 			this->label22->Size = System::Drawing::Size(24, 13);
 			this->label22->TabIndex = 65;
@@ -948,7 +1002,7 @@ private: System::Windows::Forms::Label^  label30;
 			this->OutputMode1->Enabled = false;
 			this->OutputMode1->FormattingEnabled = true;
 			this->OutputMode1->Items->AddRange(gcnew cli::array< System::Object^  >(3) {L"Mode Normal", L"Mode Servo", L"Mode IServo"});
-			this->OutputMode1->Location = System::Drawing::Point(85, 324);
+			this->OutputMode1->Location = System::Drawing::Point(85, 327);
 			this->OutputMode1->Name = L"OutputMode1";
 			this->OutputMode1->Size = System::Drawing::Size(121, 21);
 			this->OutputMode1->TabIndex = 66;
@@ -959,16 +1013,17 @@ private: System::Windows::Forms::Label^  label30;
 			this->OutputMode2->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
 			this->OutputMode2->Enabled = false;
 			this->OutputMode2->FormattingEnabled = true;
-			this->OutputMode2->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Mode Normal", L"Mode Servo"});
-			this->OutputMode2->Location = System::Drawing::Point(85, 351);
+			this->OutputMode2->Items->AddRange(gcnew cli::array< System::Object^  >(3) {L"Mode Normal", L"Mode Servo", L"Mode IServo"});
+			this->OutputMode2->Location = System::Drawing::Point(85, 354);
 			this->OutputMode2->Name = L"OutputMode2";
 			this->OutputMode2->Size = System::Drawing::Size(121, 21);
 			this->OutputMode2->TabIndex = 69;
+			this->OutputMode2->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::OutputMode2_SelectedIndexChanged);
 			// 
 			// label23
 			// 
 			this->label23->AutoSize = true;
-			this->label23->Location = System::Drawing::Point(12, 354);
+			this->label23->Location = System::Drawing::Point(12, 357);
 			this->label23->Name = L"label23";
 			this->label23->Size = System::Drawing::Size(24, 13);
 			this->label23->TabIndex = 68;
@@ -978,7 +1033,7 @@ private: System::Windows::Forms::Label^  label30;
 			// 
 			this->O2->AutoSize = true;
 			this->O2->Enabled = false;
-			this->O2->Location = System::Drawing::Point(64, 354);
+			this->O2->Location = System::Drawing::Point(64, 357);
 			this->O2->Name = L"O2";
 			this->O2->Size = System::Drawing::Size(15, 14);
 			this->O2->TabIndex = 67;
@@ -990,16 +1045,17 @@ private: System::Windows::Forms::Label^  label30;
 			this->OutputMode3->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
 			this->OutputMode3->Enabled = false;
 			this->OutputMode3->FormattingEnabled = true;
-			this->OutputMode3->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Mode Normal", L"Mode Servo"});
-			this->OutputMode3->Location = System::Drawing::Point(85, 378);
+			this->OutputMode3->Items->AddRange(gcnew cli::array< System::Object^  >(3) {L"Mode Normal", L"Mode Servo", L"Mode IServo"});
+			this->OutputMode3->Location = System::Drawing::Point(85, 381);
 			this->OutputMode3->Name = L"OutputMode3";
 			this->OutputMode3->Size = System::Drawing::Size(121, 21);
 			this->OutputMode3->TabIndex = 72;
+			this->OutputMode3->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::OutputMode3_SelectedIndexChanged);
 			// 
 			// label24
 			// 
 			this->label24->AutoSize = true;
-			this->label24->Location = System::Drawing::Point(12, 381);
+			this->label24->Location = System::Drawing::Point(12, 384);
 			this->label24->Name = L"label24";
 			this->label24->Size = System::Drawing::Size(24, 13);
 			this->label24->TabIndex = 71;
@@ -1009,7 +1065,7 @@ private: System::Windows::Forms::Label^  label30;
 			// 
 			this->O3->AutoSize = true;
 			this->O3->Enabled = false;
-			this->O3->Location = System::Drawing::Point(64, 381);
+			this->O3->Location = System::Drawing::Point(64, 384);
 			this->O3->Name = L"O3";
 			this->O3->Size = System::Drawing::Size(15, 14);
 			this->O3->TabIndex = 70;
@@ -1021,16 +1077,17 @@ private: System::Windows::Forms::Label^  label30;
 			this->OutputMode4->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
 			this->OutputMode4->Enabled = false;
 			this->OutputMode4->FormattingEnabled = true;
-			this->OutputMode4->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Mode Normal", L"Mode Servo"});
-			this->OutputMode4->Location = System::Drawing::Point(85, 405);
+			this->OutputMode4->Items->AddRange(gcnew cli::array< System::Object^  >(3) {L"Mode Normal", L"Mode Servo", L"Mode IServo"});
+			this->OutputMode4->Location = System::Drawing::Point(85, 408);
 			this->OutputMode4->Name = L"OutputMode4";
 			this->OutputMode4->Size = System::Drawing::Size(121, 21);
 			this->OutputMode4->TabIndex = 75;
+			this->OutputMode4->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::OutputMode4_SelectedIndexChanged);
 			// 
 			// label25
 			// 
 			this->label25->AutoSize = true;
-			this->label25->Location = System::Drawing::Point(12, 408);
+			this->label25->Location = System::Drawing::Point(12, 411);
 			this->label25->Name = L"label25";
 			this->label25->Size = System::Drawing::Size(24, 13);
 			this->label25->TabIndex = 74;
@@ -1040,7 +1097,7 @@ private: System::Windows::Forms::Label^  label30;
 			// 
 			this->O4->AutoSize = true;
 			this->O4->Enabled = false;
-			this->O4->Location = System::Drawing::Point(64, 408);
+			this->O4->Location = System::Drawing::Point(64, 411);
 			this->O4->Name = L"O4";
 			this->O4->Size = System::Drawing::Size(15, 14);
 			this->O4->TabIndex = 73;
@@ -1052,16 +1109,17 @@ private: System::Windows::Forms::Label^  label30;
 			this->OutputMode5->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
 			this->OutputMode5->Enabled = false;
 			this->OutputMode5->FormattingEnabled = true;
-			this->OutputMode5->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Mode Normal", L"Mode Servo"});
-			this->OutputMode5->Location = System::Drawing::Point(85, 432);
+			this->OutputMode5->Items->AddRange(gcnew cli::array< System::Object^  >(3) {L"Mode Normal", L"Mode Servo", L"Mode IServo"});
+			this->OutputMode5->Location = System::Drawing::Point(85, 435);
 			this->OutputMode5->Name = L"OutputMode5";
 			this->OutputMode5->Size = System::Drawing::Size(121, 21);
 			this->OutputMode5->TabIndex = 78;
+			this->OutputMode5->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::OutputMode5_SelectedIndexChanged);
 			// 
 			// label26
 			// 
 			this->label26->AutoSize = true;
-			this->label26->Location = System::Drawing::Point(12, 435);
+			this->label26->Location = System::Drawing::Point(12, 438);
 			this->label26->Name = L"label26";
 			this->label26->Size = System::Drawing::Size(24, 13);
 			this->label26->TabIndex = 77;
@@ -1071,7 +1129,7 @@ private: System::Windows::Forms::Label^  label30;
 			// 
 			this->O5->AutoSize = true;
 			this->O5->Enabled = false;
-			this->O5->Location = System::Drawing::Point(64, 435);
+			this->O5->Location = System::Drawing::Point(64, 438);
 			this->O5->Name = L"O5";
 			this->O5->Size = System::Drawing::Size(15, 14);
 			this->O5->TabIndex = 76;
@@ -1083,16 +1141,17 @@ private: System::Windows::Forms::Label^  label30;
 			this->OutputMode6->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
 			this->OutputMode6->Enabled = false;
 			this->OutputMode6->FormattingEnabled = true;
-			this->OutputMode6->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Mode Normal", L"Mode Servo"});
-			this->OutputMode6->Location = System::Drawing::Point(85, 459);
+			this->OutputMode6->Items->AddRange(gcnew cli::array< System::Object^  >(3) {L"Mode Normal", L"Mode Servo", L"Mode IServo"});
+			this->OutputMode6->Location = System::Drawing::Point(85, 462);
 			this->OutputMode6->Name = L"OutputMode6";
 			this->OutputMode6->Size = System::Drawing::Size(121, 21);
 			this->OutputMode6->TabIndex = 81;
+			this->OutputMode6->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::OutputMode6_SelectedIndexChanged);
 			// 
 			// label27
 			// 
 			this->label27->AutoSize = true;
-			this->label27->Location = System::Drawing::Point(12, 462);
+			this->label27->Location = System::Drawing::Point(12, 465);
 			this->label27->Name = L"label27";
 			this->label27->Size = System::Drawing::Size(24, 13);
 			this->label27->TabIndex = 80;
@@ -1102,7 +1161,7 @@ private: System::Windows::Forms::Label^  label30;
 			// 
 			this->O6->AutoSize = true;
 			this->O6->Enabled = false;
-			this->O6->Location = System::Drawing::Point(64, 462);
+			this->O6->Location = System::Drawing::Point(64, 465);
 			this->O6->Name = L"O6";
 			this->O6->Size = System::Drawing::Size(15, 14);
 			this->O6->TabIndex = 79;
@@ -1114,16 +1173,17 @@ private: System::Windows::Forms::Label^  label30;
 			this->OutputMode7->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
 			this->OutputMode7->Enabled = false;
 			this->OutputMode7->FormattingEnabled = true;
-			this->OutputMode7->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Mode Normal", L"Mode Servo"});
-			this->OutputMode7->Location = System::Drawing::Point(85, 486);
+			this->OutputMode7->Items->AddRange(gcnew cli::array< System::Object^  >(3) {L"Mode Normal", L"Mode Servo", L"Mode IServo"});
+			this->OutputMode7->Location = System::Drawing::Point(85, 489);
 			this->OutputMode7->Name = L"OutputMode7";
 			this->OutputMode7->Size = System::Drawing::Size(121, 21);
 			this->OutputMode7->TabIndex = 84;
+			this->OutputMode7->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::OutputMode7_SelectedIndexChanged);
 			// 
 			// label28
 			// 
 			this->label28->AutoSize = true;
-			this->label28->Location = System::Drawing::Point(12, 489);
+			this->label28->Location = System::Drawing::Point(12, 492);
 			this->label28->Name = L"label28";
 			this->label28->Size = System::Drawing::Size(24, 13);
 			this->label28->TabIndex = 83;
@@ -1133,7 +1193,7 @@ private: System::Windows::Forms::Label^  label30;
 			// 
 			this->O7->AutoSize = true;
 			this->O7->Enabled = false;
-			this->O7->Location = System::Drawing::Point(64, 489);
+			this->O7->Location = System::Drawing::Point(64, 492);
 			this->O7->Name = L"O7";
 			this->O7->Size = System::Drawing::Size(15, 14);
 			this->O7->TabIndex = 82;
@@ -1145,16 +1205,17 @@ private: System::Windows::Forms::Label^  label30;
 			this->OutputMode8->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
 			this->OutputMode8->Enabled = false;
 			this->OutputMode8->FormattingEnabled = true;
-			this->OutputMode8->Items->AddRange(gcnew cli::array< System::Object^  >(2) {L"Mode Normal", L"Mode Servo"});
-			this->OutputMode8->Location = System::Drawing::Point(85, 513);
+			this->OutputMode8->Items->AddRange(gcnew cli::array< System::Object^  >(3) {L"Mode Normal", L"Mode Servo", L"Mode IServo"});
+			this->OutputMode8->Location = System::Drawing::Point(85, 516);
 			this->OutputMode8->Name = L"OutputMode8";
 			this->OutputMode8->Size = System::Drawing::Size(121, 21);
 			this->OutputMode8->TabIndex = 87;
+			this->OutputMode8->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::OutputMode8_SelectedIndexChanged);
 			// 
 			// label29
 			// 
 			this->label29->AutoSize = true;
-			this->label29->Location = System::Drawing::Point(12, 516);
+			this->label29->Location = System::Drawing::Point(12, 519);
 			this->label29->Name = L"label29";
 			this->label29->Size = System::Drawing::Size(24, 13);
 			this->label29->TabIndex = 86;
@@ -1164,7 +1225,7 @@ private: System::Windows::Forms::Label^  label30;
 			// 
 			this->O8->AutoSize = true;
 			this->O8->Enabled = false;
-			this->O8->Location = System::Drawing::Point(64, 516);
+			this->O8->Location = System::Drawing::Point(64, 519);
 			this->O8->Name = L"O8";
 			this->O8->Size = System::Drawing::Size(15, 14);
 			this->O8->TabIndex = 85;
@@ -1300,7 +1361,7 @@ private: System::Windows::Forms::Label^  label30;
 			// OutputBar1
 			// 
 			this->OutputBar1->Enabled = false;
-			this->OutputBar1->Location = System::Drawing::Point(325, 325);
+			this->OutputBar1->Location = System::Drawing::Point(325, 327);
 			this->OutputBar1->Maximum = 2000;
 			this->OutputBar1->Minimum = 1000;
 			this->OutputBar1->Name = L"OutputBar1";
@@ -1313,7 +1374,7 @@ private: System::Windows::Forms::Label^  label30;
 			// OutputValue1
 			// 
 			this->OutputValue1->Enabled = false;
-			this->OutputValue1->Location = System::Drawing::Point(265, 325);
+			this->OutputValue1->Location = System::Drawing::Point(265, 328);
 			this->OutputValue1->Name = L"OutputValue1";
 			this->OutputValue1->Size = System::Drawing::Size(57, 20);
 			this->OutputValue1->TabIndex = 93;
@@ -1322,17 +1383,255 @@ private: System::Windows::Forms::Label^  label30;
 			// label30
 			// 
 			this->label30->AutoSize = true;
-			this->label30->Location = System::Drawing::Point(213, 328);
+			this->label30->Location = System::Drawing::Point(213, 330);
 			this->label30->Name = L"label30";
 			this->label30->Size = System::Drawing::Size(37, 13);
 			this->label30->TabIndex = 92;
 			this->label30->Text = L"Value:";
+			// 
+			// OutputBar2
+			// 
+			this->OutputBar2->Enabled = false;
+			this->OutputBar2->Location = System::Drawing::Point(325, 354);
+			this->OutputBar2->Maximum = 2000;
+			this->OutputBar2->Minimum = 1000;
+			this->OutputBar2->Name = L"OutputBar2";
+			this->OutputBar2->Size = System::Drawing::Size(325, 20);
+			this->OutputBar2->TabIndex = 97;
+			this->OutputBar2->TabStop = true;
+			this->OutputBar2->Value = 1500;
+			this->OutputBar2->Scroll += gcnew System::Windows::Forms::ScrollEventHandler(this, &Form1::OutputBar2_Scroll);
+			// 
+			// OutputValue2
+			// 
+			this->OutputValue2->Enabled = false;
+			this->OutputValue2->Location = System::Drawing::Point(265, 354);
+			this->OutputValue2->Name = L"OutputValue2";
+			this->OutputValue2->Size = System::Drawing::Size(57, 20);
+			this->OutputValue2->TabIndex = 96;
+			this->OutputValue2->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
+			// 
+			// label31
+			// 
+			this->label31->AutoSize = true;
+			this->label31->Location = System::Drawing::Point(213, 357);
+			this->label31->Name = L"label31";
+			this->label31->Size = System::Drawing::Size(37, 13);
+			this->label31->TabIndex = 95;
+			this->label31->Text = L"Value:";
+			// 
+			// OutputBar3
+			// 
+			this->OutputBar3->Enabled = false;
+			this->OutputBar3->Location = System::Drawing::Point(325, 381);
+			this->OutputBar3->Maximum = 2000;
+			this->OutputBar3->Minimum = 1000;
+			this->OutputBar3->Name = L"OutputBar3";
+			this->OutputBar3->Size = System::Drawing::Size(325, 20);
+			this->OutputBar3->TabIndex = 100;
+			this->OutputBar3->TabStop = true;
+			this->OutputBar3->Value = 1500;
+			this->OutputBar3->Scroll += gcnew System::Windows::Forms::ScrollEventHandler(this, &Form1::OutputBar3_Scroll);
+			// 
+			// OutputValue3
+			// 
+			this->OutputValue3->Enabled = false;
+			this->OutputValue3->Location = System::Drawing::Point(265, 381);
+			this->OutputValue3->Name = L"OutputValue3";
+			this->OutputValue3->Size = System::Drawing::Size(57, 20);
+			this->OutputValue3->TabIndex = 99;
+			this->OutputValue3->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
+			// 
+			// label32
+			// 
+			this->label32->AutoSize = true;
+			this->label32->Location = System::Drawing::Point(213, 384);
+			this->label32->Name = L"label32";
+			this->label32->Size = System::Drawing::Size(37, 13);
+			this->label32->TabIndex = 98;
+			this->label32->Text = L"Value:";
+			// 
+			// OutputBar4
+			// 
+			this->OutputBar4->Enabled = false;
+			this->OutputBar4->Location = System::Drawing::Point(325, 408);
+			this->OutputBar4->Maximum = 2000;
+			this->OutputBar4->Minimum = 1000;
+			this->OutputBar4->Name = L"OutputBar4";
+			this->OutputBar4->Size = System::Drawing::Size(325, 20);
+			this->OutputBar4->TabIndex = 103;
+			this->OutputBar4->TabStop = true;
+			this->OutputBar4->Value = 1500;
+			this->OutputBar4->Scroll += gcnew System::Windows::Forms::ScrollEventHandler(this, &Form1::OutputBar4_Scroll);
+			// 
+			// OutputValue4
+			// 
+			this->OutputValue4->Enabled = false;
+			this->OutputValue4->Location = System::Drawing::Point(265, 408);
+			this->OutputValue4->Name = L"OutputValue4";
+			this->OutputValue4->Size = System::Drawing::Size(57, 20);
+			this->OutputValue4->TabIndex = 102;
+			this->OutputValue4->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
+			// 
+			// label33
+			// 
+			this->label33->AutoSize = true;
+			this->label33->Location = System::Drawing::Point(213, 411);
+			this->label33->Name = L"label33";
+			this->label33->Size = System::Drawing::Size(37, 13);
+			this->label33->TabIndex = 101;
+			this->label33->Text = L"Value:";
+			// 
+			// OutputBar5
+			// 
+			this->OutputBar5->Enabled = false;
+			this->OutputBar5->Location = System::Drawing::Point(325, 435);
+			this->OutputBar5->Maximum = 2000;
+			this->OutputBar5->Minimum = 1000;
+			this->OutputBar5->Name = L"OutputBar5";
+			this->OutputBar5->Size = System::Drawing::Size(325, 20);
+			this->OutputBar5->TabIndex = 106;
+			this->OutputBar5->TabStop = true;
+			this->OutputBar5->Value = 1500;
+			this->OutputBar5->Scroll += gcnew System::Windows::Forms::ScrollEventHandler(this, &Form1::OutputBar5_Scroll);
+			// 
+			// OutputValue5
+			// 
+			this->OutputValue5->Enabled = false;
+			this->OutputValue5->Location = System::Drawing::Point(265, 435);
+			this->OutputValue5->Name = L"OutputValue5";
+			this->OutputValue5->Size = System::Drawing::Size(57, 20);
+			this->OutputValue5->TabIndex = 105;
+			this->OutputValue5->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
+			// 
+			// label34
+			// 
+			this->label34->AutoSize = true;
+			this->label34->Location = System::Drawing::Point(213, 438);
+			this->label34->Name = L"label34";
+			this->label34->Size = System::Drawing::Size(37, 13);
+			this->label34->TabIndex = 104;
+			this->label34->Text = L"Value:";
+			// 
+			// OutputBar6
+			// 
+			this->OutputBar6->Enabled = false;
+			this->OutputBar6->Location = System::Drawing::Point(325, 462);
+			this->OutputBar6->Maximum = 2000;
+			this->OutputBar6->Minimum = 1000;
+			this->OutputBar6->Name = L"OutputBar6";
+			this->OutputBar6->Size = System::Drawing::Size(325, 20);
+			this->OutputBar6->TabIndex = 109;
+			this->OutputBar6->TabStop = true;
+			this->OutputBar6->Value = 1500;
+			this->OutputBar6->Scroll += gcnew System::Windows::Forms::ScrollEventHandler(this, &Form1::OutputBar6_Scroll);
+			// 
+			// OutputValue6
+			// 
+			this->OutputValue6->Enabled = false;
+			this->OutputValue6->Location = System::Drawing::Point(265, 462);
+			this->OutputValue6->Name = L"OutputValue6";
+			this->OutputValue6->Size = System::Drawing::Size(57, 20);
+			this->OutputValue6->TabIndex = 108;
+			this->OutputValue6->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
+			// 
+			// label35
+			// 
+			this->label35->AutoSize = true;
+			this->label35->Location = System::Drawing::Point(213, 465);
+			this->label35->Name = L"label35";
+			this->label35->Size = System::Drawing::Size(37, 13);
+			this->label35->TabIndex = 107;
+			this->label35->Text = L"Value:";
+			// 
+			// OutputBar7
+			// 
+			this->OutputBar7->Enabled = false;
+			this->OutputBar7->Location = System::Drawing::Point(325, 489);
+			this->OutputBar7->Maximum = 2000;
+			this->OutputBar7->Minimum = 1000;
+			this->OutputBar7->Name = L"OutputBar7";
+			this->OutputBar7->Size = System::Drawing::Size(325, 20);
+			this->OutputBar7->TabIndex = 112;
+			this->OutputBar7->TabStop = true;
+			this->OutputBar7->Value = 1500;
+			this->OutputBar7->Scroll += gcnew System::Windows::Forms::ScrollEventHandler(this, &Form1::OutputBar7_Scroll);
+			// 
+			// OutputValue7
+			// 
+			this->OutputValue7->Enabled = false;
+			this->OutputValue7->Location = System::Drawing::Point(265, 489);
+			this->OutputValue7->Name = L"OutputValue7";
+			this->OutputValue7->Size = System::Drawing::Size(57, 20);
+			this->OutputValue7->TabIndex = 111;
+			this->OutputValue7->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
+			// 
+			// label36
+			// 
+			this->label36->AutoSize = true;
+			this->label36->Location = System::Drawing::Point(213, 492);
+			this->label36->Name = L"label36";
+			this->label36->Size = System::Drawing::Size(37, 13);
+			this->label36->TabIndex = 110;
+			this->label36->Text = L"Value:";
+			// 
+			// OutputBar8
+			// 
+			this->OutputBar8->Enabled = false;
+			this->OutputBar8->Location = System::Drawing::Point(325, 516);
+			this->OutputBar8->Maximum = 2000;
+			this->OutputBar8->Minimum = 1000;
+			this->OutputBar8->Name = L"OutputBar8";
+			this->OutputBar8->Size = System::Drawing::Size(325, 20);
+			this->OutputBar8->TabIndex = 115;
+			this->OutputBar8->TabStop = true;
+			this->OutputBar8->Value = 1500;
+			this->OutputBar8->Scroll += gcnew System::Windows::Forms::ScrollEventHandler(this, &Form1::OutputBar8_Scroll);
+			// 
+			// OutputValue8
+			// 
+			this->OutputValue8->Enabled = false;
+			this->OutputValue8->Location = System::Drawing::Point(265, 516);
+			this->OutputValue8->Name = L"OutputValue8";
+			this->OutputValue8->Size = System::Drawing::Size(57, 20);
+			this->OutputValue8->TabIndex = 114;
+			this->OutputValue8->TextAlign = System::Windows::Forms::HorizontalAlignment::Right;
+			// 
+			// label37
+			// 
+			this->label37->AutoSize = true;
+			this->label37->Location = System::Drawing::Point(213, 519);
+			this->label37->Name = L"label37";
+			this->label37->Size = System::Drawing::Size(37, 13);
+			this->label37->TabIndex = 113;
+			this->label37->Text = L"Value:";
 			// 
 			// Form1
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
 			this->ClientSize = System::Drawing::Size(892, 553);
+			this->Controls->Add(this->OutputBar8);
+			this->Controls->Add(this->OutputValue8);
+			this->Controls->Add(this->label37);
+			this->Controls->Add(this->OutputBar7);
+			this->Controls->Add(this->OutputValue7);
+			this->Controls->Add(this->label36);
+			this->Controls->Add(this->OutputBar6);
+			this->Controls->Add(this->OutputValue6);
+			this->Controls->Add(this->label35);
+			this->Controls->Add(this->OutputBar5);
+			this->Controls->Add(this->OutputValue5);
+			this->Controls->Add(this->label34);
+			this->Controls->Add(this->OutputBar4);
+			this->Controls->Add(this->OutputValue4);
+			this->Controls->Add(this->label33);
+			this->Controls->Add(this->OutputBar3);
+			this->Controls->Add(this->OutputValue3);
+			this->Controls->Add(this->label32);
+			this->Controls->Add(this->OutputBar2);
+			this->Controls->Add(this->OutputValue2);
+			this->Controls->Add(this->label31);
 			this->Controls->Add(this->OutputBar1);
 			this->Controls->Add(this->OutputValue1);
 			this->Controls->Add(this->label30);
@@ -1494,6 +1793,38 @@ private: System::Windows::Forms::Label^  label30;
 				 }
 			 }
 
+	private: System::Void updateOutputConfig(System::Windows::Forms::CheckBox^ o, System::Windows::Forms::ComboBox^ mode, 
+				 System::Windows::Forms::TextBox^ value, System::Windows::Forms::HScrollBar^ bar, int port)
+			 {
+				 switch (Open8055_GetModeOutput(cardHandle, port))
+				 {
+					 case OPEN8055_MODE_SERVO:
+						 mode->SelectedIndex = 1;
+						 o->Checked = false; o->Enabled = false;
+						 value->Text = ((double)Open8055_GetOutputValue(cardHandle, port) / 12.0).ToString("F1") + " ms";
+						 bar->Minimum = 12000; bar->Maximum = 24119;
+						 bar->LargeChange = 120; bar->SmallChange = 1;
+						 bar->Value = MIN(MAX(Open8055_GetOutputValue(cardHandle, port),12000),24000); 
+						 bar->Enabled = true;
+						 break;
+					 case OPEN8055_MODE_ISERVO:
+						 mode->SelectedIndex = 2;
+						 o->Checked = false; o->Enabled = false;
+						 value->Text = ((double)Open8055_GetOutputValue(cardHandle, port) / 12.0).ToString("F1") + " ms";
+						 bar->Minimum = 12000; bar->Maximum = 24009;
+						 bar->LargeChange = 120; bar->SmallChange = 1;
+						 bar->Value = MIN(MAX(Open8055_GetOutputValue(cardHandle, port),12000),24000); 
+						 bar->Enabled = true;
+						 break;
+					 default:
+						 mode->SelectedIndex = 0;
+						 o->Checked = Open8055_GetOutput(cardHandle, port) != 0; o->Enabled = true;
+						 value->Text = L"";
+						 bar->Enabled = false;
+						 break;
+				 }
+			 }
+
 	private: System::Void updateAllConfig(void) {
 				 if (cardHandle < 0)
 					 return;
@@ -1538,31 +1869,15 @@ private: System::Windows::Forms::Label^  label30;
 						 break;
 				 }
 
-				 switch (Open8055_GetModeOutput(cardHandle, 0))
-				 {
-					 case OPEN8055_MODE_SERVO:
-						 OutputMode1->SelectedIndex = 1;
-						 O1->Checked = false; O1->Enabled = false;
-						 OutputValue1->Text = ((double)Open8055_GetOutputValue(cardHandle, 0) / 12.0).ToString("F1") + " ms";
-						 OutputBar1->Minimum = 12000; OutputBar1->Maximum = 24119;
-						 OutputBar1->LargeChange = 120; OutputBar1->SmallChange = 1;
-						 OutputBar1->Value = MIN(MAX(Open8055_GetOutputValue(cardHandle, 0),12000),24000); OutputBar1->Enabled = true;
-						 break;
-					 case OPEN8055_MODE_ISERVO:
-						 OutputMode1->SelectedIndex = 2;
-						 O1->Checked = false; O1->Enabled = false;
-						 OutputValue1->Text = ((double)Open8055_GetOutputValue(cardHandle, 0) / 12.0).ToString("F1") + " ms";
-						 OutputBar1->Minimum = 12000; OutputBar1->Maximum = 24009;
-						 OutputBar1->LargeChange = 120; OutputBar1->SmallChange = 1;
-						 OutputBar1->Value = MIN(MAX(Open8055_GetOutputValue(cardHandle, 0),12000),24000); OutputBar1->Enabled = true;
-						 break;
-					 default:
-						 OutputMode1->SelectedIndex = 0;
-						 O1->Checked = Open8055_GetOutput(cardHandle, 0) != 0; O1->Enabled = true;
-						 OutputValue1->Text = L"";
-						 OutputBar1->Enabled = false;
-						 break;
-				 }
+				 updateOutputConfig(O1, OutputMode1, OutputValue1, OutputBar1, 0);
+				 updateOutputConfig(O2, OutputMode2, OutputValue2, OutputBar2, 1);
+				 updateOutputConfig(O3, OutputMode3, OutputValue3, OutputBar3, 2);
+				 updateOutputConfig(O4, OutputMode4, OutputValue4, OutputBar4, 3);
+				 updateOutputConfig(O5, OutputMode5, OutputValue5, OutputBar5, 4);
+				 updateOutputConfig(O6, OutputMode6, OutputValue6, OutputBar6, 5);
+				 updateOutputConfig(O7, OutputMode7, OutputValue7, OutputBar7, 6);
+				 updateOutputConfig(O8, OutputMode8, OutputValue8, OutputBar8, 7);
+
 			 }
 
 	private: System::Void disableControls(void)
@@ -1608,38 +1923,38 @@ private: System::Windows::Forms::Label^  label30;
 
 				 O2->Enabled = false; O2->Checked = false;
 				 OutputMode2->Enabled = false; OutputMode2->SelectedIndex = -1; 
-				 //OutputValue2->Text = L"";
-				 //OutputBar2->Enabled = false;
+				 OutputValue2->Text = L"";
+				 OutputBar2->Enabled = false;
 
 				 O3->Enabled = false; O3->Checked = false;
 				 OutputMode3->Enabled = false; OutputMode3->SelectedIndex = -1; 
-				 //OutputValue3->Text = L"";
-				 //OutputBar3->Enabled = false;
+				 OutputValue3->Text = L"";
+				 OutputBar3->Enabled = false;
 
 				 O4->Enabled = false; O4->Checked = false;
 				 OutputMode4->Enabled = false; OutputMode4->SelectedIndex = -1; 
-				 //OutputValue4->Text = L"";
-				 //OutputBar4->Enabled = false;
+				 OutputValue4->Text = L"";
+				 OutputBar4->Enabled = false;
 
 				 O5->Enabled = false; O5->Checked = false;
 				 OutputMode5->Enabled = false; OutputMode5->SelectedIndex = -1; 
-				 //OutputValue5->Text = L"";
-				 //OutputBar5->Enabled = false;
+				 OutputValue5->Text = L"";
+				 OutputBar5->Enabled = false;
 
 				 O6->Enabled = false; O6->Checked = false;
 				 OutputMode6->Enabled = false; OutputMode6->SelectedIndex = -1; 
-				 //OutputValue6->Text = L"";
-				 //OutputBar6->Enabled = false;
+				 OutputValue6->Text = L"";
+				 OutputBar6->Enabled = false;
 
 				 O7->Enabled = false; O7->Checked = false;
 				 OutputMode7->Enabled = false; OutputMode7->SelectedIndex = -1; 
-				 //OutputValue7->Text = L"";
-				 //OutputBar7->Enabled = false;
+				 OutputValue7->Text = L"";
+				 OutputBar7->Enabled = false;
 
 				 O8->Enabled = false; O8->Checked = false;
 				 OutputMode8->Enabled = false; OutputMode8->SelectedIndex = -1; 
-				 //OutputValue8->Text = L"";
-				 //OutputBar8->Enabled = false;
+				 OutputValue8->Text = L"";
+				 OutputBar8->Enabled = false;
 
 			 }
 	private: System::Void Form1_Load(System::Object^  sender, System::EventArgs^  e) {
@@ -1738,27 +2053,13 @@ private: System::Windows::Forms::Label^  label30;
 					 PWMBar2->Enabled = true;
 
 					 O1->Enabled = true; OutputMode1->Enabled = true;
-
-					 O2->Enabled = true;
-					 //OutputMode2->Enabled = true;
-
-					 O3->Enabled = true;
-					 //OutputMode3->Enabled = true;
-
-					 O4->Enabled = true;
-					 //OutputMode4->Enabled = true;
-
-					 O5->Enabled = true;
-					 //OutputMode5->Enabled = true;
-
-					 O6->Enabled = true;
-					 //OutputMode6->Enabled = true;
-
-					 O7->Enabled = true;
-					 //OutputMode7->Enabled = true;
-
-					 O8->Enabled = true;
-					 //OutputMode8->Enabled = true;
+					 O2->Enabled = true; OutputMode2->Enabled = true;
+					 O3->Enabled = true; OutputMode3->Enabled = true;
+					 O4->Enabled = true; OutputMode4->Enabled = true;
+					 O5->Enabled = true; OutputMode5->Enabled = true;
+					 O6->Enabled = true; OutputMode6->Enabled = true;
+					 O7->Enabled = true; OutputMode7->Enabled = true;
+					 O8->Enabled = true; OutputMode8->Enabled = true;
 
 					 updateAllConfig();
 
@@ -2056,10 +2357,6 @@ private: System::Void ADC2_8_CheckedChanged(System::Object^  sender, System::Eve
 			 if (cardHandle >= 0 && ADC2_8->Checked)
 				 Open8055_SetModeADC(cardHandle, 1, OPEN8055_MODE_ADC8);
 		 }
-private: System::Void OutputMode1_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
-			 Open8055_SetModeOutput(cardHandle, 0, modeOutputFromIndex(OutputMode1->SelectedIndex));
-			 updateAllConfig();
-		 }
 private: System::Void OutputBar1_Scroll(System::Object^  sender, System::Windows::Forms::ScrollEventArgs^  e) {
 			 int value;
 			 
@@ -2077,6 +2374,164 @@ private: System::Void OutputBar1_Scroll(System::Object^  sender, System::Windows
 				 default:
 					 OutputValue1->Text = Open8055_GetOutputValue(cardHandle, 0).ToString();
 			 }
+		 }
+private: System::Void OutputBar2_Scroll(System::Object^  sender, System::Windows::Forms::ScrollEventArgs^  e) {
+			 int value;
+			 
+			 Open8055_SetOutputValue(cardHandle, 1, OutputBar2->Value);
+
+			 value = Open8055_GetOutputValue(cardHandle, 1);
+			 switch (Open8055_GetModeOutput(cardHandle, 1))
+			 {
+				 case OPEN8055_MODE_SERVO:
+				 case OPEN8055_MODE_ISERVO:
+					 OutputValue2->Text = ((double)Open8055_GetOutputValue(cardHandle, 1) / 12.0).ToString("F1") + L" ms";
+					 OutputBar2->Value = MIN(MAX(value, 12000), 24000);
+					 break;
+
+				 default:
+					 OutputValue2->Text = Open8055_GetOutputValue(cardHandle, 1).ToString();
+			 }
+		 }
+private: System::Void OutputBar3_Scroll(System::Object^  sender, System::Windows::Forms::ScrollEventArgs^  e) {
+			 int value;
+			 
+			 Open8055_SetOutputValue(cardHandle, 2, OutputBar3->Value);
+
+			 value = Open8055_GetOutputValue(cardHandle, 2);
+			 switch (Open8055_GetModeOutput(cardHandle, 2))
+			 {
+				 case OPEN8055_MODE_SERVO:
+				 case OPEN8055_MODE_ISERVO:
+					 OutputValue3->Text = ((double)Open8055_GetOutputValue(cardHandle, 2) / 12.0).ToString("F1") + L" ms";
+					 OutputBar3->Value = MIN(MAX(value, 12000), 24000);
+					 break;
+
+				 default:
+					 OutputValue3->Text = Open8055_GetOutputValue(cardHandle, 2).ToString();
+			 }
+		 }
+private: System::Void OutputBar4_Scroll(System::Object^  sender, System::Windows::Forms::ScrollEventArgs^  e) {
+			 int value;
+			 
+			 Open8055_SetOutputValue(cardHandle, 3, OutputBar4->Value);
+
+			 value = Open8055_GetOutputValue(cardHandle, 3);
+			 switch (Open8055_GetModeOutput(cardHandle, 3))
+			 {
+				 case OPEN8055_MODE_SERVO:
+				 case OPEN8055_MODE_ISERVO:
+					 OutputValue4->Text = ((double)Open8055_GetOutputValue(cardHandle, 3) / 12.0).ToString("F1") + L" ms";
+					 OutputBar4->Value = MIN(MAX(value, 12000), 24000);
+					 break;
+
+				 default:
+					 OutputValue4->Text = Open8055_GetOutputValue(cardHandle, 3).ToString();
+			 }
+		 }
+private: System::Void OutputBar5_Scroll(System::Object^  sender, System::Windows::Forms::ScrollEventArgs^  e) {
+			 int value;
+			 
+			 Open8055_SetOutputValue(cardHandle, 4, OutputBar5->Value);
+
+			 value = Open8055_GetOutputValue(cardHandle, 4);
+			 switch (Open8055_GetModeOutput(cardHandle, 4))
+			 {
+				 case OPEN8055_MODE_SERVO:
+				 case OPEN8055_MODE_ISERVO:
+					 OutputValue5->Text = ((double)Open8055_GetOutputValue(cardHandle, 4) / 12.0).ToString("F1") + L" ms";
+					 OutputBar5->Value = MIN(MAX(value, 12000), 24000);
+					 break;
+
+				 default:
+					 OutputValue5->Text = Open8055_GetOutputValue(cardHandle, 4).ToString();
+			 }
+		 }
+private: System::Void OutputBar6_Scroll(System::Object^  sender, System::Windows::Forms::ScrollEventArgs^  e) {
+			 int value;
+			 
+			 Open8055_SetOutputValue(cardHandle, 5, OutputBar6->Value);
+
+			 value = Open8055_GetOutputValue(cardHandle, 5);
+			 switch (Open8055_GetModeOutput(cardHandle, 5))
+			 {
+				 case OPEN8055_MODE_SERVO:
+				 case OPEN8055_MODE_ISERVO:
+					 OutputValue6->Text = ((double)Open8055_GetOutputValue(cardHandle, 5) / 12.0).ToString("F1") + L" ms";
+					 OutputBar6->Value = MIN(MAX(value, 12000), 24000);
+					 break;
+
+				 default:
+					 OutputValue6->Text = Open8055_GetOutputValue(cardHandle, 5).ToString();
+			 }
+		 }
+private: System::Void OutputBar7_Scroll(System::Object^  sender, System::Windows::Forms::ScrollEventArgs^  e) {
+			 int value;
+			 
+			 Open8055_SetOutputValue(cardHandle, 6, OutputBar7->Value);
+
+			 value = Open8055_GetOutputValue(cardHandle, 6);
+			 switch (Open8055_GetModeOutput(cardHandle, 6))
+			 {
+				 case OPEN8055_MODE_SERVO:
+				 case OPEN8055_MODE_ISERVO:
+					 OutputValue7->Text = ((double)Open8055_GetOutputValue(cardHandle, 6) / 12.0).ToString("F1") + L" ms";
+					 OutputBar7->Value = MIN(MAX(value, 12000), 24000);
+					 break;
+
+				 default:
+					 OutputValue7->Text = Open8055_GetOutputValue(cardHandle, 6).ToString();
+			 }
+		 }
+private: System::Void OutputBar8_Scroll(System::Object^  sender, System::Windows::Forms::ScrollEventArgs^  e) {
+			 int value;
+			 
+			 Open8055_SetOutputValue(cardHandle, 7, OutputBar8->Value);
+
+			 value = Open8055_GetOutputValue(cardHandle, 7);
+			 switch (Open8055_GetModeOutput(cardHandle, 7))
+			 {
+				 case OPEN8055_MODE_SERVO:
+				 case OPEN8055_MODE_ISERVO:
+					 OutputValue8->Text = ((double)Open8055_GetOutputValue(cardHandle, 7) / 12.0).ToString("F1") + L" ms";
+					 OutputBar8->Value = MIN(MAX(value, 12000), 24000);
+					 break;
+
+				 default:
+					 OutputValue8->Text = Open8055_GetOutputValue(cardHandle, 7).ToString();
+			 }
+		 }
+private: System::Void OutputMode1_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+			 Open8055_SetModeOutput(cardHandle, 0, modeOutputFromIndex(OutputMode1->SelectedIndex));
+			 updateAllConfig();
+		 }
+private: System::Void OutputMode2_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+			 Open8055_SetModeOutput(cardHandle, 1, modeOutputFromIndex(OutputMode2->SelectedIndex));
+			 updateAllConfig();
+		 }
+private: System::Void OutputMode3_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+			 Open8055_SetModeOutput(cardHandle, 2, modeOutputFromIndex(OutputMode3->SelectedIndex));
+			 updateAllConfig();
+		 }
+private: System::Void OutputMode4_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+			 Open8055_SetModeOutput(cardHandle, 3, modeOutputFromIndex(OutputMode4->SelectedIndex));
+			 updateAllConfig();
+		 }
+private: System::Void OutputMode5_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+			 Open8055_SetModeOutput(cardHandle, 4, modeOutputFromIndex(OutputMode5->SelectedIndex));
+			 updateAllConfig();
+		 }
+private: System::Void OutputMode6_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+			 Open8055_SetModeOutput(cardHandle, 5, modeOutputFromIndex(OutputMode6->SelectedIndex));
+			 updateAllConfig();
+		 }
+private: System::Void OutputMode7_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+			 Open8055_SetModeOutput(cardHandle, 6, modeOutputFromIndex(OutputMode7->SelectedIndex));
+			 updateAllConfig();
+		 }
+private: System::Void OutputMode8_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+			 Open8055_SetModeOutput(cardHandle, 7, modeOutputFromIndex(OutputMode8->SelectedIndex));
+			 updateAllConfig();
 		 }
 };
 }
