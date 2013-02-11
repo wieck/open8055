@@ -1203,7 +1203,6 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 			this->backgroundWorker1->WorkerReportsProgress = true;
 			this->backgroundWorker1->DoWork += gcnew System::ComponentModel::DoWorkEventHandler(this, &Form1::backgroundWorker1_DoWork);
 			this->backgroundWorker1->ProgressChanged += gcnew System::ComponentModel::ProgressChangedEventHandler(this, &Form1::backgroundWorker1_ProgressChanged);
-			this->backgroundWorker1->RunWorkerCompleted += gcnew System::ComponentModel::RunWorkerCompletedEventHandler(this, &Form1::backgroundWorker1_RunWorkerCompleted);
 			// 
 			// ADC1_Mode
 			// 
@@ -1509,6 +1508,7 @@ private: System::Windows::Forms::RadioButton^  ADC2_10;
 			 }
 
 	private: System::Void Form1_Load(System::Object^  sender, System::EventArgs^  e) {
+				 backgroundWorker1->RunWorkerCompleted += gcnew System::ComponentModel::RunWorkerCompletedEventHandler(this, &Form1::backgroundWorker1_RunWorkerCompleted);
 			 }
 	private: System::Void Form1_Destroy(void) {
 				 if (cardHandle >= 0)
