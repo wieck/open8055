@@ -727,13 +727,6 @@ static void userInit(void)
     outputHandle = 0;
     inputHandle = 0;
 
-	//Set all ports to digital
-	#if defined(__18F2550) || defined(__18F25K50)
-	    ADCON1 |= OPEN8055_ADCON1_ALL_DIGITAL_MASK;
-	#else
-		#error "Unsupported processor in file __FILE__, line __LINE__"
-	#endif
-
     //Configure all IO ports (definitions are in "HardwareProfile_PIC18F*.h")
     TRISA = OPEN8055_TRISA;
     TRISB = OPEN8055_TRISB;
