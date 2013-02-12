@@ -843,12 +843,12 @@ static void processIO(void)
 					currentOutput.outputValue[i] = newVal;
 				}
 									
-				value = currentOutput.outputPwmValue[0] = ntohs(currentOutput.outputPwmValue[0]);
+				value = currentOutput.outputPwmValue[0] = ntohs(receivedDataBuffer.outputPwmValue[0]);
 				CCPR1L = value >> 2;
 				CCP1CON = (CCP1CON & 0xCF) | 
 					    ((value & 0x03) << 4);
 
-				value = currentOutput.outputPwmValue[1] = ntohs(currentOutput.outputPwmValue[1]);
+				value = currentOutput.outputPwmValue[1] = ntohs(receivedDataBuffer.outputPwmValue[1]);
 				CCPR2L = value >> 2;
 				CCP2CON = (CCP2CON & 0xCF) | 
 					    ((value & 0x03) << 4);
