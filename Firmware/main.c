@@ -169,6 +169,7 @@ uint8_t		analogInterrupted = 0;
 Open8055_hidMessage_t currentConfig1;
 Open8055_hidMessage_t currentOutput;
 Open8055_hidMessage_t currentInput;
+uint8_t		currentOutputMask = 0xFF;
 
 uint8_t		currentInputRequested = FALSE;
 uint8_t		currentConfig1Requested = FALSE;
@@ -831,30 +832,30 @@ static void processIO(void)
         switch (receivedDataBuffer.msgType)
 		{
 			// OUTPUT message containing digital output ports,
-			// PWM values and counter reset flags.
+			// PWM values and counter reset flags. We need to translate
+			// this from network byte order and mask out ports that are
+			// used in non-default modes.
 			case OPEN8055_HID_MESSAGE_OUTPUT:
-			    memcpy((void *)&currentOutput, (void *)&receivedDataBuffer, sizeof(currentConfig1));
-								
-				PORTB = currentOutput.outputBits;
-
+				currentOutput.msgType = receivedDataBuffer.msgType;				
+				PORTB = (PORTB & ~currentOutputMask) | 
+						((currentOutput.outputBits = receivedDataBuffer.outputBits) & currentOutputMask);
 				for (i = 0; i < 5; i++)
 				{
-					if (currentConfig1.modeOutput[i] == OPEN8055_MODE_SERVO ||
-						currentConfig1.modeOutput[i] == OPEN8055_MODE_ISERVO)
-					{
-						if (ntohs(currentOutput.outputValue[i]) < 6000)
-							currentOutput.outputValue[i] = htons(6000);
-						if (ntohs(currentOutput.outputValue[i]) > 30000)
-							currentOutput.outputValue[i] = htons(30000);
-					}		
+					uint16_t	newVal = ntohs(receivedDataBuffer.outputValue[i]);
+					
+					if (newVal < 6000)
+						newVal = 6000;
+					if (newVal > 30000)
+						newVal = 30000;
+					currentOutput.outputValue[i] = newVal;
 				}
 									
-				value = ntohs(currentOutput.outputPwmValue[0]);
+				value = currentOutput.outputPwmValue[0] = ntohs(currentOutput.outputPwmValue[0]);
 				CCPR1L = value >> 2;
 				CCP1CON = (CCP1CON & 0xCF) | 
 					    ((value & 0x03) << 4);
 
-				value = ntohs(currentOutput.outputPwmValue[1]);
+				value = currentOutput.outputPwmValue[1] = ntohs(currentOutput.outputPwmValue[1]);
 				CCPR2L = value >> 2;
 				CCP2CON = (CCP2CON & 0xCF) | 
 					    ((value & 0x03) << 4);
@@ -874,6 +875,22 @@ static void processIO(void)
 			    {
 				    switchStatus[i].debounceConfig = ntohs(currentConfig1.debounceValue[i]);
 				}
+				
+				// Create a new output mask according to the output port modes.
+				currentOutputMask = 0x00;
+				for (i = 0; i < 8; i++)
+				{
+					switch(currentConfig1.modeOutput[i])
+					{
+						case OPEN8055_MODE_OUTPUT:
+							currentOutputMask |= (1 << i);
+							break;
+							
+						default:
+							break;
+					}
+				}	
+				
 				break;
 			
 			// GETINPUT message instructing us to forcefully send the current input.
@@ -930,7 +947,7 @@ static void processIO(void)
 					uint16_t	pulse;
 					uint16_t	cycles;
 					
-					pulse = ntohs(currentOutput.outputValue[servo]);
+					pulse = currentOutput.outputValue[servo];
 					cycles = pulse / OPEN8055_TICK_TIMER_CYCLES;
 					servoLast = pulse - cycles * OPEN8055_TICK_TIMER_CYCLES;
 					
@@ -948,9 +965,9 @@ static void processIO(void)
 					
 					servoBit = 0x01 << servo;
 					if (currentConfig1.modeOutput[servo] == OPEN8055_MODE_SERVO)
-						servoPulseHigh = 1;
-					else
 						servoPulseHigh = 0;
+					else
+						servoPulseHigh = 1;
 					servoCycles = cycles;
 				}
 			}
@@ -993,7 +1010,14 @@ static void processIO(void)
 		if (currentOutputRequested)
 		{
 			currentOutputRequested = FALSE;
-			memcpy((void *)&toSendDataBuffer, (void *)&currentOutput, sizeof(toSendDataBuffer));
+			memset((void *)&toSendDataBuffer, 0, sizeof(toSendDataBuffer));
+			toSendDataBuffer.msgType = OPEN8055_HID_MESSAGE_OUTPUT;
+			toSendDataBuffer.outputBits = currentOutput.outputBits;
+			for (i = 0; i < 8; i++)
+				toSendDataBuffer.outputValue[i] = htons(currentOutput.outputValue[i]);
+			toSendDataBuffer.outputPwmValue[0] = htons(currentOutput.outputPwmValue[0]);
+			toSendDataBuffer.outputPwmValue[1] = htons(currentOutput.outputPwmValue[1]);
+
 			inputHandle = HIDTxPacket(HID_EP, (BYTE*)&toSendDataBuffer, sizeof(toSendDataBuffer));
 			break;
 		}
