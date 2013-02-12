@@ -839,7 +839,7 @@ static void processIO(void)
 				currentOutput.msgType = receivedDataBuffer.msgType;				
 				PORTB = (PORTB & ~currentOutputMask) | 
 						((currentOutput.outputBits = receivedDataBuffer.outputBits) & currentOutputMask);
-				for (i = 0; i < 5; i++)
+				for (i = 0; i < 8; i++)
 				{
 					uint16_t	newVal = ntohs(receivedDataBuffer.outputValue[i]);
 					
