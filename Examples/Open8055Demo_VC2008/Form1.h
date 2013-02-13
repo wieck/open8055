@@ -1885,13 +1885,13 @@ private: System::Windows::Forms::Label^  label37;
 				 ADC1->Text = L""; ADCBar1->Value = 0;
 				 ADC2->Text = L""; ADCBar2->Value = 0;
 
-				 ADC1_10->Enabled = true; ADC1_10->Checked = false;
-				 ADC1_9->Enabled = true; ADC1_9->Checked = false;
-				 ADC1_8->Enabled = true; ADC1_8->Checked = false;
+				 ADC1_10->Enabled = false; ADC1_10->Checked = false;
+				 ADC1_9->Enabled = false; ADC1_9->Checked = false;
+				 ADC1_8->Enabled = false; ADC1_8->Checked = false;
 
-				 ADC2_10->Enabled = true; ADC2_10->Checked = false;
-				 ADC2_9->Enabled = true; ADC2_9->Checked = false;
-				 ADC2_8->Enabled = true; ADC2_8->Checked = false;
+				 ADC2_10->Enabled = false; ADC2_10->Checked = false;
+				 ADC2_9->Enabled = false; ADC2_9->Checked = false;
+				 ADC2_8->Enabled = false; ADC2_8->Checked = false;
 
 				 I1->Checked = false; InputMode1->Enabled = false; InputMode1->SelectedIndex = -1; 
 				 Counter1->Text = L""; CounterReset1->Enabled = false; 
