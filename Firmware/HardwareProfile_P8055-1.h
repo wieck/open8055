@@ -103,12 +103,13 @@
 	
     //The original K8055 PWM runs at 23.43 kHz. 
     //At 48 MHz Fosc with a Timer2 prescale of 4 
-    // 1 / ((255+1) * 4 * (1/Fosc) * 4) = 23,437
+    // 1 / ((127+1) * 4 * (1/Fosc) * 4) = 23,437
     // But that only leaves us with 9 bit resolution.
     // We rather have 10 bits and run at 46.86 kHz.
-    #define OPEN8055_T2CKPS0	0
+    // 1 / ((255+1) * 4 * (1/Fosc) * 1) = 48,875
+    #define OPEN8055_T2CKPS0	0		// Timer2 prescaler = 1
     #define OPEN8055_T2CKPS1	0
-    #define OPEN8055_PWMPR2		255
+    #define OPEN8055_PWMPR2		255		// PWMPR2 = 255
     #define OPEN8055_CCP1CON	0x0C
     #define OPEN8055_CCP2CON	0x0C
     
