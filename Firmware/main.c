@@ -350,80 +350,99 @@ void highPriorityISRCode()
 		T3CONbits.TMR3ON = 1;
 		
 		// Digital input 1 handling
-		if (switchStatus[0].debounceCounter > 0)
+		if (switchStatus[0].lastState == (currentState = OPEN8055sw1))
 		{
-			switchStatus[0].debounceCounter--;
+			switchStatus[0].debounceCounter = 0;
 		}
 		else
 		{
-			if (switchStatus[0].lastState != (currentState = OPEN8055sw1))
+			if (switchStatus[0].debounceCounter == 0)
 			{
-				if ((switchStatus[0].lastState = currentState) != 0)
-					switchStatus[0].counter++;
 				switchStatus[0].debounceCounter = switchStatus[0].debounceConfig;
 			}
+			if (--switchStatus[0].debounceCounter == 0)
+			{
+				switchStatus[0].lastState = currentState;
+				if (switchStatus[0].lastState)
+					switchStatus[0].counter++;
+			}	
 		}	
-			
+		
 		// Digital input 2 handling
-		if (switchStatus[1].debounceCounter > 0)
+		if (switchStatus[1].lastState == (currentState = OPEN8055sw2))
 		{
-			switchStatus[1].debounceCounter--;
+			switchStatus[1].debounceCounter = 0;
 		}
 		else
 		{
-			if (switchStatus[1].lastState != (currentState = OPEN8055sw2))
+			if (switchStatus[1].debounceCounter == 0)
 			{
-				if ((switchStatus[1].lastState = currentState) != 0)
-					switchStatus[1].counter++;
 				switchStatus[1].debounceCounter = switchStatus[1].debounceConfig;
 			}
+			if (--switchStatus[1].debounceCounter == 0)
+			{
+				switchStatus[1].lastState = currentState;
+				if (switchStatus[1].lastState)
+					switchStatus[1].counter++;
+			}	
 		}	
 		
 		// Digital input 3 handling
-		if (switchStatus[2].debounceCounter > 0)
+		if (switchStatus[2].lastState == (currentState = OPEN8055sw3))
 		{
-			switchStatus[2].debounceCounter--;
+			switchStatus[2].debounceCounter = 0;
 		}
 		else
 		{
-			if (switchStatus[2].lastState != (currentState = OPEN8055sw3))
+			if (switchStatus[2].debounceCounter == 0)
 			{
-				if ((switchStatus[2].lastState = currentState) != 0)
-					switchStatus[2].counter++;
 				switchStatus[2].debounceCounter = switchStatus[2].debounceConfig;
 			}
+			if (--switchStatus[2].debounceCounter == 0)
+			{
+				switchStatus[2].lastState = currentState;
+				if (switchStatus[2].lastState)
+					switchStatus[2].counter++;
+			}	
 		}	
 		
 		// Digital input 4 handling
-		if (switchStatus[3].debounceCounter > 0)
+		if (switchStatus[3].lastState == (currentState = OPEN8055sw4))
 		{
-			switchStatus[3].debounceCounter--;
+			switchStatus[3].debounceCounter = 0;
 		}
 		else
 		{
-			if (switchStatus[3].lastState != (currentState = OPEN8055sw4))
+			if (switchStatus[3].debounceCounter == 0)
 			{
-				if ((switchStatus[3].lastState = currentState) != 0)
-					switchStatus[3].counter++;
 				switchStatus[3].debounceCounter = switchStatus[3].debounceConfig;
 			}
+			if (--switchStatus[3].debounceCounter == 0)
+			{
+				switchStatus[3].lastState = currentState;
+				if (switchStatus[3].lastState)
+					switchStatus[3].counter++;
+			}	
 		}	
 		
 		// Digital input 5 handling
-		if (switchStatus[4].debounceCounter > 0)
+		if (switchStatus[4].lastState == (currentState = OPEN8055sw5))
 		{
-			switchStatus[4].debounceCounter--;
+			switchStatus[4].debounceCounter = 0;
 		}
 		else
 		{
-			if (switchStatus[4].lastState != (currentState = OPEN8055sw5))
+			if (switchStatus[4].debounceCounter == 0)
 			{
-				if ((switchStatus[4].lastState = currentState) != 0)
-					switchStatus[4].counter++;
 				switchStatus[4].debounceCounter = switchStatus[4].debounceConfig;
 			}
+			if (--switchStatus[4].debounceCounter == 0)
+			{
+				switchStatus[4].lastState = currentState;
+				if (switchStatus[4].lastState)
+					switchStatus[4].counter++;
+			}	
 		}	
-
 		
 		// Check if we need to kick off an ADC.
 		if (analogGoDelay > 0)
