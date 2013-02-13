@@ -177,6 +177,7 @@ uint8_t		currentOutputRequested = FALSE;
 
 // Status data per digital input
 struct {
+	unsigned char	currentState;
 	unsigned char	lastState;
 	unsigned short	counter;
 	unsigned short	frequency;
@@ -289,7 +290,6 @@ void highPriorityISRCode()
 	//Service the interrupt
 	//Clear the interrupt flag
 	//Etc.
-	unsigned char	currentState;
 	
 	analogInterrupted = 1;
 	
@@ -349,8 +349,19 @@ void highPriorityISRCode()
 		TMR3H = (increment >> 8) & 0xFF;
 		T3CONbits.TMR3ON = 1;
 		
-		// Digital input 1 handling
-		if (switchStatus[0].lastState == (currentState = OPEN8055sw1))
+		// Get all digital inputs.
+		switchStatus[0].currentState = OPEN8055sw1;
+		switchStatus[1].currentState = OPEN8055sw2;
+		switchStatus[2].currentState = OPEN8055sw3;
+		switchStatus[3].currentState = OPEN8055sw4;
+		switchStatus[4].currentState = OPEN8055sw5;
+		
+		// The following code would be a lot shorter if it
+		// was done in a loop. But accessing array elements via
+		// index is very slow compared to unrolling the loop.
+		
+		// Digital counter 1 handling
+		if (switchStatus[0].lastState == switchStatus[0].currentState)
 		{
 			switchStatus[0].debounceCounter = 0;
 		}
@@ -362,14 +373,14 @@ void highPriorityISRCode()
 			}
 			if (--switchStatus[0].debounceCounter == 0)
 			{
-				switchStatus[0].lastState = currentState;
+				switchStatus[0].lastState = switchStatus[0].currentState;
 				if (switchStatus[0].lastState)
 					switchStatus[0].counter++;
 			}	
 		}	
 		
-		// Digital input 2 handling
-		if (switchStatus[1].lastState == (currentState = OPEN8055sw2))
+		// Digital counter 2 handling
+		if (switchStatus[1].lastState == switchStatus[1].currentState)
 		{
 			switchStatus[1].debounceCounter = 0;
 		}
@@ -381,14 +392,14 @@ void highPriorityISRCode()
 			}
 			if (--switchStatus[1].debounceCounter == 0)
 			{
-				switchStatus[1].lastState = currentState;
+				switchStatus[1].lastState = switchStatus[1].currentState;
 				if (switchStatus[1].lastState)
 					switchStatus[1].counter++;
 			}	
 		}	
 		
-		// Digital input 3 handling
-		if (switchStatus[2].lastState == (currentState = OPEN8055sw3))
+		// Digital counter 3 handling
+		if (switchStatus[2].lastState == switchStatus[2].currentState)
 		{
 			switchStatus[2].debounceCounter = 0;
 		}
@@ -400,14 +411,14 @@ void highPriorityISRCode()
 			}
 			if (--switchStatus[2].debounceCounter == 0)
 			{
-				switchStatus[2].lastState = currentState;
+				switchStatus[2].lastState = switchStatus[2].currentState;
 				if (switchStatus[2].lastState)
 					switchStatus[2].counter++;
 			}	
 		}	
 		
-		// Digital input 4 handling
-		if (switchStatus[3].lastState == (currentState = OPEN8055sw4))
+		// Digital counter 4 handling
+		if (switchStatus[3].lastState == switchStatus[3].currentState)
 		{
 			switchStatus[3].debounceCounter = 0;
 		}
@@ -419,14 +430,14 @@ void highPriorityISRCode()
 			}
 			if (--switchStatus[3].debounceCounter == 0)
 			{
-				switchStatus[3].lastState = currentState;
+				switchStatus[3].lastState = switchStatus[3].currentState;
 				if (switchStatus[3].lastState)
 					switchStatus[3].counter++;
 			}	
 		}	
 		
-		// Digital input 5 handling
-		if (switchStatus[4].lastState == (currentState = OPEN8055sw5))
+		// Digital counter 5 handling
+		if (switchStatus[4].lastState == switchStatus[4].currentState)
 		{
 			switchStatus[4].debounceCounter = 0;
 		}
@@ -438,7 +449,7 @@ void highPriorityISRCode()
 			}
 			if (--switchStatus[4].debounceCounter == 0)
 			{
-				switchStatus[4].lastState = currentState;
+				switchStatus[4].lastState = switchStatus[4].currentState;
 				if (switchStatus[4].lastState)
 					switchStatus[4].counter++;
 			}	
@@ -1022,7 +1033,7 @@ static void processIO(void)
 		switch (currentConfig1.modeInput[0])
 		{
 			case OPEN8055_MODE_INPUT:
-				if (switchStatus[0].lastState)
+				if (switchStatus[0].currentState)
 					currentInput.inputBits |= 0x01;
 				currentInput.inputCounter[0] = htons(switchStatus[0].counter);
 				break;
@@ -1035,7 +1046,7 @@ static void processIO(void)
 		switch (currentConfig1.modeInput[1])
 		{
 			case OPEN8055_MODE_INPUT:
-				if (switchStatus[1].lastState)
+				if (switchStatus[1].currentState)
 					currentInput.inputBits |= 0x02;
 				currentInput.inputCounter[1] = htons(switchStatus[1].counter);
 				break;
@@ -1048,7 +1059,7 @@ static void processIO(void)
 		switch (currentConfig1.modeInput[2])
 		{
 			case OPEN8055_MODE_INPUT:
-				if (switchStatus[2].lastState)
+				if (switchStatus[2].currentState)
 					currentInput.inputBits |= 0x04;
 				currentInput.inputCounter[2] = htons(switchStatus[2].counter);
 				break;
@@ -1061,7 +1072,7 @@ static void processIO(void)
 		switch (currentConfig1.modeInput[3])
 		{
 			case OPEN8055_MODE_INPUT:
-				if (switchStatus[3].lastState)
+				if (switchStatus[3].currentState)
 					currentInput.inputBits |= 0x08;
 				currentInput.inputCounter[3] = htons(switchStatus[3].counter);
 				break;
@@ -1074,7 +1085,7 @@ static void processIO(void)
 		switch (currentConfig1.modeInput[4])
 		{
 			case OPEN8055_MODE_INPUT:
-				if (switchStatus[4].lastState)
+				if (switchStatus[4].currentState)
 					currentInput.inputBits |= 0x10;
 				currentInput.inputCounter[4] = htons(switchStatus[4].counter);
 				break;
