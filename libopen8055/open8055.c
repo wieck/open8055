@@ -1110,6 +1110,13 @@ Open8055_GetADC(int h, int port)
 	 */
 	card->currentInputUnconsumed &= ~(OPEN8055_INPUT_ADC1 << port);
 	rc = ntohs(card->currentInput.inputAdcValue[port]);
+	switch(card->currentConfig1.modeADC[port])
+	{
+		case OPEN8055_MODE_ADC9:		rc >>= 1;
+										break;
+		case OPEN8055_MODE_ADC8:		rc >>= 2;
+										break;
+	}
 
 	UnlockAndRefcount(card);
 	return rc;

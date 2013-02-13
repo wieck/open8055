@@ -1848,24 +1848,30 @@ private: System::Windows::Forms::Label^  label37;
 				 {
 					 case OPEN8055_MODE_ADC10:
 						 ADC1_10->Checked = true;
+						 ADCBar1->Maximum = 1023;
 						 break;
 					 case OPEN8055_MODE_ADC9:
 						 ADC1_9->Checked = true;
+						 ADCBar1->Maximum = 511;
 						 break;
 					 case OPEN8055_MODE_ADC8:
 						 ADC1_8->Checked = true;
+						 ADCBar1->Maximum = 255;
 						 break;
 				 }
 				 switch(Open8055_GetModeADC(cardHandle, 1))
 				 {
 					 case OPEN8055_MODE_ADC10:
 						 ADC2_10->Checked = true;
+						 ADCBar2->Maximum = 1023;
 						 break;
 					 case OPEN8055_MODE_ADC9:
 						 ADC2_9->Checked = true;
+						 ADCBar2->Maximum = 511;
 						 break;
 					 case OPEN8055_MODE_ADC8:
 						 ADC2_8->Checked = true;
+						 ADCBar2->Maximum = 255;
 						 break;
 				 }
 
@@ -2336,26 +2342,32 @@ private: System::Void backgroundWorker1_RunWorkerCompleted(System::Object^  send
 private: System::Void ADC1_10_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
 			 if (cardHandle >= 0 && ADC1_10->Checked)
 				 Open8055_SetModeADC(cardHandle, 0, OPEN8055_MODE_ADC10);
+			 ADCBar1->Maximum = 1023;
 		 }
 private: System::Void ADC1_9_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
 			 if (cardHandle >= 0 && ADC1_9->Checked)
 				 Open8055_SetModeADC(cardHandle, 0, OPEN8055_MODE_ADC9);
+			 ADCBar1->Maximum = 511;
 		 }
 private: System::Void ADC1_8_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
 			 if (cardHandle >= 0 && ADC1_8->Checked)
 				 Open8055_SetModeADC(cardHandle, 0, OPEN8055_MODE_ADC8);
+			 ADCBar1->Maximum = 255;
 		 }
 private: System::Void ADC2_10_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
 			 if (cardHandle >= 0 && ADC2_10->Checked)
 				 Open8055_SetModeADC(cardHandle, 1, OPEN8055_MODE_ADC10);
+			 ADCBar2->Maximum = 1023;
 		 }
 private: System::Void ADC2_9_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
 			 if (cardHandle >= 0 && ADC2_9->Checked)
 				 Open8055_SetModeADC(cardHandle, 1, OPEN8055_MODE_ADC9);
+			 ADCBar2->Maximum = 511;
 		 }
 private: System::Void ADC2_8_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
 			 if (cardHandle >= 0 && ADC2_8->Checked)
 				 Open8055_SetModeADC(cardHandle, 1, OPEN8055_MODE_ADC8);
+			 ADCBar2->Maximum = 255;
 		 }
 private: System::Void OutputBar1_Scroll(System::Object^  sender, System::Windows::Forms::ScrollEventArgs^  e) {
 			 int value;
