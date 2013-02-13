@@ -836,7 +836,7 @@ static void processIO(void)
 					    
 				for (i = 0; i < 5; i++)
 				{
-					if ((currentOutput.resetCounter & (1 << i)))
+					if ((receivedDataBuffer.resetCounter & (1 << i)))
 						switchStatus[i].counter = 0;
 				}	
 				break;
