@@ -45,7 +45,7 @@ AR=						ar
 # ----
 # Stuff required for building the open8055.a static library
 # ----
-OPEN8055_A=				open8055.a
+OPEN8055_A=				libopen8055.a
 OPEN8055_A_OBJS=		open8055.o
 OPEN8055_A_EXTRA=	
 OPEN8055_A_LIBS=
@@ -54,7 +54,7 @@ OPEN8055_A_LIBS=
 # ----
 # Stuff required for building the open8055.so
 # ----
-OPEN8055_DLL=			open8055.so
+OPEN8055_DLL=			libopen8055.so
 OPEN8055_DLL_OBJS=		open8055.o
 OPEN8055_DLL_EXTRA=
 OPEN8055_DLL_LIBS=
