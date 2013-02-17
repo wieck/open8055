@@ -16,8 +16,14 @@ OBJS1=		$(EXAMPLENAME).o
 ALL=		$(PROGS)
 
 
+LIBOPEN8055=		../../libopen8055/libopen8055.a
+
+
+CC=			gcc
 CFLAGS+=	-O0 -g -Wall -I../../include
-LDFLAGS+=	-static -L../../libopen8055 -lopen8055
+LDFLAGS+=	-static 
+LIBS=		-lm -lusb -lpthread
+
 
 
 all:	$(ALL)
@@ -28,6 +34,7 @@ clean:
 
 
 $(EXAMPLENAME)$(EXESUFFIX):	$(EXAMPLENAME).o
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBOPEN8055) $(LIBS)
 
 
 $(EXAMPLENAME).o:	$(EXAMPLENAME).c
