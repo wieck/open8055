@@ -22,7 +22,11 @@ LIBOPEN8055=		../../libopen8055/libopen8055.a
 CC=			gcc
 CFLAGS+=	-O0 -g -Wall -I../../include
 LDFLAGS+=	-static 
+ifeq ($(OSFAMILY), Unix)
 LIBS=		-lm -lusb -lpthread
+else ifeq ($(OSFAMILY), Windows)
+LIBS=		-lsetupapi -lrpcrt4
+endif
 
 
 

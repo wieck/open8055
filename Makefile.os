@@ -12,6 +12,9 @@ ifeq ($(UNAME), FreeBSD)
 else ifeq ($(UNAME), Linux)
 	OSFAMILY=Unix
 	EXESUFFIX=
+else ifeq ($(findstring MINGW32, $(UNAME)), MINGW32)
+	OSFAMILY=Windows
+	EXESUFFIX=.exe
 else
 fatal:
 	$(error Operating System $(UNAME) not supported (yet))
