@@ -85,8 +85,7 @@ main(int argc, char *argv[])
 					(T2kelvin - 273.15) / 5.0 * 9.0 + 32.0);
 		fflush(stdout);
 
-		usleep(1000000);
-		if (Open8055_Wait(card) < 0)
+		if (Open8055_WaitEx(card, 0, TRUE) < 0)
 		{
 			printf("\r                   \r");
 			fflush(stdout);
