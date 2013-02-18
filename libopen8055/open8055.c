@@ -635,7 +635,9 @@ Open8055_WaitEx(int h, int timeout, int skipMessages)
 					memcpy(&(card->currentInput), &inputMessage, sizeof(card->currentInput));
 					card->currentInputUnconsumed = OPEN8055_INPUT_ANY;
 					haveInput = 1;
+#ifdef _WIN32
 					rc = 0;
+#endif
 					break;
 
 				case OPEN8055_HID_MESSAGE_SETCONFIG1:
@@ -714,6 +716,27 @@ Open8055_WaitEx(int h, int timeout, int skipMessages)
 
 	UnlockAndRefcount(card);
 	return rc;
+}
+
+
+/* ----
+ * Open8055_GetAutoFlush()
+ *
+ *	Return the current autoFlush setting.
+ * ----
+ */
+OPEN8055_EXTERN void OPEN8055_CDECL
+Open8055_Sleep(int ms)
+{
+	struct timeval	tv;
+
+	if (ms < 0)
+		ms = 0;
+
+	tv.tv_sec = ms / 1000;
+	tv.tv_usec = (ms % 1000) * 1000;
+
+	select (0, NULL, NULL, NULL, &tv);
 }
 
 
