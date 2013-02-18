@@ -3,7 +3,7 @@
 # ----------------------------------------------------------------------
 
 
-include ../../Makefile.os
+include ../Makefile.os
 
 
 EXAMPLENAME=	thermistor
