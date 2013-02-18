@@ -728,6 +728,12 @@ Open8055_WaitEx(int h, int timeout, int skipMessages)
 OPEN8055_EXTERN void OPEN8055_CDECL
 Open8055_Sleep(int ms)
 {
+#ifdef _WIN32
+	if (ms < 0)
+		ms = 0;
+
+	Sleep((DWORD)ms);
+#else
 	struct timeval	tv;
 
 	if (ms < 0)
@@ -737,6 +743,7 @@ Open8055_Sleep(int ms)
 	tv.tv_usec = (ms % 1000) * 1000;
 
 	select (0, NULL, NULL, NULL, &tv);
+#endif
 }
 
 
