@@ -20,14 +20,14 @@ dual OP-AMP (MCP6002, but most other OP-AMPs will work) to accomplish two
 things:
 
     * Stabilize a 1/11th voltage divider for intput into the thermistor
-	  based voltage divider. This is done to minimize the power, dissipated
-	  by the thermistor itself. After all, a resistor dissipating power is
-	  a heating element by itself. That isn't desired when using it for
-	  measuring temperature.
+      based voltage divider. This is done to minimize the power, dissipated
+      by the thermistor itself. After all, a resistor dissipating power is
+      a heating element by itself. That isn't desired when using it for
+      measuring temperature.
 
-	* Amplify the thermistor voltage divider's output so that the result
-	  just fits into the 0 to +5V input range of the Open8055 ADC. This makes
-	  maximum use of the available resolution.
+    * Amplify the thermistor voltage divider's output so that the result
+      just fits into the 0 to +5V input range of the Open8055 ADC. This makes
+      maximum use of the available resolution.
 
 
 The example program thermistor.c is a command line utility that simply prints
