@@ -1095,6 +1095,7 @@ static void processIO(void)
 				break;
 		}	
 
+		INTCONbits.GIEL	= 0;
 		currentInput.raw[12] = analogValue_1_high;
 		switch (currentConfig1.modeADC[0])
 		{
@@ -1121,6 +1122,7 @@ static void processIO(void)
 				currentInput.raw[15] = analogValue_2_low & 0xFC;
 				break;
 		}
+		INTCONbits.GIEL	= 1;
 										  
 		// Suppress this report if nothing has changed and 100 ms didn't elapse.
 		if (!currentInputRequested && memcmp((void *)&currentInput, (void *)&toSendDataBuffer, sizeof(currentInput)) == 0)
