@@ -5,10 +5,11 @@ This example project shows how to connect a 10K Ohm Negative Temperature
 Coefficient resistor (NTC) to an Open8055 board and use it.
 
 The schematics, PCB design and printable PCB images can be found in the
-circuit subdirectory. You will need ExpressSCH and ExpressPCB to open and
+circuit subdirectory. You will need TinyCAD and ExpressPCB to open and
 edit the schematic and PCB source files. The software is available for 
 free from
 
+	http://sourceforge.net/apps/mediawiki/tinycad/index.php?title=TinyCAD
     http://www.expresspcb.com/expresspcbhtm/Free_schematic_software.htm
 
 This example is using a B57560G NTC. This thermistor has a nominal resistance
@@ -22,8 +23,8 @@ things:
     * Stabilize a 1/11th voltage divider for intput into the thermistor
       based voltage divider. This is done to minimize the power, dissipated
       by the thermistor itself. After all, a resistor dissipating power is
-      a heating element by itself. That isn't desired when using it for
-      measuring temperature.
+      a heating element. That isn't desired when using it for measuring 
+	  temperature.
 
     * Amplify the thermistor voltage divider's output so that the result
       just fits into the 0 to +5V input range of the Open8055 ADC. This makes
@@ -32,4 +33,4 @@ things:
 
 The example program thermistor.c is a command line utility that simply prints
 the current temperature reading every 500ms in Celsius and Fahrenheit. The
-math behind it is explained in the comments.
+math behind it is explained in the source code.
