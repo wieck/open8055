@@ -13,6 +13,9 @@ R2 _N_6 GND 10K
 R3 chkpt2 GND 3K9
 R4 Out _N_7 220K
 R5 _N_7 GND 10K
+* Connector SK1 at Out
+* Connector SK2 at Vdd
+* Connector SK3 at Gnd
 RTH1 chkpt1 chkpt2 10K
 .dc RTH1 27445 4165 -100
 V1 Vdd GND DC 5V
