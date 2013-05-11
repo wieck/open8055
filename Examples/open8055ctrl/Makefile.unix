@@ -3,7 +3,11 @@
 #
 #	Unix version
 # ------------------------------------------------------------
-LIBS=				-lm -lpthread -lusb
+ifeq ($(UNAME), Linux)
+	LIBS=			-lm -lpthread -lusb-1.0
+else
+	LIBS=			-lm -lpthread -lusb
+endif
 OBJS=				open8055ctrl.o gram.o
 OPEN8055_LIB=		../../libopen8055/libopen8055.a
 
@@ -11,6 +15,10 @@ PROGS=				open8055ctrl
 
 CC=					gcc
 CFLAGS+=			-O2 -Wall -I../../include
+
+ifeq ($(UNAME), Linux)
+	CFLAGS+= -I/usr/include/libusb-1.0
+endif
 
 
 all:				buildlib $(PROGS)

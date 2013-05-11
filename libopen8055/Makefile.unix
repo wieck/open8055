@@ -41,6 +41,10 @@ CFLAGS+=				-O2 -Wall -I../include
 LDFLAGS+=	
 AR=						ar
 
+ifeq ($(UNAME), Linux)
+	CFLAGS+= -I/usr/include/libusb-1.0 -fPIC
+endif
+
 
 # ----
 # Stuff required for building the open8055.a static library

@@ -2357,8 +2357,8 @@ DevicePresent(int cardNumber)
 {
 	int							cardFound = 0;
 	int							numDevices;
-	libusb_device				**deviceList;
-	libusb_device_descriptor	deviceDesc;
+	struct libusb_device			**deviceList;
+	struct libusb_device_descriptor	deviceDesc;
 	int							i;
 
 	/* ----
@@ -2429,17 +2429,6 @@ DeviceOpen(Open8055_card_t *card)
 	}
 
 	/* ----
-	 * Set configuration
-	 * ----
-	 */
-	if (libusb_set_configuration(dev, 1) != 0)
-	{
-		SetError(card, "libusb_set_configuration(): %s", ErrorString());
-		libusb_close(dev);
-		return -1;
-	}
-
-	/* ----
 	 * If a kernel driver is active, detach it.
 	 * ----
 	 */
@@ -2461,6 +2450,17 @@ DeviceOpen(Open8055_card_t *card)
 				return -1;
 			}
 		}
+	}
+
+	/* ----
+	 * Set configuration
+	 * ----
+	 */
+	if (libusb_set_configuration(dev, 1) != 0)
+	{
+		SetError(card, "libusb_set_configuration(): %s", ErrorString());
+		libusb_close(dev);
+		return -1;
 	}
 
 	/* ----
