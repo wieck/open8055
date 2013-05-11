@@ -4,8 +4,8 @@
 #	Unix version
 # ------------------------------------------------------------
 LIBS=				-lm -lpthread -lusb
-OBJS=				open8055ctrl.o gram.o scan.o
-OPEN8055_LIB=		../../libopen8055/open8055.a
+OBJS=				open8055ctrl.o gram.o
+OPEN8055_LIB=		../../libopen8055/libopen8055.a
 
 PROGS=				open8055ctrl
 
@@ -17,7 +17,7 @@ all:				buildlib $(PROGS)
 
 clean:
 	rm -f $(PROGS) $(OBJS)
-	rm -f gram.c gram.h scan.c scan.h
+	rm -f gram.c gram.h scan.c
 	$(MAKE) -C ../../libopen8055 clean
 
 buildlib:
@@ -35,17 +35,12 @@ open8055ctrl.o: open8055ctrl.c							\
 				../../include/open8055_compat.h			\
 				../../include/open8055_hid_protocol.h	\
 				../../include/open8055.h				\
-				gram.h									\
-				scan.h
-
-scan.o:		scan.c open8055ctrl.h gram.h
+				gram.h
 
 scan.c:		scan.l
-	flex --header-file=scan.h -o'scan.c' scan.l
+	flex -o'scan.c' scan.l
 
-scan.h:		scan.c
-
-gram.o:		gram.c scan.h open8055ctrl.h ../../include/open8055.h
+gram.o:		gram.c scan.c open8055ctrl.h ../../include/open8055.h
 
 gram.c:		gram.y
 	bison -y -d gram.y

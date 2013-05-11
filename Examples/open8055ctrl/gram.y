@@ -1,6 +1,6 @@
 %{
 /* ----------------------------------------------------------------------
- * gram.h
+ * gram.y
  *
  *	The bison parser for the open8055ctrl utility.
  * ----------------------------------------------------------------------
@@ -36,7 +36,7 @@
 #include "open8055.h"
 #include "open8055ctrl.h"
 
-#include "scan.h"
+#include "scan.c"
 
 /* ----
  * Local variables.
