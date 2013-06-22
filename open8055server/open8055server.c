@@ -74,8 +74,8 @@ static int				server_maxfd;
  * ----------------------------------------------------------------------
  */
 static int server_setup(void);
-static void server_mainloop(void);
-static void server_shutdown(void);
+static int server_mainloop(void);
+static int server_shutdown(void);
 static void server_catch_signal(int signum);
 
 
@@ -86,16 +86,16 @@ static void server_catch_signal(int signum);
 int
 main(const int argc, char * const argv[])
 {
-	server_thread = pthread_self();
-
-	signal(SIGTERM, server_catch_signal);
-	signal(SIGINT, server_catch_signal);
-	signal(SIGHUP, server_catch_signal);
+	int rc = 0;
 
 	if (server_setup() != 0)
 		return 2;
-	server_mainloop();
-	server_shutdown();
+	if (server_mainloop() < 0)
+		rc = 3;
+
+	if (server_shutdown() < 0)
+		if (rc == 0)
+			rc = 4;
 
 	if (server_mode == SERVER_MODE_RESTART)
 	{
@@ -103,10 +103,10 @@ main(const int argc, char * const argv[])
 		execv(argv[0], argv);
 
 		server_log(NULL, LOG_FATAL, "execv(): %s", strerror(errno));
-		exit(3);
+		exit(5);
 	}
 
-	return 0;
+	return rc;
 }
 
 
@@ -309,6 +309,20 @@ server_setup(void)
 	server_maxfd++;
 
 	/* ----
+	 * Record the main thread's ID.
+	 * ----
+	 */
+	server_thread = pthread_self();
+
+	/* ----
+	 * Catch signals handled by the main thread.
+	 * ----
+	 */
+	signal(SIGTERM, server_catch_signal);
+	signal(SIGINT, server_catch_signal);
+	signal(SIGHUP, server_catch_signal);
+
+	/* ----
 	 * Switch to RUN mode.
 	 * ----
 	 */
@@ -323,7 +337,7 @@ server_setup(void)
  * server_mainloop()
  * ----------
  */
-static void
+static int
 server_mainloop(void)
 {
 	fd_set				rfds;
@@ -352,7 +366,7 @@ server_mainloop(void)
 
 			server_log(NULL, LOG_ERROR, "select(): %s", strerror(errno));
 			server_mode = SERVER_MODE_RESTART;
-			return;
+			return -1;
 		}
 
 		/* ----
@@ -380,7 +394,7 @@ server_mainloop(void)
 			{
 				server_log(NULL, LOG_ERROR, "accept(): %s", strerror(errno));
 				server_mode = SERVER_MODE_RESTART;
-				return;
+				return -1;
 			}
 
 			if (client_create(sock, &addr) < 0)
@@ -402,7 +416,7 @@ server_mainloop(void)
 			{
 				server_log(NULL, LOG_ERROR, "accept(): %s", strerror(errno));
 				server_mode = SERVER_MODE_RESTART;
-				return;
+				return -1;
 			}
 
 			if (client_create(sock, &addr) < 0)
@@ -411,17 +425,25 @@ server_mainloop(void)
 	}
 
 	/* ----
-	 * Server is ready.
+	 * Server is done.
 	 * ----
 	 */
 	server_log(NULL, LOG_INFO, "Exiting server_mainloop for %s",
 			(server_mode == SERVER_MODE_STOP) ? "shutdown" : "restart");
+
+	return 0;
 }
 
 
-static void
+/* ----------
+ * server_shutdown()
+ * ----------
+ */
+static int
 server_shutdown(void)
 {
+	int		rc;
+
 	if (server_sock4 >= 0)
 	{
 		close(server_sock4);
@@ -434,9 +456,11 @@ server_shutdown(void)
 		server_sock6 = -1;
 	}
 
-	client_shutdown();
+	rc = client_shutdown();
 
 	server_log(NULL, LOG_INFO, "Open8055 network server shutdown complete");
+
+	return rc;
 }
 
 

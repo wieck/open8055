@@ -111,9 +111,12 @@ extern void			server_log_func(char *fname, int lineno,
  * Functions in client.c
  * ----------
  */
+extern void			client_init(void);
+extern int			client_shutdown(void);
+
 extern int			client_create(int sock, ClientAddr *addr);
 extern int			client_reaper(void);
-extern int			client_shutdown(void);
+extern void			client_catch_signal(int signum);
 
 
 #endif /* _OPEN8055SERVER_H */
