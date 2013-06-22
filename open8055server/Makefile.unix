@@ -1,0 +1,45 @@
+# ------------------------------------------------------------
+# Makefile for open8055server
+#
+#	Unix version
+# ------------------------------------------------------------
+ifeq ($(UNAME), Linux)
+	LIBS=			-lm -lpthread -lusb-1.0
+else
+	LIBS=			-lm -lpthread -lusb
+endif
+OBJS=				open8055server.o client.o
+
+PROGS=				open8055server
+
+CC=					gcc
+CFLAGS+=			-O2 -Wall -I../include -pthread
+
+ifeq ($(UNAME), Linux)
+	CFLAGS+= -I/usr/include/libusb-1.0
+endif
+
+
+all:				$(PROGS)
+
+clean:
+	rm -f $(PROGS) $(OBJS)
+
+unsafe: all
+	sudo chown root $(PROGS) 
+	sudo chmod 4755 $(PROGS)
+
+open8055server:	$(OBJS)
+	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+
+open8055server.o:	open8055server.c				\
+				open8055server.h					\
+				../include/open8055_compat.h		\
+				../include/open8055_hid_protocol.h
+
+client.o:		client.c							\
+				open8055server.h					\
+				../include/open8055_compat.h		\
+				../include/open8055_hid_protocol.h
+
+
