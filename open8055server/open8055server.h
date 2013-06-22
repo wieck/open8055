@@ -116,7 +116,6 @@ extern int			client_shutdown(void);
 
 extern int			client_create(int sock, ClientAddr *addr);
 extern int			client_reaper(void);
-extern void			client_catch_signal(int signum);
 
 
 #endif /* _OPEN8055SERVER_H */
