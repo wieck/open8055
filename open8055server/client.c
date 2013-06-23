@@ -69,6 +69,7 @@ static pthread_mutex_t	client_list_lock;
  */
 static void *client_thread_run(void *cdata);
 static void client_command(ClientData *client);
+static int client_command_parse(ClientData *client);
 static int client_send(ClientData *client, char *fmt, ...);
 
 
@@ -261,7 +262,7 @@ client_reaper(void)
 			 * Client is stopped, reap it
 			 * ----
 			 */
-			server_log(client, LOG_CLIENTDEBUG, "client is stopped");
+			server_log(client, LOG_CLIENTDEBUG, "client is reaped");
 			
 			/* ----
 			 * Remove client from the list
@@ -315,7 +316,7 @@ client_thread_run(void *cdata)
 {
 	ClientData	   *client = (ClientData *)cdata;
 
-	server_log(client, LOG_ERROR, "client_thread_run()");
+	server_log(client, LOG_CLIENT, "connected");
 
 	/* ----
 	 * Client main loop.
@@ -393,6 +394,12 @@ client_command(ClientData *client)
 			*cp = '\0';
 			server_log(client, LOG_CLIENTIO, "RECV '%s'",
 					client->cmdline);
+			if (client_command_parse(client) < 0)
+			{
+				pthread_mutex_lock(&(client->lock));
+				client->mode = CLIENT_MODE_STOP;
+				pthread_mutex_unlock(&(client->lock));
+			}
 
 			/* ----
 			 * Reset command line and return to client main loop.
@@ -451,7 +458,7 @@ client_command(ClientData *client)
 		if (errno == EINTR)
 		{
 			server_log(client, LOG_CLIENTDEBUG, "SIGUSR2 received");
-			client_send(client, "E Server shutdown or restart\n");
+			client_send(client, "ERROR Server shutdown or restart\n");
 		}
 		else
 			server_log(client, LOG_ERROR, "select(): %s", strerror(errno));
@@ -496,6 +503,81 @@ client_command(ClientData *client)
 
 	client->read_buffer_have = rc;
 	client->read_buffer_done = 0;
+}
+
+
+/* ----
+ * client_command_parse()
+ * ----
+ */
+static int
+client_command_parse(ClientData *client)
+{
+	char	cmdcopy[MAX_CMDLINE];
+	char   *sepptr = cmdcopy;
+	char   *cmd_token;
+
+	strcpy(cmdcopy, client->cmdline);
+
+	cmd_token = strsep(&sepptr, " \t");
+
+	/* ----
+	 * Parse LOGIN and BYE allways
+	 * ----
+	 */
+	if (stricmp(cmd_token, "LOGIN") == 0)
+	{
+		char	*username;
+		char	*password;
+
+		if (strcmp(client->username, "-") != 0)
+		{
+			client_send(client, "LOGIN ERROR Already logged in\n");
+			return 0;
+		}
+
+		username = strsep(&sepptr, " \t");
+		password = strsep(&sepptr, " \t");
+
+		if (username == NULL)
+		{
+			client_send(client, "LOGIN ERROR Usage: "
+					"LOGIN username [password]\n");
+			return 0;
+		}
+		if (strcmp(username, "-") == 0 || strlen(username) > MAX_USERNAME)
+		{
+			client_send(client, "LOGIN ERROR Illegal username\n");
+			return 0;
+		}
+
+		/*
+		 * TODO: handle actual login by checking username and password
+		 */
+		
+		strcpy(client->username, username);
+		server_log(client, LOG_CLIENT, "Authenticated user='%s'", username);
+		client_send(client, "LOGIN OK\n");
+		return 0;
+	}
+	else if (stricmp(cmd_token, "BYE") == 0)
+	{
+		client_send(client, "BYE\n");
+		return -1;
+	}
+
+	/* ----
+	 * For everything else, the client must be logged in.
+	 * ----
+	 */
+	if (strcmp(client->username, "-") == 0)
+	{
+		client_send(client, "ERROR Not logged in\n");
+		return 0;
+	}
+
+	client_send(client, "ERROR Command not implemented yet\n");
+	return 0;
 }
 
 
