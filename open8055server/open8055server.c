@@ -88,6 +88,9 @@ main(const int argc, char * const argv[])
 {
 	int rc = 0;
 
+	if (client_init() != 0)
+		return 2;
+
 	if (server_setup() != 0)
 		return 2;
 	if (server_mainloop() < 0)
@@ -195,6 +198,7 @@ server_setup(void)
 	struct sockaddr_in6		addr6;
 	int						rc;
 	int						on = 1;
+	sigset_t				sigmask;
 
 	/* ----
 	 * Try to create the IPV6 server socket.
@@ -315,12 +319,19 @@ server_setup(void)
 	server_thread = pthread_self();
 
 	/* ----
-	 * Catch signals handled by the main thread.
+	 * Setup signal blocking and catch signals. We only enable
+	 * signals while waiting for client connections.
 	 * ----
 	 */
-	signal(SIGTERM, server_catch_signal);
-	signal(SIGINT, server_catch_signal);
-	signal(SIGHUP, server_catch_signal);
+	sigfillset(&sigmask);
+	pthread_sigmask(SIG_BLOCK, &sigmask, NULL);
+
+	signal(SIGTERM, server_catch_signal);	// Shutdown
+	signal(SIGINT, server_catch_signal);	// Shutdown
+	signal(SIGHUP, server_catch_signal);	// Restart
+	signal(SIGUSR1, server_catch_signal);	// Run client_reaper()
+
+	signal(SIGUSR2, client_catch_signal);	// Client terminate
 
 	/* ----
 	 * Switch to RUN mode.
@@ -341,46 +352,67 @@ static int
 server_mainloop(void)
 {
 	fd_set				rfds;
-	struct timeval		tv;
 	ClientAddr			addr;
 	socklen_t			addrlen;
 	int					sock;
 	int					rc;
+
+	sigset_t			sigunblock;
+	sigset_t			sigorig;
 
 	while (server_mode == SERVER_MODE_RUN)
 	{
 		server_log(NULL, LOG_DEBUG, "Waiting for new client");
 
 		/* ----
-		 * Wait for something to do with a 10 second timeout.
+		 * Wait for something to do.
+		 * Unblock signals only during this time.
 		 * ----
 		 */
 		rfds = server_fdset;
-		tv.tv_sec = 10;
-		tv.tv_usec = 0;
-		rc = select(server_maxfd, &rfds, NULL, NULL, &tv);
+
+		sigemptyset(&sigunblock);
+		sigaddset(&sigunblock, SIGTERM);
+		sigaddset(&sigunblock, SIGINT);
+		sigaddset(&sigunblock, SIGHUP);
+		sigaddset(&sigunblock, SIGUSR1);
+		pthread_sigmask(SIG_UNBLOCK, &sigunblock, &sigorig);
+
+		rc = select(server_maxfd, &rfds, NULL, NULL, NULL);
+
+		pthread_sigmask(SIG_SETMASK, &sigorig, NULL);
+
 		if (rc < 0)
 		{
+			/* ----
+			 * If we caught a signal, run client_reaper()
+			 * ----
+			 */
 			if (errno == EINTR)
+			{
+				client_reaper();
 				continue;
+			}
 
+			/* ----
+			 * Error on select(2), restart the server
+			 * ----
+			 */
 			server_log(NULL, LOG_ERROR, "select(): %s", strerror(errno));
 			server_mode = SERVER_MODE_RESTART;
 			return -1;
 		}
 
 		/* ----
-		 * Whatever just happened, clean up after closed connections first.
-		 * ----
-		 */
-		client_reaper();
-
-		/* ----
 		 * If this was only a select(2) timeout, go wait for something new.
 		 * ----
 		 */
+		client_reaper();
 		if (rc == 0)
+		{
+			server_log(NULL, LOG_DEBUG, "select(): timeout?");
 			continue;
+		}
 
 		/* ----
 		 * Handle new connection on IPV4 socket.
@@ -400,7 +432,6 @@ server_mainloop(void)
 			if (client_create(sock, &addr) < 0)
 			{
 				write(sock, "ERROR Internal server error\n", 28);
-				close(sock);
 			}
 		}
 
@@ -444,6 +475,8 @@ server_shutdown(void)
 {
 	int		rc;
 
+	server_log(NULL, LOG_INFO, "Open8055 network server shutdown ...");
+
 	if (server_sock4 >= 0)
 	{
 		close(server_sock4);
@@ -474,6 +507,14 @@ server_catch_signal(int signum)
 	switch (signum)
 	{
 		case SIGHUP:	server_mode = SERVER_MODE_RESTART;
+						break;
+
+		case SIGUSR1:	/* ----
+						 * Nothing special to do here. It jus causes
+						 * select() to be interrupted so it will run
+						 * client_reaper().
+						 * ----
+						 */
 						break;
 
 		default:		server_mode = SERVER_MODE_STOP;

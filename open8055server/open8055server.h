@@ -68,6 +68,10 @@
 #define			SERVER_MODE_STOP	1
 #define			SERVER_MODE_RESTART	2
 
+#define			CLIENT_MODE_RUN		0
+#define			CLIENT_MODE_STOP	1
+#define			CLIENT_MODE_STOPPED	2
+
 
 typedef union
 {
@@ -81,8 +85,16 @@ typedef struct ClientData
 	ClientAddr				addr;
 	char					username[MAX_USERNAME + 1];
 
+	char					read_buffer[MAX_CMDLINE];
+	int						read_buffer_have;
+	int						read_buffer_done;
+	char					cmdline[MAX_CMDLINE];
+	int						cmdline_have;
+
 	pthread_t				thread;
 	pthread_mutex_t			lock;
+
+	int						mode;
 
 	struct ClientData	   *next;
 } ClientData;
@@ -111,8 +123,9 @@ extern void			server_log_func(char *fname, int lineno,
  * Functions in client.c
  * ----------
  */
-extern void			client_init(void);
+extern int			client_init(void);
 extern int			client_shutdown(void);
+extern void			client_catch_signal(int signum);
 
 extern int			client_create(int sock, ClientAddr *addr);
 extern int			client_reaper(void);
