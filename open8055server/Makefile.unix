@@ -8,7 +8,7 @@ ifeq ($(UNAME), Linux)
 else
 	LIBS=			-lm -lpthread -lusb
 endif
-OBJS=				open8055server.o client.o
+OBJS=				open8055server.o client.o device_unix.o
 
 PROGS=				open8055server
 
@@ -38,6 +38,11 @@ open8055server.o:	open8055server.c				\
 				../include/open8055_hid_protocol.h
 
 client.o:		client.c							\
+				open8055server.h					\
+				../include/open8055_compat.h		\
+				../include/open8055_hid_protocol.h
+
+device_unix.o:		device_unix.c						\
 				open8055server.h					\
 				../include/open8055_compat.h		\
 				../include/open8055_hid_protocol.h

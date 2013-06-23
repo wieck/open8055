@@ -45,7 +45,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#include "open8055.h"
+#include "open8055_compat.h"
+#include "open8055_common.h"
 #include "open8055server.h"
 
 
@@ -89,6 +90,9 @@ main(const int argc, char * const argv[])
 	int rc = 0;
 
 	if (client_init() != 0)
+		return 2;
+
+	if (device_init() != 0)
 		return 2;
 
 	if (server_setup() != 0)
@@ -490,6 +494,7 @@ server_shutdown(void)
 	}
 
 	rc = client_shutdown();
+	device_exit();
 
 	server_log(NULL, LOG_INFO, "Open8055 network server shutdown complete");
 

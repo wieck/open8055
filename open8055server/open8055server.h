@@ -44,7 +44,7 @@
 
 #define			MAX_USERNAME		32
 #define			MAX_CMDLINE			256
-
+#define			MAX_CARDS			4
 
 #define			LOG_FATAL			0x0001
 #define			LOG_ERROR			0x0002
@@ -129,6 +129,21 @@ extern void			client_catch_signal(int signum);
 
 extern int			client_create(int sock, ClientAddr *addr);
 extern int			client_reaper(void);
+
+
+/* ----------
+ * Functions in device_OS.c
+ * ----------
+ */
+extern int			device_init(void);
+extern void			device_exit(void);
+extern int			device_present(int cardNumber);
+extern int			device_open(int cardNumber);
+extern int			device_close(int cardNumber);
+extern int			device_read(int cardNumber, unsigned char *ioBuf);
+extern int			device_write(int cardNumber, unsigned char *ioBuf);
+
+extern char		   *device_error(int cardNumber);
 
 
 #endif /* _OPEN8055SERVER_H */

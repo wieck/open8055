@@ -392,7 +392,7 @@ client_command(ClientData *client)
 			 * ----
 			 */
 			*cp = '\0';
-			server_log(client, LOG_CLIENTIO, "RECV '%s'",
+			server_log(client, LOG_CLIENTIO, "RECV %s",
 					client->cmdline);
 			if (client_command_parse(client) < 0)
 			{
@@ -513,6 +513,7 @@ client_command(ClientData *client)
 static int
 client_command_parse(ClientData *client)
 {
+	char	response[MAX_CMDLINE];
 	char	cmdcopy[MAX_CMDLINE];
 	char   *sepptr = cmdcopy;
 	char   *cmd_token;
@@ -576,7 +577,30 @@ client_command_parse(ClientData *client)
 		return 0;
 	}
 
-	client_send(client, "ERROR Command not implemented yet\n");
+	if (stricmp(cmd_token, "LIST") == 0)
+	{
+		int		card;
+		int		rc;
+
+		strcpy(response, "LIST OK");
+		for (card = 0; card < MAX_CARDS; card++)
+		{
+			rc = device_present(card);
+			if (rc < 0)
+			{
+				server_log(client, LOG_ERROR, "device_present(): %s",
+						device_error(card));
+				return 0;
+			}
+
+			if (rc)
+				sprintf(response + strlen(response), " card%d", card);
+		}
+		client_send(client, "%s\n", response);
+		return 0;
+	}
+	else 
+		client_send(client, "ERROR Command not implemented yet\n");
 	return 0;
 }
 
@@ -618,7 +642,9 @@ client_send(ClientData *client, char *fmt, ...)
 		return -1;
 	}
 
-	server_log(client, LOG_CLIENTIO, "SEND '%s'", buf);
+	if (len > 0 && buf[len - 1] == '\n')
+		len--;
+	server_log(client, LOG_CLIENTIO, "SEND '%.*s'", len, buf);
 
 	return rc;
 }
