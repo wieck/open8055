@@ -91,13 +91,25 @@ typedef struct ClientData
 	char					cmdline[MAX_CMDLINE];
 	int						cmdline_have;
 
+	int						mode;
+	struct CardData		   *cards;
+
 	pthread_t				thread;
 	pthread_mutex_t			lock;
-
-	int						mode;
-
 	struct ClientData	   *next;
 } ClientData;
+
+typedef struct CardData
+{
+	int						card_num;
+	int						terminate;
+	int						ioerror;
+	ClientData			   *client;
+
+	pthread_t				thread;
+	pthread_mutex_t			lock;
+	struct CardData		   *next;
+} CardData;
 
 
 

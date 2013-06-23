@@ -78,12 +78,14 @@ static pthread_mutex_t			errorLock;
 int
 device_init(void)
 {
+	int rc;
+
 	if (initialized)
 		return 0;
 
-	if (libusb_init(&libusbCxt) != 0)
+	if ((rc = libusb_init(&libusbCxt)) != 0)
 	{
-		set_error(-1, "libusb_init(): %s", strerror(errno));
+		set_error(-1, "libusb_init(): %s", libusb_strerror(rc));
 		return -1;
 	}
 
@@ -188,6 +190,12 @@ device_open(int cardNumber)
 	int						rc;
 	int						interface = 0;
 
+	if (!device_present(cardNumber))
+	{
+		set_error(cardNumber, "card%d not present", cardNumber);
+		return -1;
+	}
+
 	/* ----
 	 * Open the device.
 	 * ----
@@ -196,8 +204,7 @@ device_open(int cardNumber)
 			libusbCxt, OPEN8055_VID, OPEN8055_PID + cardNumber);
 	if (dev == NULL)
 	{
-		set_error(cardNumber, "libusb_open_device_with_vid_pid(): %s", 
-				strerror(errno));
+		set_error(cardNumber, "libusb_open_device_with_vid_pid(): failed");
 		return -1;
 	}
 
@@ -208,7 +215,7 @@ device_open(int cardNumber)
 	if ((rc = libusb_kernel_driver_active(dev, interface)) < 0)
 	{
 		set_error(cardNumber, "libusb_kernel_driver_active(): %s", 
-				strerror(errno));
+				libusb_strerror(rc));
 		libusb_close(dev);
 		return -1;
 	}
@@ -267,6 +274,8 @@ device_open(int cardNumber)
 		return -1;
 	}
 
+	cardHandle[cardNumber] = dev;
+
 	return 0;
 }
 
@@ -300,26 +309,25 @@ device_close(int cardNumber)
 int
 device_read(int cardNumber, unsigned char *ioBuf)
 {
+	int		rc;
 	int		bytesRead;
 
-	if (libusb_interrupt_transfer(cardHandle[cardNumber],
+	if ((rc = libusb_interrupt_transfer(cardHandle[cardNumber],
 			LIBUSB_ENDPOINT_IN | 1, ioBuf, 
-			OPEN8055_HID_MESSAGE_SIZE, &bytesRead, 0) == 0)
+			OPEN8055_HID_MESSAGE_SIZE, &bytesRead, 0)) == 0)
 	{
-		if (bytesRead != 8)
+		if (bytesRead != OPEN8055_HID_MESSAGE_SIZE)
 		{
 			set_error(cardNumber, "short read - expected %d, got %d", 
 					OPEN8055_HID_MESSAGE_SIZE, bytesRead);
 			return -1;
 		}
 
-		bytesRead++;
-		ioBuf[0] = 0x00;
-
 		return bytesRead;
 	}
 
-	set_error(cardNumber, "libusb_interrupt_transfer(): %s", strerror(errno));
+	set_error(cardNumber, "libusb_interrupt_transfer(): %s", 
+			libusb_strerror(rc));
 	return -1;
 }
 

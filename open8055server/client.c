@@ -45,7 +45,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#include "open8055.h"
+#include "open8055_compat.h"
+#include "open8055_common.h"
+#include "open8055_hid_protocol.h"
 #include "open8055server.h"
 
 
@@ -70,8 +72,10 @@ static pthread_mutex_t	client_list_lock;
 static void *client_thread_run(void *cdata);
 static void client_command(ClientData *client);
 static int client_command_parse(ClientData *client);
-static int client_send(ClientData *client, char *fmt, ...);
-
+static int client_send(ClientData *client, int dolock, char *fmt, ...);
+static void client_card_open(ClientData *client, int card_num);
+static void client_card_close(ClientData *client, int card_num);
+static void *client_card_thread(void *cdata);
 
 /* ----------------------------------------------------------------------
  * Global functions
@@ -111,9 +115,14 @@ client_shutdown(void)
 
 	pthread_mutex_lock(&client_list_lock);
 
+	/* ----
+	 * Terminate all open client connections.
+	 * ----
+	 */
 	while (client_list != NULL)
 	{
-		server_log(client_list, LOG_INFO, "terminating client connection");
+		server_log(client_list, LOG_INFO, "terminating client connection "
+				"due to shutdown/restart");
 
 		if (pthread_kill(client_list->thread, SIGUSR2) != 0)
 			server_log(client_list, LOG_ERROR, "pthread_kill(): %s",
@@ -124,6 +133,8 @@ client_shutdown(void)
 		if (pthread_mutex_destroy(&(client_list->lock)) != 0)
 			server_log(client_list, LOG_ERROR, "pthread_mutex_destroy(): %s",
 					strerror(errno));
+
+		server_log(client_list, LOG_CLIENTDEBUG, "client is reaped");
 		
 		next = client_list->next;
 		free(client_list);
@@ -193,7 +204,7 @@ client_create(int sock, ClientAddr *addr)
 	 * TODO: implement the salt part.
 	 * ----
 	 */
-	if (client_send(client, "HELLO Open8055server %s\nSALT %s\n", 
+	if (client_send(client, TRUE,  "HELLO Open8055server %s\nSALT %s\n", 
 			OPEN8055_SERVER_VERSION, 
 			"00000000000000000000000000000000") < 0)
 	{
@@ -335,12 +346,25 @@ client_thread_run(void *cdata)
 		client_command(client);
 	}
 
+	pthread_mutex_lock(&(client->lock));
+
 	/* ----
-	 * Exit the client thread. Close connection, close open cards
-	 * and set mode to STOPPED.
+	 * Client exit time. Close all open cards.
 	 * ----
 	 */
-	pthread_mutex_lock(&(client->lock));
+	while (client->cards != NULL)
+	{
+		int		card_num = client->cards->card_num;
+
+		pthread_mutex_unlock(&(client->lock));
+		client_card_close(client, card_num);
+		pthread_mutex_lock(&(client->lock));
+	}
+
+	/* ----
+	 * Close the connection and set mode to STOPPED.
+	 * ----
+	 */
 
 	if (client->sock >= 0)
 		close(client->sock);
@@ -458,7 +482,14 @@ client_command(ClientData *client)
 		if (errno == EINTR)
 		{
 			server_log(client, LOG_CLIENTDEBUG, "SIGUSR2 received");
-			client_send(client, "ERROR Server shutdown or restart\n");
+			pthread_mutex_lock(&(client->lock));
+			client_send(client, FALSE, "ERROR Server shutdown or restart\n");
+			if (client->sock >= 0)
+			{
+				close(client->sock);
+				client->sock = -1;
+			}
+			pthread_mutex_unlock(&(client->lock));
 		}
 		else
 			server_log(client, LOG_ERROR, "select(): %s", strerror(errno));
@@ -523,7 +554,7 @@ client_command_parse(ClientData *client)
 	cmd_token = strsep(&sepptr, " \t");
 
 	/* ----
-	 * Parse LOGIN and BYE allways
+	 * LOGIN command
 	 * ----
 	 */
 	if (stricmp(cmd_token, "LOGIN") == 0)
@@ -533,7 +564,7 @@ client_command_parse(ClientData *client)
 
 		if (strcmp(client->username, "-") != 0)
 		{
-			client_send(client, "LOGIN ERROR Already logged in\n");
+			client_send(client, TRUE, "LOGIN ERROR Already logged in\n");
 			return 0;
 		}
 
@@ -542,13 +573,13 @@ client_command_parse(ClientData *client)
 
 		if (username == NULL)
 		{
-			client_send(client, "LOGIN ERROR Usage: "
+			client_send(client, TRUE, "ERROR Usage: "
 					"LOGIN username [password]\n");
 			return 0;
 		}
 		if (strcmp(username, "-") == 0 || strlen(username) > MAX_USERNAME)
 		{
-			client_send(client, "LOGIN ERROR Illegal username\n");
+			client_send(client, TRUE, "LOGIN ERROR Illegal username\n");
 			return 0;
 		}
 
@@ -558,12 +589,24 @@ client_command_parse(ClientData *client)
 		
 		strcpy(client->username, username);
 		server_log(client, LOG_CLIENT, "Authenticated user='%s'", username);
-		client_send(client, "LOGIN OK\n");
+		client_send(client, TRUE, "LOGIN OK\n");
 		return 0;
 	}
+	/* ----
+	 * BYE command
+	 * ----
+	 */
 	else if (stricmp(cmd_token, "BYE") == 0)
 	{
-		client_send(client, "BYE\n");
+		pthread_mutex_lock(&(client->lock));
+		client_send(client, FALSE, "BYE\n");
+		if (client->sock >= 0)
+		{
+			close(client->sock);
+			client->sock = -1;
+		}
+		pthread_mutex_unlock(&(client->lock));
+
 		return -1;
 	}
 
@@ -573,34 +616,105 @@ client_command_parse(ClientData *client)
 	 */
 	if (strcmp(client->username, "-") == 0)
 	{
-		client_send(client, "ERROR Not logged in\n");
+		client_send(client, TRUE, "ERROR Not logged in\n");
 		return 0;
 	}
 
+	/* ----
+	 * LIST command
+	 *
+	 * 	Returns a list of connected cards
+	 * ----
+	 */
 	if (stricmp(cmd_token, "LIST") == 0)
 	{
-		int		card;
+		int		card_num;
 		int		rc;
 
 		strcpy(response, "LIST OK");
-		for (card = 0; card < MAX_CARDS; card++)
+		for (card_num = 0; card_num < MAX_CARDS; card_num++)
 		{
-			rc = device_present(card);
+			rc = device_present(card_num);
 			if (rc < 0)
 			{
 				server_log(client, LOG_ERROR, "device_present(): %s",
-						device_error(card));
+						device_error(card_num));
 				return 0;
 			}
 
 			if (rc)
-				sprintf(response + strlen(response), " card%d", card);
+				sprintf(response + strlen(response), " card%d", card_num);
 		}
-		client_send(client, "%s\n", response);
+		client_send(client, TRUE, "%s\n", response);
 		return 0;
 	}
+
+	/* ----
+	 * OPEN command
+	 * ----
+	 */
+	else if (stricmp(cmd_token, "OPEN") == 0)
+	{
+		int		card_num;
+		char   *cardstr;
+
+		if ((cardstr = strsep(&sepptr, " \t")) == NULL || *cardstr == '\0')
+		{
+			client_send(client, TRUE, "ERROR Usage: OPEN card\n");
+			return 0;
+		}
+		if (sscanf(cardstr, "card%d", &card_num) != 1)
+		{
+			client_send(client, TRUE, "OPEN %s ERROR Invalid card name", 
+					cardstr);
+			return 0;
+		}
+		if (card_num < 0 || card_num >= MAX_CARDS)
+		{
+			client_send(client, TRUE, "OPEN %s ERROR Invalid card number", 
+					cardstr);
+			return 0;
+		}
+
+		client_card_open(client, card_num);
+	}
+
+	/* ----
+	 * CLOSE command
+	 * ----
+	 */
+	else if (stricmp(cmd_token, "CLOSE") == 0)
+	{
+		int		card_num;
+		char   *cardstr;
+
+		if ((cardstr = strsep(&sepptr, " \t")) == NULL || *cardstr == '\0')
+		{
+			client_send(client, TRUE, "ERROR Usage: CLOSE card\n");
+			return 0;
+		}
+		if (sscanf(cardstr, "card%d", &card_num) != 1)
+		{
+			client_send(client, TRUE, "CLOSE %s ERROR Invalid card name", 
+					cardstr);
+			return 0;
+		}
+		if (card_num < 0 || card_num >= MAX_CARDS)
+		{
+			client_send(client, TRUE, "CLOSE %s ERROR Invalid card number", 
+					cardstr);
+			return 0;
+		}
+
+		client_card_close(client, card_num);
+	}
+
+	/* ----
+	 * Invalid command tag
+	 * ----
+	 */
 	else 
-		client_send(client, "ERROR Command not implemented yet\n");
+		client_send(client, TRUE, "ERROR Command not implemented yet\n");
 	return 0;
 }
 
@@ -610,10 +724,10 @@ client_command_parse(ClientData *client)
  * ----
  */
 static int
-client_send(ClientData *client, char *fmt, ...)
+client_send(ClientData *client, int dolock, char *fmt, ...)
 {
 	va_list		ap;
-	char		buf[256];
+	char		buf[1024];
 	ssize_t		len;
 	ssize_t		rc;
 
@@ -626,19 +740,23 @@ client_send(ClientData *client, char *fmt, ...)
 
 	len = strlen(buf);
 
-	pthread_mutex_lock(&(client->lock));
+	if (dolock)
+		pthread_mutex_lock(&(client->lock));
 	rc = send(client->sock, buf, len, 0);
-	pthread_mutex_unlock(&(client->lock));
+	if (dolock)
+		pthread_mutex_unlock(&(client->lock));
 
 	if (rc != len)
 	{
 		server_log(client, LOG_ERROR, "send(): %s", strerror(errno));
 
-		pthread_mutex_lock(&(client->lock));
+		if (dolock)
+			pthread_mutex_lock(&(client->lock));
 		client->mode = CLIENT_MODE_STOP;
 		close(client->sock);
 		client->sock = -1;
-		pthread_mutex_unlock(&(client->lock));
+		if (dolock)
+			pthread_mutex_unlock(&(client->lock));
 		return -1;
 	}
 
@@ -647,6 +765,240 @@ client_send(ClientData *client, char *fmt, ...)
 	server_log(client, LOG_CLIENTIO, "SEND '%.*s'", len, buf);
 
 	return rc;
+}
+
+
+/* ----------
+ * client_card_open()
+ * ----------
+ */
+static void
+client_card_open(ClientData *client, int card_num)
+{
+	CardData   *card;
+
+	/* ----
+	 * Try to open the physical card
+	 * ----
+	 */
+	if (device_open(card_num) != 0)
+	{
+		client_send(client, TRUE, "OPEN card%d ERROR %s\n", card_num, 
+				device_error(card_num));
+		return;
+	}
+
+	/* ----
+	 * Allocate and initialize the card data structure
+	 * ----
+	 */
+	card = (CardData *)malloc(sizeof(CardData));
+	if (card == NULL)
+	{
+		server_log(client, LOG_FATAL, "malloc(): %s", strerror(errno));
+		pthread_kill(server_thread, SIGHUP);
+		device_close(card_num);
+		return;
+	}
+	memset(card, 0, sizeof(CardData));
+
+	card->card_num	= card_num;
+	card->client	= client;
+	
+	/* ----
+	 * Create the card structure access lock
+	 * ----
+	 */
+	if (pthread_mutex_init(&(card->lock), NULL) != 0)
+	{
+		server_log(client, LOG_ERROR, "pthread_mutex_init(): %s",
+				strerror(errno));
+		client_send(client, TRUE, "OPEN card%d ERROR Internal server error\n", 
+				card_num);
+		free(card);
+		return;
+	}
+
+	/* ----
+	 * Create the thread that reads HID messages from the card.
+	 * ----
+	 */
+	if (pthread_create(&(card->thread), NULL, client_card_thread, card) != 0)
+	{
+		pthread_mutex_destroy(&(card->lock));
+		server_log(client, LOG_ERROR, "pthread_create(): %s",
+				strerror(errno));
+		client_send(client, TRUE, "OPEN card%d ERROR Internal server error\n", 
+				card_num);
+		free(card);
+		return;
+	}
+
+	/* ----
+	 * Success. Add the card to the list of open cards for this client
+	 * and report OK.
+	 * ----
+	 */
+	card->next = client->cards;
+	client->cards = card;
+
+	server_log(client, LOG_CARDIO, "card%d opened", card_num);
+	client_send(client, TRUE, "OPEN card%d OK\n", card_num);
+}
+
+
+/* ----------
+ * client_card_close()
+ * ----------
+ */
+static void
+client_card_close(ClientData *client, int card_num)
+{
+	Open8055_hidMessage_t	msg;
+	CardData			   *card;
+	CardData			  **cpp;
+
+	pthread_mutex_lock(&(client->lock));
+	cpp = &(client->cards);
+	while (*cpp != NULL)
+	{
+		card = client->cards;
+
+		if (card->card_num == card_num)
+			break;
+		
+		cpp = &(card->next);
+	}
+	if (*cpp == NULL)
+	{
+		pthread_mutex_unlock(&(client->lock));
+		client_send(client, TRUE, "CLOSE card%d ERROR Card not open", card_num);
+		return;
+	}
+
+	/* ----
+	 * Remove the card from the list of open cards for this client
+	 * and unlock the client.
+	 * ----
+	 */
+	*cpp = card->next;
+	pthread_mutex_unlock(&(client->lock));
+
+	/* ----
+	 * Flag the card reader thread that it should terminate.
+	 * ----
+	 */
+	pthread_mutex_lock(&(card->lock));
+	card->terminate = 1;
+	pthread_mutex_unlock(&(card->lock));
+
+	/* ----
+	 * Send a message to the card that forces an input report.
+	 * ----
+	 */
+	memset(&msg, 0, sizeof(msg));
+	msg.msgType = OPEN8055_HID_MESSAGE_GETINPUT;
+	if (device_write(card->card_num, (unsigned char *)&msg) < 0)
+	{
+		server_log(client, LOG_FATAL, "card%d: %s", card_num,
+				device_error(card_num));
+		client_send(client, TRUE, "CLOSE card%d ERROR %s\n", card_num,
+				device_error(card_num));
+	}
+	
+	/* ----
+	 * Wait for the reader thread to terminate. Even if the above
+	 * hid message failed, the thread should terminate now on its
+	 * own because it too should get an IO error.
+	 * ----
+	 */
+	if (pthread_join(card->thread, NULL) != 0)
+	{
+		server_log(client, LOG_ERROR, "card%d: pthread_join(): %s",
+				card_num, strerror(errno));
+		client_send(client, TRUE, "CLOSE card%d ERROR pthread_join(): %s\n",
+				card_num, strerror(errno));
+
+		return;
+	}
+	
+	/* ----
+	 * Close the physical device.
+	 * ----
+	 */
+	if (device_close(card_num) != 0)
+	{
+		server_log(client, LOG_ERROR, "card%d device_close(): %s",
+				card_num, device_error(card_num));
+		client_send(client, TRUE, "CLOSE card%d ERROR %s\n", 
+				card_num, device_error(card_num));
+		pthread_mutex_destroy(&(card->lock));
+		free(card);
+
+		return;
+	}
+
+	pthread_mutex_destroy(&(card->lock));
+	free(card);
+
+	server_log(client, LOG_CARDIO, "card%d closed", card_num);
+	client_send(client, TRUE, "CLOSE card%d OK\n", card_num);
+}
+
+
+/* ----------
+ * client_card_tread()
+ * ----------
+ */
+static void *
+client_card_thread(void *cdata)
+{
+	CardData	   *card = (CardData *)cdata;
+	ClientData	   *client = card->client;
+	unsigned char	hidbuf[OPEN8055_HID_MESSAGE_SIZE];
+	char			hexbuf[OPEN8055_HID_MESSAGE_SIZE * 2 + 1];
+	int				i;
+	char		   *cp;
+
+	for (;;)
+	{
+		pthread_mutex_lock(&(card->lock));
+		if (card->terminate)
+		{
+			pthread_mutex_unlock(&(card->lock));
+			break;
+		}
+		pthread_mutex_unlock(&(card->lock));
+
+		if (device_read(card->card_num, hidbuf) < 0)
+		{
+			server_log(client, LOG_ERROR, "card%d: %s", card->card_num,
+					device_error(card->card_num));
+			client_send(client, TRUE, "RECV card%d ERROR %s\n", card->card_num,
+					device_error(card->card_num));
+			pthread_mutex_lock(&(card->lock));
+			card->ioerror = 1;
+			pthread_mutex_unlock(&(card->lock));
+			break;
+		}
+
+		cp = hexbuf;
+		for (i = 0; i < OPEN8055_HID_MESSAGE_SIZE; i++)
+		{
+			sprintf(cp, "%02X", hidbuf[i]);
+			cp += 2;
+		}
+		*cp = '\0';
+
+		server_log(client, LOG_CARDIO, "card%d RECV %s", card->card_num,
+				hexbuf);
+		client_send(client, TRUE, "RECV card%d DATA %s\n", card->card_num, 
+				hexbuf);
+	}
+
+	server_log(client, LOG_CARDIO, "card%d IO thread exiting", card->card_num);
+
+	return NULL;
 }
 
 
