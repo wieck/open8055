@@ -126,11 +126,11 @@ device_exit(void)
 int
 device_present(int cardNumber)
 {
-	int							cardFound = 0;
-	int							numDevices;
-	libusb_device			  **deviceList;
-	libusb_device_descriptor	deviceDesc;
-	int							i;
+	int								cardFound = 0;
+	int								numDevices;
+	struct libusb_device		  **deviceList;
+	struct libusb_device_descriptor	deviceDesc;
+	int								i;
 
 	/* ----
 	 * Get the list of USB devices in the system.
