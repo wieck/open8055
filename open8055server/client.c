@@ -533,7 +533,7 @@ client_command(ClientData *client)
 
 				if (card->ioerror)
 				{
-					server_log(client, LOG_CLIENTDEBUG, "card%d: close "
+					server_log(client, LOG_CLIENTDEBUG, "card %d: close "
 							"due to IO error", card->card_num);
 					client_card_close(client, card->card_num);
 				}
@@ -694,7 +694,7 @@ client_command_parse(ClientData *client)
 			}
 
 			if (rc)
-				sprintf(response + strlen(response), " card%d", card_num);
+				sprintf(response + strlen(response), " %d", card_num);
 		}
 		client_send(client, TRUE, "%s\n", response);
 		return 0;
@@ -714,9 +714,9 @@ client_command_parse(ClientData *client)
 			client_send(client, TRUE, "ERROR Usage: OPEN card\n");
 			return 0;
 		}
-		if (sscanf(cardstr, "card%d", &card_num) != 1)
+		if (sscanf(cardstr, "%d", &card_num) != 1)
 		{
-			client_send(client, TRUE, "OPEN %s ERROR Invalid card name", 
+			client_send(client, TRUE, "OPEN %s ERROR Invalid card number", 
 					cardstr);
 			return 0;
 		}
@@ -744,7 +744,7 @@ client_command_parse(ClientData *client)
 			client_send(client, TRUE, "ERROR Usage: CLOSE card\n");
 			return 0;
 		}
-		if (sscanf(cardstr, "card%d", &card_num) != 1)
+		if (sscanf(cardstr, "%d", &card_num) != 1)
 		{
 			client_send(client, TRUE, "CLOSE %s ERROR Invalid card name", 
 					cardstr);
@@ -790,9 +790,9 @@ client_command_parse(ClientData *client)
 		 * Parse the card address
 		 * ----
 		 */
-		if (sscanf(cardstr, "card%d", &card_num) != 1)
+		if (sscanf(cardstr, "%d", &card_num) != 1)
 		{
-			client_send(client, TRUE, "SEND %s ERROR Invalid card name", 
+			client_send(client, TRUE, "SEND %s ERROR Invalid card number", 
 					cardstr);
 			return 0;
 		}
@@ -840,16 +840,16 @@ client_command_parse(ClientData *client)
 		}
 		if (card == NULL)
 		{
-			client_send(client, TRUE, "SEND card%d ERROR Card not open\n",
+			client_send(client, TRUE, "SEND %d ERROR Card not open\n",
 					card_num);
 			return 0;
 		}
 
 		if (device_write(card_num, packet) < 0)
 		{
-			server_log(client, LOG_ERROR, "card%d: device_write(): %s",
+			server_log(client, LOG_ERROR, "card %d: device_write(): %s",
 					card_num, device_error(card_num));
-			client_send(client, TRUE, "SEND card%d ERROR %s\n",
+			client_send(client, TRUE, "SEND %d ERROR %s\n",
 					card_num, device_error(card_num));
 			client_card_close(client, card_num);
 		}
@@ -931,7 +931,7 @@ client_card_open(ClientData *client, int card_num)
 	 */
 	if (device_open(card_num) != 0)
 	{
-		client_send(client, TRUE, "OPEN card%d ERROR %s\n", card_num, 
+		client_send(client, TRUE, "OPEN %d ERROR %s\n", card_num, 
 				device_error(card_num));
 		return;
 	}
@@ -961,7 +961,7 @@ client_card_open(ClientData *client, int card_num)
 	{
 		server_log(client, LOG_ERROR, "pthread_mutex_init(): %s",
 				strerror(errno));
-		client_send(client, TRUE, "OPEN card%d ERROR Internal server error\n", 
+		client_send(client, TRUE, "OPEN %d ERROR Internal server error\n", 
 				card_num);
 		free(card);
 		return;
@@ -976,7 +976,7 @@ client_card_open(ClientData *client, int card_num)
 		pthread_mutex_destroy(&(card->lock));
 		server_log(client, LOG_ERROR, "pthread_create(): %s",
 				strerror(errno));
-		client_send(client, TRUE, "OPEN card%d ERROR Internal server error\n", 
+		client_send(client, TRUE, "OPEN %d ERROR Internal server error\n", 
 				card_num);
 		free(card);
 		return;
@@ -990,8 +990,8 @@ client_card_open(ClientData *client, int card_num)
 	card->next = client->cards;
 	client->cards = card;
 
-	server_log(client, LOG_CARDIO, "card%d opened", card_num);
-	client_send(client, TRUE, "OPEN card%d OK\n", card_num);
+	server_log(client, LOG_CARDIO, "card %d opened", card_num);
+	client_send(client, TRUE, "OPEN %d OK\n", card_num);
 }
 
 
@@ -1020,7 +1020,7 @@ client_card_close(ClientData *client, int card_num)
 	if (*cpp == NULL)
 	{
 		pthread_mutex_unlock(&(client->lock));
-		client_send(client, TRUE, "CLOSE card%d ERROR Card not open\n", 
+		client_send(client, TRUE, "CLOSE %d ERROR Card not open\n", 
 				card_num);
 		return;
 	}
@@ -1051,9 +1051,9 @@ client_card_close(ClientData *client, int card_num)
 		msg.msgType = OPEN8055_HID_MESSAGE_GETINPUT;
 		if (device_write(card->card_num, (unsigned char *)&msg) < 0)
 		{
-			server_log(client, LOG_FATAL, "card%d: %s", card_num,
+			server_log(client, LOG_FATAL, "card %d: %s", card_num,
 					device_error(card_num));
-			client_send(client, TRUE, "CLOSE card%d ERROR %s\n", card_num,
+			client_send(client, TRUE, "CLOSE %d ERROR %s\n", card_num,
 					device_error(card_num));
 			card->ioerror = TRUE;
 		}
@@ -1069,9 +1069,9 @@ client_card_close(ClientData *client, int card_num)
 	 */
 	if (pthread_join(card->thread, NULL) != 0)
 	{
-		server_log(client, LOG_ERROR, "card%d: pthread_join(): %s",
+		server_log(client, LOG_ERROR, "card %d: pthread_join(): %s",
 				card_num, strerror(errno));
-		client_send(client, TRUE, "CLOSE card%d ERROR pthread_join(): %s\n",
+		client_send(client, TRUE, "CLOSE %d ERROR pthread_join(): %s\n",
 				card_num, strerror(errno));
 
 		return;
@@ -1082,7 +1082,7 @@ client_card_close(ClientData *client, int card_num)
 	 * ----
 	 */
 	if (!card->ioerror)
-		client_send(client, TRUE, "CLOSE card%d OK\n", card_num);
+		client_send(client, TRUE, "CLOSE %d OK\n", card_num);
 
 	/* ----
 	 * Close the physical device.
@@ -1090,9 +1090,9 @@ client_card_close(ClientData *client, int card_num)
 	 */
 	if (device_close(card_num) != 0)
 	{
-		server_log(client, LOG_ERROR, "card%d device_close(): %s",
+		server_log(client, LOG_ERROR, "card %d device_close(): %s",
 				card_num, device_error(card_num));
-		client_send(client, TRUE, "CLOSE card%d ERROR %s\n", 
+		client_send(client, TRUE, "CLOSE %d ERROR %s\n", 
 				card_num, device_error(card_num));
 		pthread_mutex_destroy(&(card->lock));
 		free(card);
@@ -1105,7 +1105,7 @@ client_card_close(ClientData *client, int card_num)
 	 * ----
 	 */
 	pthread_mutex_destroy(&(card->lock));
-	server_log(client, LOG_CARDIO, "card%d closed", card_num);
+	server_log(client, LOG_CARDIO, "card %d closed", card_num);
 	free(card);
 }
 
@@ -1136,9 +1136,9 @@ client_card_thread(void *cdata)
 
 		if (device_read(card->card_num, hidbuf) < 0)
 		{
-			server_log(client, LOG_ERROR, "card%d: %s", card->card_num,
+			server_log(client, LOG_ERROR, "card %d: %s", card->card_num,
 					device_error(card->card_num));
-			client_send(client, TRUE, "RECV card%d ERROR %s\n", card->card_num,
+			client_send(client, TRUE, "RECV %d ERROR %s\n", card->card_num,
 					device_error(card->card_num));
 			pthread_mutex_lock(&(card->lock));
 			card->ioerror = 1;
@@ -1155,13 +1155,13 @@ client_card_thread(void *cdata)
 		}
 		*cp = '\0';
 
-		server_log(client, LOG_CARDIO, "card%d RECV %s", card->card_num,
+		server_log(client, LOG_CARDIO, "card %d RECV %s", card->card_num,
 				hexbuf);
-		client_send(client, TRUE, "RECV card%d DATA %s\n", card->card_num, 
+		client_send(client, TRUE, "RECV %d DATA %s\n", card->card_num, 
 				hexbuf);
 	}
 
-	server_log(client, LOG_CARDIO, "card%d IO thread exiting", card->card_num);
+	server_log(client, LOG_CARDIO, "card %d IO thread exiting", card->card_num);
 
 	return NULL;
 }

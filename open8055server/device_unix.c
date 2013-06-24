@@ -198,19 +198,19 @@ device_open(int cardNumber)
 
 	if (cardNumber < 0 || cardNumber >= MAX_CARDS)
 	{
-		set_error(-1, "card%d not possible", cardNumber);
+		set_error(-1, "card %d not possible", cardNumber);
 		return -1;
 	}
 
 	if (cardHandle[cardNumber] != NULL)
 	{
-		set_error(cardNumber, "card%d already open", cardNumber);
+		set_error(cardNumber, "card %d already open", cardNumber);
 		return -1;
 	}
 
 	if (!device_present(cardNumber))
 	{
-		set_error(cardNumber, "card%d not present", cardNumber);
+		set_error(cardNumber, "card %d not present", cardNumber);
 		return -1;
 	}
 
@@ -311,13 +311,13 @@ device_close(int cardNumber)
 
 	if (cardNumber < 0 || cardNumber >= MAX_CARDS)
 	{
-		set_error(-1, "card%d not possible", cardNumber);
+		set_error(-1, "card %d not possible", cardNumber);
 		return -1;
 	}
 
 	if (cardHandle[cardNumber] == NULL)
 	{
-		set_error(cardNumber, "card%d not open", cardNumber);
+		set_error(cardNumber, "card %d not open", cardNumber);
 		return -1;
 	}
 
@@ -346,13 +346,13 @@ device_read(int cardNumber, unsigned char *ioBuf)
 
 	if (cardNumber < 0 || cardNumber >= MAX_CARDS)
 	{
-		set_error(-1, "card%d not possible", cardNumber);
+		set_error(-1, "card %d not possible", cardNumber);
 		return -1;
 	}
 
 	if (cardHandle[cardNumber] == NULL)
 	{
-		set_error(cardNumber, "card%d not open", cardNumber);
+		set_error(cardNumber, "card %d not open", cardNumber);
 		return -1;
 	}
 
@@ -389,13 +389,13 @@ device_write(int cardNumber, unsigned char *ioBuf)
 
 	if (cardNumber < 0 || cardNumber >= MAX_CARDS)
 	{
-		set_error(-1, "card%d not possible", cardNumber);
+		set_error(-1, "card %d not possible", cardNumber);
 		return -1;
 	}
 
 	if (cardHandle[cardNumber] == NULL)
 	{
-		set_error(cardNumber, "card%d not open", cardNumber);
+		set_error(cardNumber, "card %d not open", cardNumber);
 		return -1;
 	}
 
