@@ -33,6 +33,8 @@
  * ----------------------------------------------------------------
  */
 
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -53,6 +55,10 @@
  * ----
  */
 static void set_error(int cardNumber, char *fmt, ...);
+
+#ifndef HAVE_LIBUSB_STRERROR
+static char *libusb_strerror(int errnum);
+#endif
 
 
 /* ----
@@ -453,5 +459,16 @@ set_error(int cardNumber, char *fmt, ...)
 
 	pthread_mutex_unlock(&errorLock);
 }
+
+
+#ifndef HAVE_LIBUSB_STRERROR
+static char libusb_strerror_message[64];
+static char *
+libusb_strerror(int errnum)
+{
+	sprintf(libusb_strerror_message, "libusb-error = %d", errnum);
+	return libusb_strerror_message;
+}
+#endif
 
 

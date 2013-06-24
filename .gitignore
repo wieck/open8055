@@ -12,3 +12,7 @@ Copy of *
 *.autosave
 Thumbs.db
 .*.swp
+config.h
+config.log
+config.status
+autom4te.cache

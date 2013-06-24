@@ -13,7 +13,7 @@ OBJS=				open8055server.o client.o device_unix.o
 PROGS=				open8055server
 
 CC=					gcc
-CFLAGS+=			-g -O2 -Wall -I../include -pthread
+CFLAGS+=			-g -O2 -Wall -I.. -I../include -pthread
 
 ifeq ($(UNAME), Linux)
 	CFLAGS+= -I/usr/include/libusb-1.0
@@ -35,16 +35,19 @@ open8055server:	$(OBJS)
 open8055server.o:	open8055server.c				\
 				open8055server.h					\
 				../include/open8055_compat.h		\
-				../include/open8055_hid_protocol.h
+				../include/open8055_hid_protocol.h	\
+				../config.h
 
 client.o:		client.c							\
 				open8055server.h					\
 				../include/open8055_compat.h		\
-				../include/open8055_hid_protocol.h
+				../include/open8055_hid_protocol.h	\
+				../config.h
 
-device_unix.o:		device_unix.c						\
+device_unix.o:		device_unix.c					\
 				open8055server.h					\
 				../include/open8055_compat.h		\
-				../include/open8055_hid_protocol.h
+				../include/open8055_hid_protocol.h	\
+				../config.h
 
 
