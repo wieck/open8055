@@ -710,6 +710,103 @@ client_command_parse(ClientData *client)
 	}
 
 	/* ----
+	 * SEND command
+	 * ----
+	 */
+	else if (stricmp(cmd_token, "SEND") == 0)
+	{
+		CardData	   *card;
+		char		   *cardstr;
+		char		   *hexdata;
+		int				card_num;
+		unsigned char	packet[OPEN8055_HID_MESSAGE_SIZE];
+		unsigned char  *pcp;
+
+		cardstr = strsep(&sepptr, " \t");
+		hexdata = strsep(&sepptr, " \t");
+
+		/* ----
+		 * Get the card address and hex packet tokens
+		 * ----
+		 */
+		if (cardstr == NULL || hexdata == NULL)
+		{
+			client_send(client, TRUE, "ERROR Usage: SEND card hexdata\n");
+			return 0;
+		}
+
+		/* ----
+		 * Parse the card address
+		 * ----
+		 */
+		if (sscanf(cardstr, "card%d", &card_num) != 1)
+		{
+			client_send(client, TRUE, "SEND %s ERROR Invalid card name", 
+					cardstr);
+			return 0;
+		}
+		if (card_num < 0 || card_num >= MAX_CARDS)
+		{
+			client_send(client, TRUE, "SEND %s ERROR Invalid card number", 
+					cardstr);
+			return 0;
+		}
+
+		/* ----
+		 * Parse the hex data
+		 * ----
+		 */
+		if (strlen(hexdata) > OPEN8055_HID_MESSAGE_SIZE * 2)
+		{
+			client_send(client, TRUE, "SEND %s ERROR Invalid card number", 
+					cardstr);
+			return 0;
+		}
+		memset(packet, 0, sizeof(packet));
+		pcp = packet;
+		while (*hexdata != '\0')
+		{
+			int		byte;
+
+			if (sscanf(hexdata, "%02x", &byte) != 1)
+			{
+				client_send(client, TRUE, "SEND %s ERROR Invalid packet data", 
+						cardstr);
+				return 0;
+			}
+			*pcp++ = byte & 0xFF;
+			hexdata += 2;
+		}
+
+		/* ----
+		 * Find the open card to send to.
+		 * ----
+		 */
+		for (card = client->cards; card != NULL; card = card->next)
+		{
+			if (card->card_num == card_num)
+				break;
+		}
+		if (card == NULL)
+		{
+			client_send(client, TRUE, "SEND card%d ERROR Card not open\n",
+					card_num);
+			return 0;
+		}
+
+		if (device_write(card_num, packet) < 0)
+		{
+			server_log(client, LOG_ERROR, "card%d: device_write(): %s",
+					card_num, device_error(card_num));
+			client_send(client, TRUE, "SEND card%d ERROR %s\n",
+					card_num, device_error(card_num));
+			client_card_close(client, card_num);
+		}
+
+		return 0;
+	}
+
+	/* ----
 	 * Invalid command tag
 	 * ----
 	 */
