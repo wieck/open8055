@@ -124,9 +124,28 @@ client_shutdown(void)
 		server_log(client_list, LOG_INFO, "terminating client connection "
 				"due to shutdown/restart");
 
+		/* ----
+		 * Set the flag in the client data signaling the client thread
+		 * to terminate.
+		 * ----
+		 */
+		pthread_mutex_lock(&(client_list->lock));
+		client_list->mode = CLIENT_MODE_STOP;
+		pthread_mutex_unlock(&(client_list->lock));
+
+		/* ----
+		 * Send SIGUSR2 to the client thread to inform it to
+		 * check flags.
+		 * ----
+		 */
 		if (pthread_kill(client_list->thread, SIGUSR2) != 0)
 			server_log(client_list, LOG_ERROR, "pthread_kill(): %s",
 					strerror(errno));
+
+		/* ----
+		 * Wait for the client thead to finish and free resources.
+		 * ----
+		 */
 		if (pthread_join(client_list->thread, NULL) != 0)
 			server_log(client_list, LOG_ERROR, "pthread_join(): %s",
 					strerror(errno));
@@ -335,6 +354,10 @@ client_thread_run(void *cdata)
 	 */
 	for (;;)
 	{
+		/* ----
+		 * Check for terminate flag.
+		 * ----
+		 */
 		pthread_mutex_lock(&(client->lock));
 		if (client->mode == CLIENT_MODE_STOP)
 		{
@@ -481,19 +504,44 @@ client_command(ClientData *client)
 	{
 		if (errno == EINTR)
 		{
+			CardData   *card;
+
 			server_log(client, LOG_CLIENTDEBUG, "SIGUSR2 received");
 			pthread_mutex_lock(&(client->lock));
-			client_send(client, FALSE, "ERROR Server shutdown or restart\n");
-			if (client->sock >= 0)
-			{
-				close(client->sock);
-				client->sock = -1;
-			}
-			pthread_mutex_unlock(&(client->lock));
-		}
-		else
-			server_log(client, LOG_ERROR, "select(): %s", strerror(errno));
 
+			if (client->mode == CLIENT_MODE_STOP)
+			{
+				client_send(client, FALSE, "ERROR Server shutdown or restart\n");
+				if (client->sock >= 0)
+				{
+					close(client->sock);
+					client->sock = -1;
+				}
+				pthread_mutex_unlock(&(client->lock));
+				client->mode = CLIENT_MODE_STOP;
+				pthread_mutex_unlock(&(client->lock));
+				return;
+			}
+			
+			card = client->cards;
+			while (card != NULL)
+			{
+				CardData   *next = card->next;
+
+				if (card->ioerror)
+				{
+					server_log(client, LOG_CLIENTDEBUG, "card%d: close "
+							"due to IO error", card->card_num);
+					client_card_close(client, card->card_num);
+				}
+
+				card = next;
+			}
+
+			return;
+		}
+
+		server_log(client, LOG_ERROR, "select(): %s", strerror(errno));
 		pthread_mutex_lock(&(client->lock));
 		client->mode = CLIENT_MODE_STOP;
 		pthread_mutex_unlock(&(client->lock));
@@ -969,7 +1017,8 @@ client_card_close(ClientData *client, int card_num)
 	if (*cpp == NULL)
 	{
 		pthread_mutex_unlock(&(client->lock));
-		client_send(client, TRUE, "CLOSE card%d ERROR Card not open", card_num);
+		client_send(client, TRUE, "CLOSE card%d ERROR Card not open\n", 
+				card_num);
 		return;
 	}
 
@@ -986,22 +1035,28 @@ client_card_close(ClientData *client, int card_num)
 	 * ----
 	 */
 	pthread_mutex_lock(&(card->lock));
-	card->terminate = 1;
-	pthread_mutex_unlock(&(card->lock));
+	card->terminate = TRUE;
 
 	/* ----
-	 * Send a message to the card that forces an input report.
+	 * If the card is still known to be OK, send a message to the 
+	 * card that forces an input report.
 	 * ----
 	 */
-	memset(&msg, 0, sizeof(msg));
-	msg.msgType = OPEN8055_HID_MESSAGE_GETINPUT;
-	if (device_write(card->card_num, (unsigned char *)&msg) < 0)
+	if (!card->ioerror)
 	{
-		server_log(client, LOG_FATAL, "card%d: %s", card_num,
-				device_error(card_num));
-		client_send(client, TRUE, "CLOSE card%d ERROR %s\n", card_num,
-				device_error(card_num));
+		memset(&msg, 0, sizeof(msg));
+		msg.msgType = OPEN8055_HID_MESSAGE_GETINPUT;
+		if (device_write(card->card_num, (unsigned char *)&msg) < 0)
+		{
+			server_log(client, LOG_FATAL, "card%d: %s", card_num,
+					device_error(card_num));
+			client_send(client, TRUE, "CLOSE card%d ERROR %s\n", card_num,
+					device_error(card_num));
+			card->ioerror = TRUE;
+		}
 	}
+
+	pthread_mutex_unlock(&(card->lock));
 	
 	/* ----
 	 * Wait for the reader thread to terminate. Even if the above
@@ -1020,6 +1075,13 @@ client_card_close(ClientData *client, int card_num)
 	}
 	
 	/* ----
+	 * Inform the client about card closed
+	 * ----
+	 */
+	if (!card->ioerror)
+		client_send(client, TRUE, "CLOSE card%d OK\n", card_num);
+
+	/* ----
 	 * Close the physical device.
 	 * ----
 	 */
@@ -1035,11 +1097,13 @@ client_card_close(ClientData *client, int card_num)
 		return;
 	}
 
+	/* ----
+	 * Final cleanup.
+	 * ----
+	 */
 	pthread_mutex_destroy(&(card->lock));
-	free(card);
-
 	server_log(client, LOG_CARDIO, "card%d closed", card_num);
-	client_send(client, TRUE, "CLOSE card%d OK\n", card_num);
+	free(card);
 }
 
 
@@ -1075,6 +1139,7 @@ client_card_thread(void *cdata)
 					device_error(card->card_num));
 			pthread_mutex_lock(&(card->lock));
 			card->ioerror = 1;
+			pthread_kill(client->thread, SIGUSR2);
 			pthread_mutex_unlock(&(card->lock));
 			break;
 		}

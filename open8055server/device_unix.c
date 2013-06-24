@@ -190,6 +190,18 @@ device_open(int cardNumber)
 	int						rc;
 	int						interface = 0;
 
+	if (cardNumber < 0 || cardNumber >= MAX_CARDS)
+	{
+		set_error(-1, "card%d not possible", cardNumber);
+		return -1;
+	}
+
+	if (cardHandle[cardNumber] != NULL)
+	{
+		set_error(cardNumber, "card%d already open", cardNumber);
+		return -1;
+	}
+
 	if (!device_present(cardNumber))
 	{
 		set_error(cardNumber, "card%d not present", cardNumber);
@@ -291,10 +303,24 @@ device_close(int cardNumber)
 {
 	int		interface = 0;
 
+	if (cardNumber < 0 || cardNumber >= MAX_CARDS)
+	{
+		set_error(-1, "card%d not possible", cardNumber);
+		return -1;
+	}
+
+	if (cardHandle[cardNumber] == NULL)
+	{
+		set_error(cardNumber, "card%d not open", cardNumber);
+		return -1;
+	}
+
 	libusb_release_interface(cardHandle[cardNumber], interface);
 	if (hadKernelDriver[cardNumber])
 		libusb_attach_kernel_driver(cardHandle[cardNumber], interface);
 	libusb_close(cardHandle[cardNumber]);
+
+	cardHandle[cardNumber] = NULL;
 
 	return 0;
 }
@@ -311,6 +337,18 @@ device_read(int cardNumber, unsigned char *ioBuf)
 {
 	int		rc;
 	int		bytesRead;
+
+	if (cardNumber < 0 || cardNumber >= MAX_CARDS)
+	{
+		set_error(-1, "card%d not possible", cardNumber);
+		return -1;
+	}
+
+	if (cardHandle[cardNumber] == NULL)
+	{
+		set_error(cardNumber, "card%d not open", cardNumber);
+		return -1;
+	}
 
 	if ((rc = libusb_interrupt_transfer(cardHandle[cardNumber],
 			LIBUSB_ENDPOINT_IN | 1, ioBuf, 
@@ -342,6 +380,18 @@ int
 device_write(int cardNumber, unsigned char *ioBuf)
 {
 	int		bytesWritten;
+
+	if (cardNumber < 0 || cardNumber >= MAX_CARDS)
+	{
+		set_error(-1, "card%d not possible", cardNumber);
+		return -1;
+	}
+
+	if (cardHandle[cardNumber] == NULL)
+	{
+		set_error(cardNumber, "card%d not open", cardNumber);
+		return -1;
+	}
 
 	if (libusb_interrupt_transfer(cardHandle[cardNumber],
 			LIBUSB_ENDPOINT_OUT | 1, ioBuf, 
@@ -403,4 +453,5 @@ set_error(int cardNumber, char *fmt, ...)
 
 	pthread_mutex_unlock(&errorLock);
 }
+
 
