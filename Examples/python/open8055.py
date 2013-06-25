@@ -449,6 +449,10 @@ class Open8055:
     def set_output_value(self, cardid, port, val):
         if port < 0 or port > 7:
             return
+        if val < 6000:
+            val = 6000
+        if val > 30000
+            val = 30000
 
         self.lock.acquire()
         self._check_error(cardid)
