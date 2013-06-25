@@ -809,7 +809,7 @@ client_command_parse(ClientData *client)
 		 */
 		if (strlen(hexdata) > OPEN8055_HID_MESSAGE_SIZE * 2)
 		{
-			client_send(client, TRUE, "SEND %s ERROR Invalid card number", 
+			client_send(client, TRUE, "SEND %s ERROR Invalid packet data", 
 					cardstr);
 			return 0;
 		}
