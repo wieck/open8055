@@ -55,6 +55,7 @@ class Open8055:
         self.sock           = None
         self.fdin           = None
         self.lock           = threading.Lock()
+        self.carderror      = {}
         self.cardfifo       = {}
         self.autosend_flag  = {}
         self.output_data    = {}
@@ -140,7 +141,7 @@ class Open8055:
     # ----------
     def list(self):
         self.lock.acquire()
-        self.sock.sendall('LIST\n')
+        self._send('LIST\n')
         fifo = self.listfifo
         self.lock.release()
         reply = fifo.get()
@@ -213,12 +214,12 @@ class Open8055:
         self.unlisten(cardid)
 
         # ----
-        # Set the card to autosend mode.
+        # Set the card to autosend mode and reset error.
         # ----
         self.lock.acquire()
         self.autosend_flag[cardid] = True
+        self.carderror[cardid] = None
         self.lock.release()
-
 
     # ----------
     # autosend()
@@ -228,6 +229,7 @@ class Open8055:
     # ----------
     def autosend(self, cardid, mode=None):
         self.lock.acquire()
+        self._check_error(cardid)
         ret = self.autosend_flag[cardid]
         if mode != None:
             self.autosend_flag[cardid] = mode
@@ -241,7 +243,8 @@ class Open8055:
     # ----------
     def send(self, cardid):
         self.lock.acquire()
-        self.sock.sendall('SEND ' + str(cardid) + ' ' + \
+        self._check_error(cardid)
+        self._send('SEND ' + str(cardid) + ' ' + \
             self.output_data[cardid] + '\n')
         self.lock.release()
 
@@ -250,9 +253,10 @@ class Open8055:
     #
     #   Send the current CONFIG1 data to the card.
     # ----------
-    def send(self, cardid):
+    def send_config(self, cardid):
         self.lock.acquire()
-        self.sock.sendall('SEND ' + str(cardid) + ' ' + \
+        self._check_error(cardid)
+        self._send('SEND ' + str(cardid) + ' ' + \
             self.config1_data[cardid] + '\n')
         self.lock.release()
 
@@ -263,6 +267,7 @@ class Open8055:
     # ----------
     def listen(self, cardid):
         self.lock.acquire()
+        self._check_error(cardid)
         if cardid in self.cardfifo:
             self.lock.release()
             raise Exception('card ' + str(cardid) + \
@@ -279,6 +284,7 @@ class Open8055:
     # ----------
     def unlisten(self, cardid):
         self.lock.acquire()
+        self._check_error(cardid)
         if not cardid in self.cardfifo:
             self.lock.release()
             raise Exception('card ' + str(cardid) + \
@@ -287,14 +293,21 @@ class Open8055:
         self.lock.release()
 
     # ----------
+    # get_input_all()
+    #
+    #   Returns the current state of all digital inputs.
     # ----------
     def get_input_all(self, cardid):
         self.lock.acquire()
+        self._check_error(cardid)
         ret = int(self.input_data[cardid][2:4], 16) & 0xFF
         self.lock.release()
         return ret
 
     # ----------
+    # get_input_port()
+    #
+    #   Returns the current state of a single digital input.
     # ----------
     def get_input_port(self, cardid, port):
         if port < 0 or port > 4:
@@ -304,36 +317,51 @@ class Open8055:
         return 0
 
     # ----------
+    # get_input_counter()
+    #
+    #   Returns the current counter value of a digital input.
     # ----------
     def get_input_counter(self, cardid, port):
         if port < 0 or port > 4:
             return 0
         self.lock.acquire()
+        self._check_error(cardid)
         idx = 4 + port * 4
         ret = int(self.input_data[cardid][idx:idx + 4], 16)
         self.lock.release()
         return ret
 
     # ----------
+    # get_input_adc()
+    #
+    #   Returns the current value of an analog input port.
     # ----------
     def get_input_adc(self, cardid, port):
         if port < 0 or port > 1:
             return 0
         self.lock.acquire()
+        self._check_error(cardid)
         idx = 24 + port * 4
         ret = int(self.input_data[cardid][idx:idx + 4], 16)
         self.lock.release()
         return ret
 
     # ----------
+    # get_output_all()
+    #
+    #   Returns the current state of all digital output ports.
     # ----------
     def get_output_all(self, cardid):
         self.lock.acquire()
+        self._check_error(cardid)
         ret = int(self.output_data[cardid][2:4], 16)
         self.lock.release()
         return ret
 
     # ----------
+    # get_output_port()
+    #
+    #   Returns the current state of a single digital output port.
     # ----------
     def get_output_port(self, cardid, port):
         if port < 0 or port > 7:
@@ -343,45 +371,62 @@ class Open8055:
         return 0
         
     # ----------
+    # get_output_value()
+    #
+    #   Returns the value of a digital output port for modes
+    #   SERVO and ISERVO.
     # ----------
     def get_output_value(self, cardid, port):
         if port < 0 or port > 7:
             return 0
         self.lock.acquire()
+        self._check_error(cardid)
         idx = 4 + port * 4
         ret = int(self.output_data[cardid][idx:idx + 4], 16)
         self.lock.release()
         return ret
 
     # ----------
+    # get_output_pwm()
+    #
+    #   Returns the current value of a PWM output.
     # ----------
     def get_output_pwm(self, cardid, port):
         if port < 0 or port > 1:
             return 0
         self.lock.acquire()
+        self._check_error(cardid)
         idx = 36 + port * 4
         ret = int(self.output_data[cardid][idx:idx + 4], 16)
         self.lock.release()
         return ret
 
     # ----------
+    # set_output_all()
+    #
+    #   Set the state of all digital output ports.
     # ----------
     def set_output_all(self, cardid, val):
         self.lock.acquire()
+        self._check_error(cardid)
         self.output_data[cardid] = '01{0:02X}'.format(val & 0xFF) + \
                 self.output_data[cardid][4:]
         if self.autosend_flag[cardid]:
-            self.sock.sendall('SEND ' + str(cardid) + ' ' + \
+            self._send('SEND ' + str(cardid) + ' ' + \
                 self.output_data[cardid] + '\n')
         self.lock.release()
 
     # ----------
+    # set_output_port()
+    #
+    #   Set the state of a single digital output port.
     # ----------
     def set_output_port(self, cardid, port, val):
         if port < 0 or port > 7:
             return
 
         self.lock.acquire()
+        self._check_error(cardid)
         out = int(self.output_data[cardid][2:4], 16) & 0xFF
         if val:
             out |= (1 << port)
@@ -391,49 +436,62 @@ class Open8055:
         self.output_data[cardid] = '01{0:02X}'.format(out & 0xFF) + \
                 self.output_data[cardid][4:]
         if self.autosend_flag[cardid]:
-            self.sock.sendall('SEND ' + str(cardid) + ' ' + \
+            self._send('SEND ' + str(cardid) + ' ' + \
                 self.output_data[cardid] + '\n')
         self.lock.release()
 
     # ----------
+    # set_output_value()
+    #
+    #   Set the value of a digital output port for modes
+    #   SERVO and ISERVO.
     # ----------
     def set_output_value(self, cardid, port, val):
         if port < 0 or port > 7:
             return
 
         self.lock.acquire()
+        self._check_error(cardid)
         idx = 4 + port * 4
         self.output_data[cardid] = self.output_data[cardid][0:idx] + \
                 '{0:04X}'.format(val & 0xFFFF) + \
                 self.output_data[cardid][idx + 4:]
         if self.autosend_flag[cardid]:
-            self.sock.sendall('SEND ' + str(cardid) + ' ' + \
+            self._send('SEND ' + str(cardid) + ' ' + \
                 self.output_data[cardid] + '\n')
         self.lock.release()
 
     # ----------
+    # set_output_pwm()
+    #
+    #   Set the duty cycle of a PWM output.
     # ----------
     def set_output_pwm(self, cardid, port, val):
         if port < 0 or port > 1:
             return
 
         self.lock.acquire()
+        self._check_error(cardid)
         idx = 36 + port * 4
         self.output_data[cardid] = self.output_data[cardid][0:idx] + \
                 '{0:04X}'.format(val & 0x03FF) + \
                 self.output_data[cardid][idx + 4:]
         if self.autosend_flag[cardid]:
-            self.sock.sendall('SEND ' + str(cardid) + ' ' + \
+            self._send('SEND ' + str(cardid) + ' ' + \
                 self.output_data[cardid] + '\n')
         self.lock.release()
 
     # ----------
+    # reset_counter()
+    #
+    #   Reset the counter of a digital input port.
     # ----------
     def reset_counter(self, cardid, port):
         if port < 0 or port > 4:
             return
 
         self.lock.acquire()
+        self._check_error(cardid)
         idx = 44
         val = int(self.output_data[cardid][idx:idx + 2], 16)
         val |= (1 << port)
@@ -441,55 +499,64 @@ class Open8055:
                 '{0:02X}'.format(val) + \
                 self.output_data[cardid][idx + 2:]
         if self.autosend_flag[cardid]:
-            self.sock.sendall('SEND ' + str(cardid) + ' ' + \
+            self._send('SEND ' + str(cardid) + ' ' + \
                 self.output_data[cardid] + '\n')
         self.lock.release()
 
     # ----------
+    # get_config_adc()
     # ----------
     def get_config_adc(self, cardid, port):
         if port < 0 or port > 1:
             return 0
         self.lock.acquire()
+        self._check_error(cardid)
         idx = 2 + port * 2
         ret = int(self.config1_data[cardid][idx:idx + 2], 16)
         self.lock.release()
         return ret
 
     # ----------
+    # get_config_input()
     # ----------
     def get_config_input(self, cardid, port):
         if port < 0 or port > 4:
             return 0
         self.lock.acquire()
+        self._check_error(cardid)
         idx = 6 + port * 2
         ret = int(self.config1_data[cardid][idx:idx + 2], 16)
         self.lock.release()
         return ret
 
     # ----------
+    # get_config_output()
     # ----------
     def get_config_output(self, cardid, port):
         if port < 0 or port > 7:
             return 0
         self.lock.acquire()
+        self._check_error(cardid)
         idx = 16 + port * 2
         ret = int(self.config1_data[cardid][idx:idx + 2], 16)
         self.lock.release()
         return ret
 
     # ----------
+    # get_config_pwm()
     # ----------
     def get_config_pwm(self, cardid, port):
         if port < 0 or port > 1:
             return 0
         self.lock.acquire()
+        self._check_error(cardid)
         idx = 32 + port * 2
         ret = int(self.config1_data[cardid][idx:idx + 2], 16)
         self.lock.release()
         return ret
 
     # ----------
+    # set_config_adc()
     # ----------
     def set_config_adc(self, cardid, port, mode):
         if port < 0 or port > 1:
@@ -498,16 +565,18 @@ class Open8055:
             return
 
         self.lock.acquire()
+        self._check_error(cardid)
         idx = 2 + port * 2
         self.config1_data[cardid] = self.config1_data[cardid][0:idx] + \
                 '{0:02X}'.format(mode) + \
                 self.config1_data[cardid][idx + 2:]
         if self.autosend_flag[cardid]:
-            self.sock.sendall('SEND ' + str(cardid) + ' ' + \
+            self._send('SEND ' + str(cardid) + ' ' + \
                 self.config1_data[cardid] + '\n')
         self.lock.release()
 
     # ----------
+    # set_config_input()
     # ----------
     def set_config_input(self, cardid, port, mode):
         if port < 0 or port > 4:
@@ -516,16 +585,18 @@ class Open8055:
             return
 
         self.lock.acquire()
+        self._check_error(cardid)
         idx = 6 + port * 2
         self.config1_data[cardid] = self.config1_data[cardid][0:idx] + \
                 '{0:02X}'.format(mode) + \
                 self.config1_data[cardid][idx + 2:]
         if self.autosend_flag[cardid]:
-            self.sock.sendall('SEND ' + str(cardid) + ' ' + \
+            self._send('SEND ' + str(cardid) + ' ' + \
                 self.config1_data[cardid] + '\n')
         self.lock.release()
 
     # ----------
+    # set_config_output()
     # ----------
     def set_config_output(self, cardid, port, mode):
         if port < 0 or port > 7:
@@ -534,16 +605,18 @@ class Open8055:
             return
 
         self.lock.acquire()
+        self._check_error(cardid)
         idx = 16 + port * 2
         self.config1_data[cardid] = self.config1_data[cardid][0:idx] + \
                 '{0:02X}'.format(mode) + \
                 self.config1_data[cardid][idx + 2:]
         if self.autosend_flag[cardid]:
-            self.sock.sendall('SEND ' + str(cardid) + ' ' + \
+            self._send('SEND ' + str(cardid) + ' ' + \
                 self.config1_data[cardid] + '\n')
         self.lock.release()
 
     # ----------
+    # set_config_pwm()
     # ----------
     def set_config_pwm(self, cardid, port, mode):
         if port < 0 or port > 1:
@@ -552,12 +625,13 @@ class Open8055:
             return
 
         self.lock.acquire()
+        self._check_error(cardid)
         idx = 32 + port * 2
         self.config1_data[cardid] = self.config1_data[cardid][0:idx] + \
                 '{0:02X}'.format(mode) + \
                 self.config1_data[cardid][idx + 2:]
         if self.autosend_flag[cardid]:
-            self.sock.sendall('SEND ' + str(cardid) + ' ' + \
+            self._send('SEND ' + str(cardid) + ' ' + \
                 self.config1_data[cardid] + '\n')
         self.lock.release()
 
@@ -606,6 +680,12 @@ class Open8055:
                         self.conn.cardfifo[cardid].put(tags)
                     self.conn.lock.release()
 
+                elif tags[0] == 'SEND':
+                    cardid = int(tags[1])
+                    self.conn.lock.acquire()
+                    self.conn.carderror[cardid] = ' '.join(tags[3:])
+                    self.conn.lock.release()
+
                 elif tags[0] == 'OPEN':
                     cardid = int(tags[1])
                     self.conn.lock.acquire()
@@ -619,8 +699,22 @@ class Open8055:
                 else:
                     print '_reader(): got', line
                     print 'don\'t know what to do with that'
-                    sys.exit(1)
+                    sys.exit(99)
 
+    def _send(self, msg):
+        try:
+            self.sock.sendall(msg)
+        except Exception as err:
+            self.lock.release()
+            raise err
+
+    def _check_error(self, cardid):
+        if cardid not in self.carderror:
+            return
+        if self.carderror[cardid]:
+            error = self.carderror[cardid]
+            self.lock.release()
+            raise Exception(error)
 
 # ----------
 # connect()
