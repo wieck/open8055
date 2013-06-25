@@ -35,6 +35,19 @@
 import sys, os, socket, threading
 import Queue
 
+MODE_ADC10      = 10
+MODE_ADC9       = 11
+MODE_ADC8       = 12
+
+MODE_INPUT      = 20
+MODE_FREQUENCY  = 21
+MODE_EUSART     = 22
+
+MODE_OUTPUT     = 30
+MODE_SERVO      = 31
+MODE_ISERVO     = 32
+
+MODE_PWM        = 40
 
 
 class Open8055:
@@ -233,6 +246,17 @@ class Open8055:
         self.lock.release()
 
     # ----------
+    # send_config()
+    #
+    #   Send the current CONFIG1 data to the card.
+    # ----------
+    def send(self, cardid):
+        self.lock.acquire()
+        self.sock.sendall('SEND ' + str(cardid) + ' ' + \
+            self.config1_data[cardid] + '\n')
+        self.lock.release()
+
+    # ----------
     # listen()
     #
     #   Create a queue to receive HID packets when they arive from a card.
@@ -266,7 +290,7 @@ class Open8055:
     # ----------
     def get_input_all(self, cardid):
         self.lock.acquire()
-        ret = int(self.input_data[cardid][2:4], 16)
+        ret = int(self.input_data[cardid][2:4], 16) & 0xFF
         self.lock.release()
         return ret
 
@@ -278,6 +302,28 @@ class Open8055:
         if self.get_input_all(cardid) & (1 << port):
             return 1
         return 0
+
+    # ----------
+    # ----------
+    def get_input_counter(self, cardid, port):
+        if port < 0 or port > 4:
+            return 0
+        self.lock.acquire()
+        idx = 4 + port * 4
+        ret = int(self.input_data[cardid][idx:idx + 4], 16)
+        self.lock.release()
+        return ret
+
+    # ----------
+    # ----------
+    def get_input_adc(self, cardid, port):
+        if port < 0 or port > 1:
+            return 0
+        self.lock.acquire()
+        idx = 24 + port * 4
+        ret = int(self.input_data[cardid][idx:idx + 4], 16)
+        self.lock.release()
+        return ret
 
     # ----------
     # ----------
@@ -296,6 +342,28 @@ class Open8055:
             return 1
         return 0
         
+    # ----------
+    # ----------
+    def get_output_value(self, cardid, port):
+        if port < 0 or port > 7:
+            return 0
+        self.lock.acquire()
+        idx = 4 + port * 4
+        ret = int(self.output_data[cardid][idx:idx + 4], 16)
+        self.lock.release()
+        return ret
+
+    # ----------
+    # ----------
+    def get_output_pwm(self, cardid, port):
+        if port < 0 or port > 1:
+            return 0
+        self.lock.acquire()
+        idx = 36 + port * 4
+        ret = int(self.output_data[cardid][idx:idx + 4], 16)
+        self.lock.release()
+        return ret
+
     # ----------
     # ----------
     def set_output_all(self, cardid, val):
@@ -325,6 +393,172 @@ class Open8055:
         if self.autosend_flag[cardid]:
             self.sock.sendall('SEND ' + str(cardid) + ' ' + \
                 self.output_data[cardid] + '\n')
+        self.lock.release()
+
+    # ----------
+    # ----------
+    def set_output_value(self, cardid, port, val):
+        if port < 0 or port > 7:
+            return
+
+        self.lock.acquire()
+        idx = 4 + port * 4
+        self.output_data[cardid] = self.output_data[cardid][0:idx] + \
+                '{0:04X}'.format(val & 0xFFFF) + \
+                self.output_data[cardid][idx + 4:]
+        if self.autosend_flag[cardid]:
+            self.sock.sendall('SEND ' + str(cardid) + ' ' + \
+                self.output_data[cardid] + '\n')
+        self.lock.release()
+
+    # ----------
+    # ----------
+    def set_output_pwm(self, cardid, port, val):
+        if port < 0 or port > 1:
+            return
+
+        self.lock.acquire()
+        idx = 36 + port * 4
+        self.output_data[cardid] = self.output_data[cardid][0:idx] + \
+                '{0:04X}'.format(val & 0x03FF) + \
+                self.output_data[cardid][idx + 4:]
+        if self.autosend_flag[cardid]:
+            self.sock.sendall('SEND ' + str(cardid) + ' ' + \
+                self.output_data[cardid] + '\n')
+        self.lock.release()
+
+    # ----------
+    # ----------
+    def reset_counter(self, cardid, port):
+        if port < 0 or port > 4:
+            return
+
+        self.lock.acquire()
+        idx = 44
+        val = int(self.output_data[cardid][idx:idx + 2], 16)
+        val |= (1 << port)
+        self.output_data[cardid] = self.output_data[cardid][0:idx] + \
+                '{0:02X}'.format(val) + \
+                self.output_data[cardid][idx + 2:]
+        if self.autosend_flag[cardid]:
+            self.sock.sendall('SEND ' + str(cardid) + ' ' + \
+                self.output_data[cardid] + '\n')
+        self.lock.release()
+
+    # ----------
+    # ----------
+    def get_config_adc(self, cardid, port):
+        if port < 0 or port > 1:
+            return 0
+        self.lock.acquire()
+        idx = 2 + port * 2
+        ret = int(self.config1_data[cardid][idx:idx + 2], 16)
+        self.lock.release()
+        return ret
+
+    # ----------
+    # ----------
+    def get_config_input(self, cardid, port):
+        if port < 0 or port > 4:
+            return 0
+        self.lock.acquire()
+        idx = 6 + port * 2
+        ret = int(self.config1_data[cardid][idx:idx + 2], 16)
+        self.lock.release()
+        return ret
+
+    # ----------
+    # ----------
+    def get_config_output(self, cardid, port):
+        if port < 0 or port > 7:
+            return 0
+        self.lock.acquire()
+        idx = 16 + port * 2
+        ret = int(self.config1_data[cardid][idx:idx + 2], 16)
+        self.lock.release()
+        return ret
+
+    # ----------
+    # ----------
+    def get_config_pwm(self, cardid, port):
+        if port < 0 or port > 1:
+            return 0
+        self.lock.acquire()
+        idx = 32 + port * 2
+        ret = int(self.config1_data[cardid][idx:idx + 2], 16)
+        self.lock.release()
+        return ret
+
+    # ----------
+    # ----------
+    def set_config_adc(self, cardid, port, mode):
+        if port < 0 or port > 1:
+            return
+        if mode < MODE_ADC10 or mode > MODE_ADC8:
+            return
+
+        self.lock.acquire()
+        idx = 2 + port * 2
+        self.config1_data[cardid] = self.config1_data[cardid][0:idx] + \
+                '{0:02X}'.format(mode) + \
+                self.config1_data[cardid][idx + 2:]
+        if self.autosend_flag[cardid]:
+            self.sock.sendall('SEND ' + str(cardid) + ' ' + \
+                self.config1_data[cardid] + '\n')
+        self.lock.release()
+
+    # ----------
+    # ----------
+    def set_config_input(self, cardid, port, mode):
+        if port < 0 or port > 4:
+            return
+        if mode < MODE_INPUT or mode > MODE_FREQUENCY:
+            return
+
+        self.lock.acquire()
+        idx = 6 + port * 2
+        self.config1_data[cardid] = self.config1_data[cardid][0:idx] + \
+                '{0:02X}'.format(mode) + \
+                self.config1_data[cardid][idx + 2:]
+        if self.autosend_flag[cardid]:
+            self.sock.sendall('SEND ' + str(cardid) + ' ' + \
+                self.config1_data[cardid] + '\n')
+        self.lock.release()
+
+    # ----------
+    # ----------
+    def set_config_output(self, cardid, port, mode):
+        if port < 0 or port > 7:
+            return
+        if mode < MODE_OUTPUT or mode > MODE_ISERVO:
+            return
+
+        self.lock.acquire()
+        idx = 16 + port * 2
+        self.config1_data[cardid] = self.config1_data[cardid][0:idx] + \
+                '{0:02X}'.format(mode) + \
+                self.config1_data[cardid][idx + 2:]
+        if self.autosend_flag[cardid]:
+            self.sock.sendall('SEND ' + str(cardid) + ' ' + \
+                self.config1_data[cardid] + '\n')
+        self.lock.release()
+
+    # ----------
+    # ----------
+    def set_config_pwm(self, cardid, port, mode):
+        if port < 0 or port > 1:
+            return
+        if mode != MODE_PWM:
+            return
+
+        self.lock.acquire()
+        idx = 32 + port * 2
+        self.config1_data[cardid] = self.config1_data[cardid][0:idx] + \
+                '{0:02X}'.format(mode) + \
+                self.config1_data[cardid][idx + 2:]
+        if self.autosend_flag[cardid]:
+            self.sock.sendall('SEND ' + str(cardid) + ' ' + \
+                self.config1_data[cardid] + '\n')
         self.lock.release()
 
     # ----------
