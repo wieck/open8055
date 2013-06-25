@@ -57,7 +57,7 @@
  * Global data
  * ----------------------------------------------------------------------
  */
-int						server_log_mask = LOG_ALL;
+int						server_log_mask = LOG_DEFAULT;
 pthread_t				server_thread;
 
 
