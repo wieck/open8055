@@ -716,13 +716,13 @@ client_command_parse(ClientData *client)
 		}
 		if (sscanf(cardstr, "%d", &card_num) != 1)
 		{
-			client_send(client, TRUE, "OPEN %s ERROR Invalid card number", 
+			client_send(client, TRUE, "OPEN %s ERROR Invalid card number\n", 
 					cardstr);
 			return 0;
 		}
 		if (card_num < 0 || card_num >= MAX_CARDS)
 		{
-			client_send(client, TRUE, "OPEN %s ERROR Invalid card number", 
+			client_send(client, TRUE, "OPEN %s ERROR Invalid card number\n", 
 					cardstr);
 			return 0;
 		}
@@ -746,13 +746,13 @@ client_command_parse(ClientData *client)
 		}
 		if (sscanf(cardstr, "%d", &card_num) != 1)
 		{
-			client_send(client, TRUE, "CLOSE %s ERROR Invalid card name", 
+			client_send(client, TRUE, "CLOSE %s ERROR Invalid card number\n", 
 					cardstr);
 			return 0;
 		}
 		if (card_num < 0 || card_num >= MAX_CARDS)
 		{
-			client_send(client, TRUE, "CLOSE %s ERROR Invalid card number", 
+			client_send(client, TRUE, "CLOSE %s ERROR Invalid card number\n", 
 					cardstr);
 			return 0;
 		}
@@ -792,13 +792,13 @@ client_command_parse(ClientData *client)
 		 */
 		if (sscanf(cardstr, "%d", &card_num) != 1)
 		{
-			client_send(client, TRUE, "SEND %s ERROR Invalid card number", 
+			client_send(client, TRUE, "SEND %s ERROR Invalid card number\n", 
 					cardstr);
 			return 0;
 		}
 		if (card_num < 0 || card_num >= MAX_CARDS)
 		{
-			client_send(client, TRUE, "SEND %s ERROR Invalid card number", 
+			client_send(client, TRUE, "SEND %s ERROR Invalid card number\n", 
 					cardstr);
 			return 0;
 		}
@@ -809,7 +809,7 @@ client_command_parse(ClientData *client)
 		 */
 		if (strlen(hexdata) > OPEN8055_HID_MESSAGE_SIZE * 2)
 		{
-			client_send(client, TRUE, "SEND %s ERROR Invalid packet data", 
+			client_send(client, TRUE, "SEND %s ERROR Invalid packet data\n", 
 					cardstr);
 			return 0;
 		}
@@ -821,7 +821,7 @@ client_command_parse(ClientData *client)
 
 			if (sscanf(hexdata, "%02x", &byte) != 1)
 			{
-				client_send(client, TRUE, "SEND %s ERROR Invalid packet data", 
+				client_send(client, TRUE, "SEND %s ERROR Invalid packet data\n", 
 						cardstr);
 				return 0;
 			}
