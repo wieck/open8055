@@ -1,6 +1,8 @@
 # ----------------------------------------------------------------------
 # open8055.py
 #
+#   A python class to communicate with the open8055server.
+#
 # ----------------------------------------------------------------------
 #
 #  Copyright (c) 2013, Jan Wieck
@@ -39,6 +41,7 @@ class Open8055:
     def __init__(self):
         self.sock           = None
         self.fdin           = None
+        self.lock           = threading.Lock()
         self.cardfifo       = {}
         self.autosend_flag  = {}
         self.output_data    = {}
@@ -47,6 +50,8 @@ class Open8055:
 
     # ----------
     # connect()
+    #
+    #   Connect to the server and authenticate.
     # ----------
     def connect(self, host='localhost', port=8055, timeout=None,
             user='nobody', password=''):
@@ -98,23 +103,34 @@ class Open8055:
 
     # ----------
     # disconnect()
+    #
+    #   Close communication and wait for the reader thread.
     # ----------
     def disconnect(self):
+        self.lock.acquire()
         if self.fdin:
             self.sock.sendall('BYE\n');
+            self.lock.release()
             self.reader.join()
+            self.lock.acquire()
 
             self.fdin.close()
             self.fdin = None
             self.sock = None
+        self.lock.release()
 
 
     # ----------
     # list()
+    #
+    #   Returns a list of available cards.
     # ----------
     def list(self):
+        self.lock.acquire()
         self.sock.sendall('LIST\n')
-        reply = self.listfifo.get()
+        fifo = self.listfifo
+        self.lock.release()
+        reply = fifo.get()
         if reply[0] == 'OK':
             result = []
             for cardid in reply[1:]:
@@ -125,30 +141,36 @@ class Open8055:
 
     # ----------
     # open()
+    #
+    #   Open a card. This also sends the GETCONFIG request and
+    #   waits for the current configuration and state be reported.
     # ----------
     def open(self, cardid):
-        self.cardfifo[cardid] = Queue.Queue()
+        self.lock.acquire()
+        sock = self.sock
+        self.lock.release()
 
         # ----
         # First we send the OPEN command and expect 'OPEN cardid OK'
         # ----
-        self.sock.sendall('OPEN ' + str(cardid) + '\n')
-        result = self.cardfifo[cardid].get()
+        fifo = self.listen(cardid)
+        sock.sendall('OPEN ' + str(cardid) + '\n')
+        result = fifo.get()
         if result != ['OPEN', str(cardid), 'OK']:
-            del self.cardfifo[cardid]
+            self.unlisten(cardid)
             raise Exception(' '.join(result[3:]))
 
         # ----
         # Now send the GETCONFIG command and wait for all messages
         # we expect in return.
         # ----
-        self.sock.sendall('SEND ' + str(cardid) + ' 04\n')
+        sock.sendall('SEND ' + str(cardid) + ' 04\n')
         have_input      = False
         have_output     = False
         have_config1    = False
 
         while not have_input or not have_output or not have_config1:
-            result = self.cardfifo[cardid].get()
+            result = fifo.get()
 
             if result[0:3] == ['RECV', str(cardid), 'DATA']:
                 data = result[3]
@@ -168,29 +190,88 @@ class Open8055:
                         have_input = True
 
             else:
+                self.unlisten(cardid)
                 raise Exception(' '.join(result))
 
         # ----
         # Stop listening for messages on the card fifo. User
         # can turn this on/off as needed later.
         # ----
-        del self.cardfifo[cardid]
+        self.unlisten(cardid)
 
         # ----
         # Set the card to autosend mode.
         # ----
+        self.lock.acquire()
         self.autosend_flag[cardid] = True
+        self.lock.release()
 
 
+    # ----------
+    # autosend()
+    #
+    #   Get or set the autosend feature for a card. In autosend mode,
+    #   any change to a single port automatically causes send().
+    # ----------
     def autosend(self, cardid, mode=None):
+        self.lock.acquire()
         ret = self.autosend_flag[cardid]
         if mode != None:
             self.autosend_flag[cardid] = mode
+        self.lock.release()
         return ret
 
-    def get_input_all(self, cardid):
-        return int(self.input_data[cardid][2:4], 16)
+    # ----------
+    # send()
+    #
+    #   Send the current OUTPUT data to the card.
+    # ----------
+    def send(self, cardid):
+        self.lock.acquire()
+        self.sock.sendall('SEND ' + str(cardid) + ' ' + \
+            self.output_data[cardid] + '\n')
+        self.lock.release()
 
+    # ----------
+    # listen()
+    #
+    #   Create a queue to receive HID packets when they arive from a card.
+    # ----------
+    def listen(self, cardid):
+        self.lock.acquire()
+        if cardid in self.cardfifo:
+            self.lock.release()
+            raise Exception('card ' + str(cardid) + \
+                    'already has a listening queue')
+        fifo = Queue.Queue()
+        self.cardfifo[cardid] = fifo
+        self.lock.release()
+        return fifo
+
+    # ----------
+    # unlisten()
+    #
+    #   Stop listening on a card.
+    # ----------
+    def unlisten(self, cardid):
+        self.lock.acquire()
+        if not cardid in self.cardfifo:
+            self.lock.release()
+            raise Exception('card ' + str(cardid) + \
+                    'does not have a listening queue')
+        del self.cardfifo[cardid]
+        self.lock.release()
+
+    # ----------
+    # ----------
+    def get_input_all(self, cardid):
+        self.lock.acquire()
+        ret = int(self.input_data[cardid][2:4], 16)
+        self.lock.release()
+        return ret
+
+    # ----------
+    # ----------
     def get_input_port(self, cardid, port):
         if port < 0 or port > 4:
             return 0
@@ -198,9 +279,16 @@ class Open8055:
             return 1
         return 0
 
+    # ----------
+    # ----------
     def get_output_all(self, cardid):
-        return int(self.output_data[cardid][2:4], 16)
+        self.lock.acquire()
+        ret = int(self.output_data[cardid][2:4], 16)
+        self.lock.release()
+        return ret
 
+    # ----------
+    # ----------
     def get_output_port(self, cardid, port):
         if port < 0 or port > 7:
             return 0
@@ -208,28 +296,36 @@ class Open8055:
             return 1
         return 0
         
+    # ----------
+    # ----------
     def set_output_all(self, cardid, val):
+        self.lock.acquire()
         self.output_data[cardid] = '01{0:02X}'.format(val & 0xFF) + \
                 self.output_data[cardid][4:]
         if self.autosend_flag[cardid]:
-            self.send(cardid)
+            self.sock.sendall('SEND ' + str(cardid) + ' ' + \
+                self.output_data[cardid] + '\n')
+        self.lock.release()
 
+    # ----------
+    # ----------
     def set_output_port(self, cardid, port, val):
         if port < 0 or port > 7:
             return
 
-        out = self.get_output_all(cardid)
+        self.lock.acquire()
+        out = int(self.output_data[cardid][2:4], 16) & 0xFF
         if val:
             out |= (1 << port)
         else:
             out &= ~(1 << port)
 
-        self.set_output_all(cardid, out)
-
-    def send(self, cardid):
-       self.sock.sendall('SEND ' + str(cardid) + ' ' + \
-            self.output_data[cardid] + '\n')
-
+        self.output_data[cardid] = '01{0:02X}'.format(out & 0xFF) + \
+                self.output_data[cardid][4:]
+        if self.autosend_flag[cardid]:
+            self.sock.sendall('SEND ' + str(cardid) + ' ' + \
+                self.output_data[cardid] + '\n')
+        self.lock.release()
 
     # ----------
     # _reader()
@@ -256,13 +352,32 @@ class Open8055:
 
                 elif tags[0] == 'RECV':
                     cardid = int(tags[1])
+                    self.conn.lock.acquire()
+                    if tags[2] == 'DATA':
+                        if tags[3][0:2] == '81':
+                            self.conn.input_data[cardid] = tags[3]
+                        elif tags[3][0:2] == '01':
+                            self.conn.output_data[cardid] = tags[3]
+                        elif tags[3][0:2] == '03':
+                            self.conn.config1_data[cardid] = tags[3]
+                        else:
+                            print '_reader(): got', line
+                            print 'don\'t know what to do with that'
+                            sys.exit(1)
+                    else:
+                        print '_reader(): got', line
+                        print 'don\'t know what to do with that'
+
                     if cardid in self.conn.cardfifo:
                         self.conn.cardfifo[cardid].put(tags)
+                    self.conn.lock.release()
 
                 elif tags[0] == 'OPEN':
                     cardid = int(tags[1])
+                    self.conn.lock.acquire()
                     if cardid in self.conn.cardfifo:
                         self.conn.cardfifo[cardid].put(tags)
+                    self.conn.lock.release()
 
                 elif tags[0] == 'BYE':
                     break
