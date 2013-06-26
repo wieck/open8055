@@ -34,6 +34,7 @@
 
 import sys, os, socket, threading
 import Queue
+import pickle
 
 MODE_ADC10      = 10
 MODE_ADC9       = 11
@@ -129,10 +130,9 @@ class Open8055:
             self.lock.acquire()
 
             self.fdin.close()
-            self.fdin = None
-            self.sock = None
+            del self.fdin
+            del self.sock
         self.lock.release()
-
 
     # ----------
     # list()
@@ -220,6 +220,58 @@ class Open8055:
         self.autosend_flag[cardid] = True
         self.carderror[cardid] = None
         self.lock.release()
+
+    # ----------
+    # close()
+    #   
+    #   Close an open card.
+    # ----------
+    def close(self, cardid):
+        self.lock.acquire()
+        if cardid in self.cardfifo:
+            del self.cardfifo[cardid]
+        fifo = Queue.Queue()
+        self.cardfifo[cardid] = fifo
+        self._send('CLOSE ' + str(cardid) + '\n')
+        self.lock.release()
+
+        while True:
+            tags = fifo.get()
+            if tags[0] == 'CLOSE':
+                break
+        
+        del self.carderror[cardid]
+        del self.cardfifo[cardid]
+        del self.autosend_flag[cardid]
+        del self.input_data[cardid]
+        del self.output_data[cardid]
+        del self.config1_data[cardid]
+
+    # ----------
+    # reset()
+    #
+    #   Instruct the PIC to reboot.
+    # ----------
+    def reset(self, cardid):
+        self.lock.acquire()
+        if cardid in self.cardfifo:
+            del self.cardfifo[cardid]
+        fifo = Queue.Queue()
+        self.cardfifo[cardid] = fifo
+        self._send('SEND ' + str(cardid) + ' 7F\n')
+        self.lock.release()
+
+        while True:
+            tags = fifo.get()
+            if tags[0] == 'RECV' and tags[2] == 'ERROR':
+                break
+        
+        del self.carderror[cardid]
+        del self.cardfifo[cardid]
+        del self.autosend_flag[cardid]
+        del self.input_data[cardid]
+        del self.output_data[cardid]
+        del self.config1_data[cardid]
 
     # ----------
     # autosend()
@@ -387,6 +439,15 @@ class Open8055:
         return ret
 
     # ----------
+    # get_output_servo()
+    #
+    #   Convenience function to get digital port output value
+    #   in servo milliseconds pulse width.
+    # ----------
+    def get_output_servo(self, cardid, port):
+        return self.get_output_value(cardid, port) / 12000.0
+
+    # ----------
     # get_output_pwm()
     #
     #   Returns the current value of a PWM output.
@@ -451,7 +512,7 @@ class Open8055:
             return
         if val < 6000:
             val = 6000
-        if val > 30000
+        if val > 30000:
             val = 30000
 
         self.lock.acquire()
@@ -464,6 +525,16 @@ class Open8055:
             self._send('SEND ' + str(cardid) + ' ' + \
                 self.output_data[cardid] + '\n')
         self.lock.release()
+
+    # ----------
+    # set_output_servo()
+    #
+    #   Convenience function to set digital port output value
+    #   in milliseconds pulse width.
+    # ----------
+    def set_output_servo(self, cardid, port, val):
+        self.set_output_value(cardid, port,
+                int(val * 12000.0))
 
     # ----------
     # set_output_pwm()
@@ -677,8 +748,7 @@ class Open8055:
                             print 'don\'t know what to do with that'
                             sys.exit(1)
                     else:
-                        print '_reader(): got', line
-                        print 'don\'t know what to do with that'
+                        self.conn.carderror[cardid] = ' '.join(tags[3:])
 
                     if cardid in self.conn.cardfifo:
                         self.conn.cardfifo[cardid].put(tags)
@@ -691,6 +761,13 @@ class Open8055:
                     self.conn.lock.release()
 
                 elif tags[0] == 'OPEN':
+                    cardid = int(tags[1])
+                    self.conn.lock.acquire()
+                    if cardid in self.conn.cardfifo:
+                        self.conn.cardfifo[cardid].put(tags)
+                    self.conn.lock.release()
+
+                elif tags[0] == 'CLOSE':
                     cardid = int(tags[1])
                     self.conn.lock.acquire()
                     if cardid in self.conn.cardfifo:
