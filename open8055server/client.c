@@ -115,40 +115,29 @@ int
 client_shutdown(void)
 {
 	ClientData *next;
-
-	pthread_mutex_lock(&client_list_lock);
+	ClientData *client;
 
 	/* ----
-	 * Terminate all open client connections.
+	 * First go over all clients and set their mode to STOP
+	 * ----
+	 */
+	pthread_mutex_lock(&client_list_lock);
+	for (client = client_list; client != NULL; client = client->next)
+	{
+		server_log(client_list, LOG_INFO, "terminating client connection "
+				"due to shutdown");
+
+		pthread_mutex_lock(&(client->lock));
+		client->mode = CLIENT_MODE_STOP;
+		pthread_mutex_unlock(&(client->lock));
+	}
+
+	/* ----
+	 * Now wait for all those client threads to terminate.
 	 * ----
 	 */
 	while (client_list != NULL)
 	{
-		server_log(client_list, LOG_INFO, "terminating client connection "
-				"due to shutdown/restart");
-
-		/* ----
-		 * Set the flag in the client data signaling the client thread
-		 * to terminate.
-		 * ----
-		 */
-		pthread_mutex_lock(&(client_list->lock));
-		client_list->mode = CLIENT_MODE_STOP;
-		pthread_mutex_unlock(&(client_list->lock));
-
-		/* ----
-		 * Send SIGUSR2 to the client thread to inform it to
-		 * check flags.
-		 * ----
-		 */
-		if (pthread_kill(client_list->thread, SIGUSR2) != 0)
-			server_log(client_list, LOG_ERROR, "pthread_kill(): %s",
-					strerror(errno));
-
-		/* ----
-		 * Wait for the client thead to finish and free resources.
-		 * ----
-		 */
 		if (pthread_join(client_list->thread, NULL) != 0)
 			server_log(client_list, LOG_ERROR, "pthread_join(): %s",
 					strerror(errno));
@@ -164,21 +153,6 @@ client_shutdown(void)
 	}
 
 	return 0;
-}
-
-
-/* ----------
- * client_catch_signal()
- * ----------
- */
-void
-client_catch_signal(int signum)
-{
-	/* ----
-	 * Nothing to do here. The only signal we ever receive
-	 * is SIGUSR2 and that is handled in client_command().
-	 * ----
-	 */
 }
 
 
@@ -227,8 +201,7 @@ client_create(int sock, ClientAddr *addr)
 	 * ----
 	 */
 	if (client_send(client, TRUE,  "HELLO Open8055server %s\nSALT %s\n", 
-			OPEN8055_SERVER_VERSION, 
-			"00000000000000000000000000000000") < 0)
+			OPEN8055_SERVER_VERSION, "00000000") < 0)
 	{
 		if (client->sock >= 0)
 			close(sock);
@@ -251,7 +224,7 @@ client_create(int sock, ClientAddr *addr)
 		return -1;
 	}
 
-	/*
+	/* ----
 	 * Add the new client to the list of clients
 	 * ----
 	 */
@@ -311,7 +284,7 @@ client_reaper(void)
 			{
 				server_log(client, LOG_FATAL, "pthread_join(): %s",
 						strerror(errno));
-				pthread_kill(server_thread, SIGHUP);
+				pthread_kill(server_thread, SIGTERM);
 			}
 			
 			pthread_mutex_destroy(&(client->lock));
@@ -363,16 +336,12 @@ client_thread_run(void *cdata)
 		 */
 		pthread_mutex_lock(&(client->lock));
 		if (client->mode == CLIENT_MODE_STOP)
-		{
-			pthread_mutex_unlock(&(client->lock));
 			break;
-		}
+		
 		pthread_mutex_unlock(&(client->lock));
 
 		client_command(client);
 	}
-
-	pthread_mutex_lock(&(client->lock));
 
 	/* ----
 	 * Client exit time. Close all open cards.
@@ -400,11 +369,10 @@ client_thread_run(void *cdata)
 	pthread_mutex_unlock(&(client->lock));
 
 	/* ----
-	 * Signal the main thread to call the reaper.
+	 * Log client stopped.
 	 * ----
 	 */
 	server_log(client, LOG_CLIENTDEBUG, "stopped");
-	pthread_kill(server_thread, SIGUSR1);
 
 	return NULL;
 }
@@ -420,7 +388,7 @@ static void
 client_command(ClientData *client)
 {
 	fd_set			rfds;
-	sigset_t		sigmask;
+	struct timeval	tv;
 	int				rc;
 
 	while (client->read_buffer_have > client->read_buffer_done)
@@ -489,61 +457,25 @@ client_command(ClientData *client)
 	FD_ZERO(&rfds);
 	FD_SET(client->sock, &rfds);
 
-	sigemptyset(&sigmask);
-	sigaddset(&sigmask, SIGUSR2);
-	pthread_sigmask(SIG_UNBLOCK, &sigmask, NULL);
+	tv.tv_sec	= 5;
+	tv.tv_usec	= 0;
 
-	rc = select(client->sock + 1, &rfds, NULL, NULL, NULL);
-	
-	sigemptyset(&sigmask);
-	sigaddset(&sigmask, SIGUSR2);
-	pthread_sigmask(SIG_BLOCK, &sigmask, NULL);
+	rc = select(client->sock + 1, &rfds, NULL, NULL, &tv);
 
 	/* ----
-	 * Handle SIGUSR2 and errors
+	 * In the case of a timeout, return to the main loop
+	 * to have it check for STOP flag.
+	 * ----
+	 */
+	if (rc == 0)
+		return;
+	
+	/* ----
+	 * Handle errors
 	 * ----
 	 */
 	if (rc < 0)
 	{
-		if (errno == EINTR)
-		{
-			CardData   *card;
-
-			server_log(client, LOG_CLIENTDEBUG, "SIGUSR2 received");
-			pthread_mutex_lock(&(client->lock));
-
-			if (client->mode == CLIENT_MODE_STOP)
-			{
-				client_send(client, FALSE, "ERROR Server shutdown or restart\n");
-				if (client->sock >= 0)
-				{
-					close(client->sock);
-					client->sock = -1;
-				}
-				pthread_mutex_unlock(&(client->lock));
-				client->mode = CLIENT_MODE_STOP;
-				pthread_mutex_unlock(&(client->lock));
-				return;
-			}
-			
-			card = client->cards;
-			while (card != NULL)
-			{
-				CardData   *next = card->next;
-
-				if (card->ioerror)
-				{
-					server_log(client, LOG_CLIENTDEBUG, "card %d: close "
-							"due to IO error", card->card_num);
-					client_card_close(client, card->card_num);
-				}
-
-				card = next;
-			}
-
-			return;
-		}
-
 		server_log(client, LOG_ERROR, "select(): %s", strerror(errno));
 		pthread_mutex_lock(&(client->lock));
 		client->mode = CLIENT_MODE_STOP;
@@ -551,6 +483,10 @@ client_command(ClientData *client)
 		return;
 	}
 
+	/* ----
+	 * Make sure our socket is actually ready.
+	 * ----
+	 */
 	if (!FD_ISSET(client->sock, &rfds))
 	{
 		server_log(client, LOG_WARN, "select() returned %d "
@@ -558,6 +494,12 @@ client_command(ClientData *client)
 		return;
 	}
 
+	/* ----
+	 * Receive the new data and return to the main loop. It will
+	 * check for shutdown flag and if we're still good to go call
+	 * client_command() again to process the new data.
+	 * ----
+	 */
 	rc = recv(client->sock, client->read_buffer, MAX_CMDLINE, 0);
 	if (rc < 0)
 	{

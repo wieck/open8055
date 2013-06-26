@@ -107,15 +107,6 @@ main(const int argc, char * const argv[])
 		if (rc == 0)
 			rc = 4;
 
-	if (server_mode == SERVER_MODE_RESTART)
-	{
-		server_log(NULL, LOG_INFO, "Open8055 network server restarting");
-		execv(argv[0], argv);
-
-		server_log(NULL, LOG_FATAL, "execv(): %s", strerror(errno));
-		exit(5);
-	}
-
 	return rc;
 }
 
@@ -333,12 +324,8 @@ server_setup(void)
 	sigfillset(&sigmask);
 	pthread_sigmask(SIG_BLOCK, &sigmask, NULL);
 
-	signal(SIGTERM, server_catch_signal);	// Shutdown
-	signal(SIGINT, server_catch_signal);	// Shutdown
-	signal(SIGHUP, server_catch_signal);	// Restart
-	signal(SIGUSR1, server_catch_signal);	// Run client_reaper()
-
-	signal(SIGUSR2, client_catch_signal);	// Client terminate
+	signal(SIGTERM, server_catch_signal);
+	signal(SIGINT, server_catch_signal);
 
 	/* ----
 	 * Switch to RUN mode.
@@ -359,6 +346,7 @@ static int
 server_mainloop(void)
 {
 	fd_set				rfds;
+	struct timeval		tv;
 	ClientAddr			addr;
 	socklen_t			addrlen;
 	int					sock;
@@ -378,35 +366,33 @@ server_mainloop(void)
 		 */
 		rfds = server_fdset;
 
+		tv.tv_sec	= 5;
+		tv.tv_usec	= 0;
+
 		sigemptyset(&sigunblock);
 		sigaddset(&sigunblock, SIGTERM);
 		sigaddset(&sigunblock, SIGINT);
-		sigaddset(&sigunblock, SIGHUP);
-		sigaddset(&sigunblock, SIGUSR1);
 		pthread_sigmask(SIG_UNBLOCK, &sigunblock, &sigorig);
 
-		rc = select(server_maxfd, &rfds, NULL, NULL, NULL);
+		rc = select(server_maxfd, &rfds, NULL, NULL, &tv);
 
 		pthread_sigmask(SIG_SETMASK, &sigorig, NULL);
 
 		if (rc < 0)
 		{
 			/* ----
-			 * If we caught a signal, run client_reaper()
+			 * If we caught a signal, this must mean shutdown time.
 			 * ----
 			 */
 			if (errno == EINTR)
-			{
-				client_reaper();
-				continue;
-			}
+				break;
 
 			/* ----
 			 * Error on select(2), restart the server
 			 * ----
 			 */
 			server_log(NULL, LOG_ERROR, "select(): %s", strerror(errno));
-			server_mode = SERVER_MODE_RESTART;
+			server_mode = SERVER_MODE_STOP;
 			return -1;
 		}
 
@@ -432,7 +418,7 @@ server_mainloop(void)
 			if (sock < 0)
 			{
 				server_log(NULL, LOG_ERROR, "accept(): %s", strerror(errno));
-				server_mode = SERVER_MODE_RESTART;
+				server_mode = SERVER_MODE_STOP;
 				return -1;
 			}
 
@@ -453,7 +439,7 @@ server_mainloop(void)
 			if (sock < 0)
 			{
 				server_log(NULL, LOG_ERROR, "accept(): %s", strerror(errno));
-				server_mode = SERVER_MODE_RESTART;
+				server_mode = SERVER_MODE_STOP;
 				return -1;
 			}
 
@@ -466,8 +452,7 @@ server_mainloop(void)
 	 * Server is done.
 	 * ----
 	 */
-	server_log(NULL, LOG_INFO, "Exiting server_mainloop for %s",
-			(server_mode == SERVER_MODE_STOP) ? "shutdown" : "restart");
+	server_log(NULL, LOG_INFO, "Exiting server_mainloop for shutdown");
 
 	return 0;
 }
@@ -512,22 +497,7 @@ server_shutdown(void)
 static void
 server_catch_signal(int signum)
 {
-	switch (signum)
-	{
-		case SIGHUP:	server_mode = SERVER_MODE_RESTART;
-						break;
-
-		case SIGUSR1:	/* ----
-						 * Nothing special to do here. It jus causes
-						 * select() to be interrupted so it will run
-						 * client_reaper().
-						 * ----
-						 */
-						break;
-
-		default:		server_mode = SERVER_MODE_STOP;
-						break;
-	}
+	server_mode = SERVER_MODE_STOP;
 }
 
 

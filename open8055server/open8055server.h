@@ -66,7 +66,6 @@
 
 #define			SERVER_MODE_RUN		0
 #define			SERVER_MODE_STOP	1
-#define			SERVER_MODE_RESTART	2
 
 #define			CLIENT_MODE_RUN		0
 #define			CLIENT_MODE_STOP	1
