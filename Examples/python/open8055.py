@@ -34,8 +34,10 @@
 
 import sys, os, socket, threading
 import Queue
-import pickle
 
+# ----------
+# Constants
+# ----------
 MODE_ADC10      = 10
 MODE_ADC9       = 11
 MODE_ADC8       = 12
@@ -51,6 +53,9 @@ MODE_ISERVO     = 32
 MODE_PWM        = 40
 
 
+# ----------
+# The Open8055 class
+# ----------
 class Open8055:
     def __init__(self):
         self.sock           = None
