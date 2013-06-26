@@ -636,6 +636,19 @@ class Open8055:
         return ret
 
     # ----------
+    # get_config_debounce()
+    # ----------
+    def get_config_debounce(self, cardid, port):
+        if port < 0 or port > 4:
+            return 0
+        self.lock.acquire()
+        self._check_error(cardid)
+        idx = 36 + port * 4
+        ret = (int(self.config1_data[cardid][idx:idx + 4], 16) - 1) / 10.0
+        self.lock.release()
+        return ret
+
+    # ----------
     # set_config_adc()
     # ----------
     def set_config_adc(self, cardid, port, mode):
@@ -710,6 +723,27 @@ class Open8055:
         self.config1_data[cardid] = self.config1_data[cardid][0:idx] + \
                 '{0:02X}'.format(mode) + \
                 self.config1_data[cardid][idx + 2:]
+        if self.autosend_flag[cardid]:
+            self._send('SEND ' + str(cardid) + ' ' + \
+                self.config1_data[cardid] + '\n')
+        self.lock.release()
+
+    # ----------
+    # set_config_debounce()
+    # ----------
+    def set_config_input(self, cardid, port, millis):
+        if port < 0 or port > 4:
+            return
+        if millis < 0.0 or millis > 5000.0:
+            return
+
+        self.lock.acquire()
+        self._check_error(cardid)
+        idx = 36 + port * 2
+        val = int(millis * 10.0) + 1
+        self.config1_data[cardid] = self.config1_data[cardid][0:idx] + \
+                '{0:04X}'.format(mode) + \
+                self.config1_data[cardid][idx + 4:]
         if self.autosend_flag[cardid]:
             self._send('SEND ' + str(cardid) + ' ' + \
                 self.config1_data[cardid] + '\n')
