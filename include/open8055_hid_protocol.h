@@ -33,6 +33,7 @@ typedef unsigned short uint16_t;
 #endif /* _STDINT_H */
 
 
+#define OPEN8055_MAX_CARDS			16
 #define OPEN8055_HID_MESSAGE_SIZE	32
 
 #define OPEN8055_HID_MESSAGE_OUTPUT	0x01	// Setting output values
