@@ -1,4 +1,5 @@
 *.o
+*.so
 *.dll
 *.exe
 open8055server
