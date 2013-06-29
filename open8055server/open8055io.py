@@ -120,7 +120,6 @@ if os.name == 'nt':
         data = ''
         for idx in range(1, 33):
             data += '{0:02X}'.format(ord(ioBuf[idx]))
-        print 'len(data):', len(data)
         return data
 
     # ----------

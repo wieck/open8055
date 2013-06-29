@@ -92,7 +92,7 @@ class Open8055Server(threading.Thread):
             try:
                 rdy, _dummy, _dummy = select.select((self.sock,), (), (), 1.0)
             except Exception as err:
-                log('select() on server socket failed:' + str(err))
+                log_error('select() on server socket failed:' + str(err))
                 self.lock.acquire()
                 self.status = 'STOPPED'
                 self.lock.release()
@@ -116,7 +116,7 @@ class Open8055Server(threading.Thread):
             try:
                 conn, addr = self.sock.accept()
             except Exception as err:
-                log('accept() on server socket failed:' + str(err))
+                log_error('accept() on server socket failed:' + str(err))
                 self.lock.acquire()
                 self.status = 'STOPPED'
                 self.lock.release()
@@ -218,11 +218,12 @@ class Open8055Client(threading.Thread):
             try:
                 rdy, _dummy, _dummy = select.select((self.conn,), (), (), 1.0)
             except Exception as err:
-                log('client {0}: {1}'.format(str(self.addr), str(err)))
+                log_error('client {0}: {1}'.format(str(self.addr), str(err)))
                 break
 
             if self.cardio:
                 if self.cardio.get_status() == 'STOPPED':
+                    log_error('client {0}: {1}'.format(str(self.addr), 'cardio stopped unexpected'))
                     break
 
             # ----
@@ -273,7 +274,7 @@ class Open8055Client(threading.Thread):
                         pass
 
             except Exception as err:
-                log('client {0}: {1}'.format(str(self.addr), str(err)))
+                log_error('client {0}: {1}'.format(str(self.addr), str(err)))
                 break
 
         # ----
@@ -383,7 +384,7 @@ class Open8055Client(threading.Thread):
             if self.conn:
                 self.conn.sendall(msg)
         except Exception as err:
-            log('client {0}: {1}'.format(str(self.addr), str(err)))
+            log_error('client {0}: {1}'.format(str(self.addr), str(err)))
             try:
                 self.conn.close()
             except:
@@ -429,21 +430,28 @@ class Open8055Reader(threading.Thread):
         self.status = 'RUN'
 
     def run(self):
-        try:
-            while self.get_status() == 'RUN':
-                data = open8055io.read(self.cardid)
-                self.client.send('RECV ' + data + '\n')
-            open8055io.close(self.cardid)
-        except Exception as err:
+        while self.get_status() == 'RUN':
             try:
-                self.client.send('ERROR ' + str(err) + '\n')
-            except:
-                pass
+                data = open8055io.read(self.cardid)
+            except Exception as err:
+                try:
+                    log_error('client {0}: {1}'.format(
+                            str(self.client.addr), str(err)))
+                    self.client.send('ERROR ' + str(err) + '\n')
+                    break
+                except:
+                    pass
 
             try:
-                open8055io.close(self.cardid)
+                self.client.send('RECV ' + data + '\n')
             except:
+                break
                 pass
+            
+        try:
+            open8055io.close(self.cardid)
+        except:
+            pass
 
         self.set_status('STOPPED')
         return
@@ -498,7 +506,7 @@ if os.name == 'posix':
                 server = Open8055Server(8055)
                 server.start()
             except Exception as err:
-                log('Open8055server failed: ' + str(err))
+                log_error('Open8055server failed: ' + str(err))
                 sys.exit(2)
             
             # ----
@@ -509,7 +517,7 @@ if os.name == 'posix':
                 try:
                     rdy, _dummy, _dummy = select.select((p_rd,), (), (), 5.0)
                 except Exception as err:
-                    log('select() failed: ' + str(err))
+                    log_error('select() failed: ' + str(err))
                     sys.exit(3)
                 
                 if len(rdy) != 0:
@@ -543,7 +551,11 @@ if os.name == 'posix':
         pass
 
 
-    def log(message):
+    def log_info(message):
+        print message
+
+
+    def log_error(message):
         print message
 
 
@@ -554,6 +566,8 @@ if os.name == 'posix':
 # Windows specific service code
 # ----------------------------------------------------------------------
 elif os.name == 'nt':
+    import servicemanager
+    
     class open8055server(win32serviceutil.ServiceFramework):
         _svc_name_          = 'open8055server'
         _svc_display_name_  = 'Open8055Server'
@@ -568,13 +582,11 @@ elif os.name == 'nt':
             win32event.SetEvent(self.stopEvent)
     
         def SvcDoRun(self):
-            import servicemanager
-
             servicemanager.LogMsg(servicemanager.EVENTLOG_INFORMATION_TYPE,
                     servicemanager.PYS_SERVICE_STARTED,
                     (self._svc_name_, ''))
 
-            server = Open8055server(9999)
+            server = Open8055Server(8055)
             server.start()
 
             while True:
@@ -586,11 +598,16 @@ elif os.name == 'nt':
                     break
                 else:
                     if server.get_status() == 'STOPPED':
-                        servicemanager.LogInfoMsg('open8055server - CRASHED')
+                        servicemanager.LogErrorMsg('open8055server - CRASHED')
                         break
 
-    def log(msg):
+    def log_info(msg):
         servicemanager.LogInfoMsg('open8055server - ' + msg)
+
+
+    def log_error(msg):
+        servicemanager.LogErrorMsg('open8055server - ' + msg)
+
 
     def ctrlHandler(ctrlType):
         return True
