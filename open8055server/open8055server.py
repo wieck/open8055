@@ -492,13 +492,13 @@ if os.name == 'posix':
             os.close(p_wr)
 
             # ----
-            # Create the MyEcho server
+            # Create the Open8055 server
             # ----
             try:
                 server = Open8055Server(8055)
                 server.start()
             except Exception as err:
-                log('MyEcho failed: ' + str(err))
+                log('Open8055server failed: ' + str(err))
                 sys.exit(2)
             
             # ----
@@ -574,7 +574,7 @@ elif os.name == 'nt':
                     servicemanager.PYS_SERVICE_STARTED,
                     (self._svc_name_, ''))
 
-            server = MyEcho(9999)
+            server = Open8055server(9999)
             server.start()
 
             while True:
