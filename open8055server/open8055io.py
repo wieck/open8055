@@ -169,12 +169,20 @@ if os.name == 'nt':
         cardinst = 'HID\\Vid_{0:04x}&Pid_{1:04x}\\'.format(
                 OPEN8055_VID, OPEN8055_PID + cardNum)
 
+        # ----
+        # Loop over all registry keys in the DeviceClasses
+        # ----
         key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path)
         for i in itertools.count():
             try:
                 val = winreg.EnumKey(key, i)
             except:
                 break
+
+            # ----
+            # See if that key has a value named DeviceInstance and
+            # if that value starts with our cardinst prefix.
+            # ----
             key2 = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path +
                                   '\\' + val)
             devinst, type = winreg.QueryValueEx(key2, 'DeviceInstance')
@@ -182,6 +190,14 @@ if os.name == 'nt':
                 continue
 
             if devinst.startswith(cardinst):
+                # ----
+                # Found one. There can be multiple of theses. Windows
+                # creates a new entry for every USB port, this device
+                # is connected to, and never removes them.
+                #
+                # Get the SymbolicLink value from the '#' subkey and
+                # try to open the device.
+                # ----
                 key3 = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path +
                                       '\\' + val + '\\#')
                 symlink, type = winreg.QueryValueEx(key3, 'SymbolicLink')
@@ -206,10 +222,20 @@ if os.name == 'nt':
                     win32file.CloseHandle(r_handle)
                     continue
 
+                # ----
+                # Success. Return the two handles.
+                # ----
                 return r_handle, w_handle
 
+        # ----
+        # Card not found.
+        # ----
         return None, None
 
+# ----------
+# On Posix platforms the above functions are implemented as a
+# Python C extension using libusb. 
+# ----------
 elif os.name == 'posix':
     from open8055device import *
 
