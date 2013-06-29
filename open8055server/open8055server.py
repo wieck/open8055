@@ -192,7 +192,7 @@ class Open8055Client(threading.Thread):
         self.user   = None
         self.salt   = '{0:016X}'.format(random.getrandbits(64))
 
-        self.cardid = None
+        self.cardid = -1
         self.cardio = None
 
     # ----------
@@ -282,6 +282,10 @@ class Open8055Client(threading.Thread):
         if self.cardio:
             try:
                 self.cardio.set_status('STOP')
+                try:
+                    open8055io.write(self.cardid, '81')
+                except:
+                    pass
                 self.cardio.join()
             except Exception as err:
                 try:
@@ -331,7 +335,7 @@ class Open8055Client(threading.Thread):
     def cmd_open(self, args):
         if len(args) != 4:
             raise Exception('usage: OPEN cardid username password')
-        if self.cardid:
+        if self.cardid >= 0:
             raise Exception('already connected to card ' + str(self.cardid))
 
         cardid = int(args[1])
@@ -343,6 +347,29 @@ class Open8055Client(threading.Thread):
 
         self.cardid = cardid
         self.cardio = cardio
+
+        try:
+            self.send('OK\n')
+        except:
+            self.set_status('STOP')
+
+    # ----------
+    # cmd_send()
+    # ----------
+    def cmd_send(self, args):
+        if len(args) != 2:
+            raise Exception('usage: SEND data')
+        if self.cardid < 0:
+            raise Exception('not connected to a card')
+
+        try:
+            open8055io.write(self.cardid, args[1])
+        except Exception as err:
+            self.set_status('STOP')
+            try:
+                self.client.send('ERROR ' + str(err) + '\n')
+            except:
+                pass
 
     # ----------
     # send()
