@@ -76,6 +76,7 @@ class Open8055Server(threading.Thread):
                 # ----
                 # Close the server socket.
                 # ----
+                self.sock.shutdown(socket.SHUT_RDWR)
                 self.sock.close()
 
                 # ----
@@ -90,7 +91,7 @@ class Open8055Server(threading.Thread):
             # We are still in RUN mode. Wait for a new client to connect.
             # ----
             try:
-                rdy, _dummy, _dummy = select.select((self.sock,), (), (), 1.0)
+                rdy, _dummy, _dummy = select.select((self.sock,), (), (), 2.0)
             except Exception as err:
                 log_error('select() on server socket failed:' + str(err))
                 self.lock.acquire()
@@ -225,7 +226,7 @@ class Open8055Client(threading.Thread):
                 # ----
                 try:
                     rdy, _dummy, _dummy = select.select(
-                            (self.conn,), (), (), 5.0)
+                            (self.conn,), (), (), 2.0)
                 except Exception as err:
                     log_error('client {0}: {1}'.format(
                             str(self.addr), str(err)))
@@ -327,13 +328,8 @@ class Open8055Client(threading.Thread):
         # ----
         try:
             if self.conn:
+                self.sock.shutdown(socket.SHUT_RDWR)
                 self.conn.close()
-        except:
-            pass
-
-        try:
-            if self.rfile:
-                self.rfile.close()
         except:
             pass
 
@@ -414,15 +410,11 @@ class Open8055Client(threading.Thread):
         except Exception as err:
             log_error('client {0}: {1}'.format(str(self.addr), str(err)))
             try:
+                self.conn.shutdown(socket.SHUT_RDWR)
                 self.conn.close()
             except:
                 pass
             self.conn = None
-            try:
-                self.rfile.close()
-            except:
-                pass
-            self.rfile = None
             self.lock.release()
             raise err
 
@@ -543,7 +535,7 @@ if os.name == 'posix':
             # ----
             while server.get_status() != 'STOPPED':
                 try:
-                    rdy, _dummy, _dummy = select.select((p_rd,), (), (), 5.0)
+                    rdy, _dummy, _dummy = select.select((p_rd,), (), (), 2.0)
                 except Exception as err:
                     log_error('select() failed: ' + str(err))
                     sys.exit(3)
