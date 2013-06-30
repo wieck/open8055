@@ -43,6 +43,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
 
 
 /* ----
@@ -53,12 +54,25 @@
 #define OPEN8055_VID    0x10cf
 #define OPEN8055_PID    0x55f0
 
+typedef struct Open8055Card
+{
+	pthread_mutex_t			lock;
+	libusb_device_handle   *handle;
+	int						hadKernelDriver;
+	struct libusb_transfer *readTransfer;
+	int						readCompleted;
+	struct libusb_transfer *writeTransfer;
+	int						writeCompleted;
+} Open8055Card;
+
 
 /* ----
  * Local functions
  * ----
  */
 static int device_init(void);
+static int device_handle_events(Open8055Card *card, int *complete);
+static void device_transfer_callback(struct libusb_transfer *transfer);
 static PyObject *device_present(PyObject *self, PyObject *args);
 static PyObject *device_open(PyObject *self, PyObject *args);
 static PyObject *device_close(PyObject *self, PyObject *args);
@@ -74,10 +88,10 @@ static char *libusb_strerror(int errnum);
  * Local data
  * ----
  */
-static libusb_context		   *libusbCxt;
-static libusb_device_handle	   *cardHandle[OPEN8055_MAX_CARDS];
-static int						hadKernelDriver[OPEN8055_MAX_CARDS];
-static int						initialized = 0;
+static int				initialized = 0;
+static libusb_context  *libusbCxt;
+pthread_mutex_t			deviceGlobalLock = PTHREAD_MUTEX_INITIALIZER;
+Open8055Card			deviceCard[OPEN8055_MAX_CARDS];
 
 
 static PyMethodDef device_methods[] = {
@@ -104,14 +118,16 @@ static PyMethodDef device_methods[] = {
 static int
 device_init(void)
 {
+	int		i;
 	int		rc;
 	char	errbuf[1024];
 
+	pthread_mutex_lock(&deviceGlobalLock);
+
 	if (initialized)
 	{
-		PyErr_SetString(PyExc_RuntimeError, 
-				"device_init() called multiple times");
-		return -1;
+		pthread_mutex_unlock(&deviceGlobalLock);
+		return 0;
 	}
 
 	if ((rc = libusb_init(&libusbCxt)) != 0)
@@ -119,11 +135,98 @@ device_init(void)
 		snprintf(errbuf, sizeof(errbuf),
 				"libusb_init() failed - %s", libusb_strerror(rc));
 		PyErr_SetString(PyExc_RuntimeError, errbuf);
+		pthread_mutex_unlock(&deviceGlobalLock);
 		return -1;
 	}
 
+	for (i = 0; i < OPEN8055_MAX_CARDS; i++)
+	{
+		if (pthread_mutex_init(&(deviceCard[i].lock), NULL) != 0)
+		{
+			PyErr_SetString(PyExc_RuntimeError, "pthread_mutex_init() failed");
+			return -1;
+		}
+	}
+
 	initialized = 1;
+	pthread_mutex_unlock(&deviceGlobalLock);
 	return 0;
+}
+
+
+/* ----
+ * device_handle_events()
+ *
+ *	Function called by device_read() and device_write() to perform
+ *	the multi-thread correct event handling.
+ * ----
+ */
+static int
+device_handle_events(Open8055Card *card, int *completed)
+{
+	while (!*completed)
+	{
+		if (libusb_try_lock_events(libusbCxt) == 0)
+		{
+			/* ----
+			 * We got the event lock, so we are the event handler.
+			 * ----
+			 */
+			while(!*completed)
+			{
+				if (!libusb_event_handling_ok(libusbCxt))
+				{
+					libusb_unlock_events(libusbCxt);
+					break;
+				}
+				if (libusb_handle_events_locked(libusbCxt, NULL) != 0)
+					return -1;
+			}
+			libusb_unlock_events(libusbCxt);
+		}
+		else
+		{
+			/* ----
+			 * Somebody else is handling events ... wait for them.
+			 * ----
+			 */
+			libusb_lock_event_waiters(libusbCxt);
+			while (!completed)
+			{
+				/* ----
+				 * Now that we have the waiters lock, recheck that
+				 * somebody is really processing events.
+				 * ----
+				 */
+				if (!libusb_event_handler_active(libusbCxt))
+					break;
+				
+				/* ----
+				 * OK to really wait now.
+				 * ----
+				 */
+				libusb_wait_for_event(libusbCxt, NULL);
+			}
+			libusb_unlock_event_waiters(libusbCxt);
+		}
+	}
+
+	return 0;
+}
+
+
+/* ----
+ * device_transfer_callback()
+ *
+ *	Function called by libusb when a transfer has finished.
+ * ----
+ */
+static void
+device_transfer_callback(struct libusb_transfer *transfer)
+{
+	int *completed = (int *)(transfer->user_data);
+
+	*completed = TRUE;
 }
 
 
@@ -144,13 +247,6 @@ device_present(PyObject *self, PyObject *args)
 	struct libusb_device_descriptor	deviceDesc;
 	int								i;
 	char							errbuf[1024];
-
-	if (!initialized)
-	{
-		PyErr_SetString(PyExc_RuntimeError, 
-				"device_present() called before initialized");
-		return NULL;
-	}
 
 	/* ----
 	 * Parse command args
@@ -216,6 +312,7 @@ static PyObject *
 device_open(PyObject *self, PyObject *args)
 {
 	int						cardNumber;
+	Open8055Card		   *card;
 	libusb_device_handle   *dev;
 	int						rc;
 	int						interface = 0;
@@ -237,7 +334,7 @@ device_open(PyObject *self, PyObject *args)
 	 * Sanity checks
 	 * ----
 	 */
-	if (cardHandle[cardNumber] != NULL)
+	if (deviceCard[cardNumber].handle != NULL)
 	{
 		PyErr_SetString(PyExc_RuntimeError, "card already open");
 		return NULL;
@@ -245,6 +342,23 @@ device_open(PyObject *self, PyObject *args)
 
 	if (device_present(self, args) == NULL)
 		return NULL;
+
+	/* ----
+	 * Allocate the libusb asynchronous transfer structures.
+	 * ----
+	 */
+	card = &deviceCard[cardNumber];
+	if ((card->readTransfer = libusb_alloc_transfer(0)) == NULL)
+	{
+		PyErr_SetString(PyExc_RuntimeError, "libusb_alloc_transfer() failed");
+		return NULL;
+	}
+	if ((card->writeTransfer = libusb_alloc_transfer(0)) == NULL)
+	{
+		PyErr_SetString(PyExc_RuntimeError, "libusb_alloc_transfer() failed");
+		libusb_free_transfer(card->readTransfer);
+		return NULL;
+	}
 
 	/* ----
 	 * Open the device.
@@ -256,6 +370,8 @@ device_open(PyObject *self, PyObject *args)
 	{
 		PyErr_SetString(PyExc_RuntimeError,
 				"libusb_open_device_with_vid_pid() failed");
+		libusb_free_transfer(card->readTransfer);
+		libusb_free_transfer(card->writeTransfer);
 		return NULL;
 	}
 
@@ -270,11 +386,13 @@ device_open(PyObject *self, PyObject *args)
 				libusb_strerror(rc));
 		PyErr_SetString(PyExc_RuntimeError, errbuf);
 		libusb_close(dev);
+		libusb_free_transfer(card->readTransfer);
+		libusb_free_transfer(card->writeTransfer);
 		return NULL;
 	}
 	else
 	{
-		hadKernelDriver[cardNumber] = rc;
+		deviceCard[cardNumber].hadKernelDriver = rc;
 		if (rc != 0)
 		{
 			if ((rc = libusb_detach_kernel_driver(dev, interface)) != 0)
@@ -284,6 +402,8 @@ device_open(PyObject *self, PyObject *args)
 						libusb_strerror(rc));
 				PyErr_SetString(PyExc_RuntimeError, errbuf);
 				libusb_close(dev);
+				libusb_free_transfer(card->readTransfer);
+				libusb_free_transfer(card->writeTransfer);
 				return NULL;
 			}
 		}
@@ -299,9 +419,11 @@ device_open(PyObject *self, PyObject *args)
 				"libusb_set_configuration() failed - %s", 
 				libusb_strerror(rc));
 		PyErr_SetString(PyExc_RuntimeError, errbuf);
-		if (hadKernelDriver[cardNumber])
+		if (deviceCard[cardNumber].hadKernelDriver)
 			libusb_attach_kernel_driver(dev, interface);
 		libusb_close(dev);
+		libusb_free_transfer(card->readTransfer);
+		libusb_free_transfer(card->writeTransfer);
 		return NULL;
 	}
 
@@ -315,9 +437,11 @@ device_open(PyObject *self, PyObject *args)
 				"libusb_claim_interface() failed - %s", 
 				libusb_strerror(rc));
 		PyErr_SetString(PyExc_RuntimeError, errbuf);
-		if (hadKernelDriver[cardNumber])
+		if (deviceCard[cardNumber].hadKernelDriver)
 			libusb_attach_kernel_driver(dev, interface);
 		libusb_close(dev);
+		libusb_free_transfer(card->readTransfer);
+		libusb_free_transfer(card->writeTransfer);
 		return NULL;
 	}
 
@@ -332,13 +456,15 @@ device_open(PyObject *self, PyObject *args)
 				libusb_strerror(rc));
 		PyErr_SetString(PyExc_RuntimeError, errbuf);
 		libusb_release_interface(dev, interface);
-		if (hadKernelDriver[cardNumber])
+		if (deviceCard[cardNumber].hadKernelDriver)
 			libusb_attach_kernel_driver(dev, interface);
 		libusb_close(dev);
+		libusb_free_transfer(card->readTransfer);
+		libusb_free_transfer(card->writeTransfer);
 		return NULL;
 	}
 
-	cardHandle[cardNumber] = dev;
+	deviceCard[cardNumber].handle = dev;
 
 	return Py_BuildValue("i", cardNumber);
 }
@@ -367,18 +493,20 @@ device_close(PyObject *self, PyObject *args)
 		PyErr_SetString(PyExc_ValueError, "invalid card number");
 		return NULL;
 	}
-	if (cardHandle[cardNumber] == NULL)
+	if (deviceCard[cardNumber].handle == NULL)
 	{
 		PyErr_SetString(PyExc_RuntimeError, "card not open");
 		return NULL;
 	}
 
-	libusb_release_interface(cardHandle[cardNumber], interface);
-	if (hadKernelDriver[cardNumber])
-		libusb_attach_kernel_driver(cardHandle[cardNumber], interface);
-	libusb_close(cardHandle[cardNumber]);
+	libusb_free_transfer(deviceCard[cardNumber].readTransfer);
+	libusb_free_transfer(deviceCard[cardNumber].writeTransfer);
+	libusb_release_interface(deviceCard[cardNumber].handle, interface);
+	if (deviceCard[cardNumber].hadKernelDriver)
+		libusb_attach_kernel_driver(deviceCard[cardNumber].handle, interface);
+	libusb_close(deviceCard[cardNumber].handle);
 
-	cardHandle[cardNumber] = NULL;
+	deviceCard[cardNumber].handle = NULL;
 
 	return Py_BuildValue("i", cardNumber);
 }
@@ -394,8 +522,8 @@ static PyObject *
 device_read(PyObject *self, PyObject *args)
 {
 	int				cardNumber;
+	Open8055Card   *card;
 	int				rc;
-	int				bytesRead;
 	unsigned char	ioBuf[OPEN8055_HID_MESSAGE_SIZE];
 	char			data[OPEN8055_HID_MESSAGE_SIZE * 2 + 1];
 	char		   *cp;
@@ -414,40 +542,53 @@ device_read(PyObject *self, PyObject *args)
 		PyErr_SetString(PyExc_ValueError, "invalid card number");
 		return NULL;
 	}
-	if (cardHandle[cardNumber] == NULL)
+	if (deviceCard[cardNumber].handle == NULL)
 	{
 		PyErr_SetString(PyExc_RuntimeError, "card not open");
 		return NULL;
 	}
+	card = &deviceCard[cardNumber];
 
-	if ((rc = libusb_interrupt_transfer(cardHandle[cardNumber],
+	libusb_fill_interrupt_transfer(card->readTransfer, card->handle,
 			LIBUSB_ENDPOINT_IN | 1, ioBuf, 
-			OPEN8055_HID_MESSAGE_SIZE, &bytesRead, 0)) == 0)
+			OPEN8055_HID_MESSAGE_SIZE,
+			device_transfer_callback, (void *)&(card->readCompleted), 0);
+	card->readCompleted = FALSE;
+	if ((rc = libusb_submit_transfer(card->readTransfer)) != 0)
 	{
-		if (bytesRead != OPEN8055_HID_MESSAGE_SIZE)
-		{
-			snprintf(errbuf, sizeof(errbuf),
-					"short read - expected %d, got %d", 
-					OPEN8055_HID_MESSAGE_SIZE, bytesRead);
-			PyErr_SetString(PyExc_IOError, errbuf);
-			return NULL;
-		}
-
-		cp = data;
-		for (idx = 0; idx < OPEN8055_HID_MESSAGE_SIZE; idx++)
-		{
-			sprintf(cp, "%02X", ioBuf[idx] & 0xFF);
-			cp += 2;
-		}
-
-		return Py_BuildValue("s", data);
+		snprintf(errbuf, sizeof(errbuf),
+				"libusb_submit_transfer(): %s", 
+				libusb_strerror(rc));
+		PyErr_SetString(PyExc_IOError, errbuf);
+		return NULL;
 	}
 
-	snprintf(errbuf, sizeof(errbuf),
-			"libusb_interrupt_transfer(): %s", 
-			libusb_strerror(rc));
-	PyErr_SetString(PyExc_IOError, errbuf);
-	return NULL;
+	if (device_handle_events(card, &(card->readCompleted)) < 0)
+	{
+		snprintf(errbuf, sizeof(errbuf),
+				"device_handle_transfer(): %s", 
+				libusb_strerror(rc));
+		PyErr_SetString(PyExc_IOError, errbuf);
+		return NULL;
+	}
+
+	if (card->readTransfer->status != LIBUSB_TRANSFER_COMPLETED)
+	{
+		snprintf(errbuf, sizeof(errbuf),
+				"asynchronous transfer failed: %s", 
+				libusb_strerror(rc));
+		PyErr_SetString(PyExc_IOError, errbuf);
+		return NULL;
+	}
+
+	cp = data;
+	for (idx = 0; idx < OPEN8055_HID_MESSAGE_SIZE; idx++)
+	{
+		sprintf(cp, "%02X", ioBuf[idx] & 0xFF);
+		cp += 2;
+	}
+
+	return Py_BuildValue("s", data);
 }
 
 
@@ -461,7 +602,7 @@ static PyObject *
 device_write(PyObject *self, PyObject *args)
 {
 	int				cardNumber;
-	int				bytesWritten;
+	Open8055Card   *card;
 	const char	   *data;
 	unsigned char	ioBuf[OPEN8055_HID_MESSAGE_SIZE];
 	int				idx;
@@ -479,11 +620,12 @@ device_write(PyObject *self, PyObject *args)
 		PyErr_SetString(PyExc_ValueError, "invalid card number");
 		return NULL;
 	}
-	if (cardHandle[cardNumber] == NULL)
+	if (deviceCard[cardNumber].handle == NULL)
 	{
 		PyErr_SetString(PyExc_RuntimeError, "card not open");
 		return NULL;
 	}
+	card = &deviceCard[cardNumber];
 
 	/* ----
 	 * Parse the HID packet data into raw bytes
@@ -520,29 +662,39 @@ device_write(PyObject *self, PyObject *args)
 	 * Send it via interrupt transfer.
 	 * ----
 	 */
-	if ((rc = libusb_interrupt_transfer(cardHandle[cardNumber],
+	libusb_fill_interrupt_transfer(card->writeTransfer, card->handle,
 			LIBUSB_ENDPOINT_OUT | 1, ioBuf, 
-			OPEN8055_HID_MESSAGE_SIZE, &bytesWritten, 0)) == 0)
+			OPEN8055_HID_MESSAGE_SIZE,
+			device_transfer_callback, (void *)&(card->writeCompleted), 0);
+	card->writeCompleted = FALSE;
+	if ((rc = libusb_submit_transfer(card->writeTransfer)) != 0)
 	{
-		if (bytesWritten != OPEN8055_HID_MESSAGE_SIZE)
-		{
-			snprintf(errbuf, sizeof(errbuf),
-					"short write - expected %d, got %d", 
-					OPEN8055_HID_MESSAGE_SIZE, bytesWritten);
-			PyErr_SetString(PyExc_IOError, errbuf);
-			return NULL;
-		}
-
-		bytesWritten++;
-
-		return Py_BuildValue("i", bytesWritten);
+		snprintf(errbuf, sizeof(errbuf),
+				"libusb_submit_transfer(): %s", 
+				libusb_strerror(rc));
+		PyErr_SetString(PyExc_IOError, errbuf);
+		return NULL;
 	}
 
-	snprintf(errbuf, sizeof(errbuf),
-			"libusb_interrupt_transfer() failed - %s", 
-			libusb_strerror(rc));
-	PyErr_SetString(PyExc_IOError, errbuf);
-	return NULL;
+	if (device_handle_events(card, &(card->writeCompleted)) < 0)
+	{
+		snprintf(errbuf, sizeof(errbuf),
+				"device_handle_transfer(): %s", 
+				libusb_strerror(rc));
+		PyErr_SetString(PyExc_IOError, errbuf);
+		return NULL;
+	}
+
+	if (card->writeTransfer->status != LIBUSB_TRANSFER_COMPLETED)
+	{
+		snprintf(errbuf, sizeof(errbuf),
+				"asynchronous transfer failed: %s", 
+				libusb_strerror(rc));
+		PyErr_SetString(PyExc_IOError, errbuf);
+		return NULL;
+	}
+
+	return Py_None;
 }
 
 
