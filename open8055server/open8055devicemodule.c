@@ -164,7 +164,12 @@ device_init(void)
 static int
 device_handle_events(Open8055Card *card, int *completed)
 {
-	while (!*completed)
+	struct timeval	tv;
+	int				rc = 0;
+
+	Py_BEGIN_ALLOW_THREADS
+
+	while (!*completed && rc == 0)
 	{
 		if (libusb_try_lock_events(libusbCxt) == 0)
 		{
@@ -179,8 +184,12 @@ device_handle_events(Open8055Card *card, int *completed)
 					libusb_unlock_events(libusbCxt);
 					break;
 				}
-				if (libusb_handle_events_locked(libusbCxt, NULL) != 0)
-					return -1;
+
+				tv.tv_sec = 0;
+				tv.tv_usec = 1000;
+				rc = libusb_handle_events_locked(libusbCxt, &tv);
+				if (rc != 0)
+					break;
 			}
 			libusb_unlock_events(libusbCxt);
 		}
@@ -205,13 +214,17 @@ device_handle_events(Open8055Card *card, int *completed)
 				 * OK to really wait now.
 				 * ----
 				 */
-				libusb_wait_for_event(libusbCxt, NULL);
+				tv.tv_sec = 0;
+				tv.tv_usec = 1000;
+				libusb_wait_for_event(libusbCxt, &tv);
 			}
 			libusb_unlock_event_waiters(libusbCxt);
 		}
 	}
 
-	return 0;
+	Py_END_ALLOW_THREADS
+
+	return rc;
 }
 
 
@@ -694,7 +707,7 @@ device_write(PyObject *self, PyObject *args)
 		return NULL;
 	}
 
-	return Py_None;
+	return Py_BuildValue("i", 0);
 }
 
 

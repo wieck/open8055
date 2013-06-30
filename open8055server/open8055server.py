@@ -186,7 +186,7 @@ class Open8055Client(threading.Thread):
 
         self.lock   = threading.Lock()
         self.conn   = conn
-        self.rfile  = conn.makefile('r')
+        self.inbuf  = ''
         self.addr   = addr
 
         self.user   = None
@@ -215,67 +215,95 @@ class Open8055Client(threading.Thread):
         # the remote disconnects.
         # ----
         while self.get_status() == 'RUN':
-            try:
-                rdy, _dummy, _dummy = select.select((self.conn,), (), (), 1.0)
-            except Exception as err:
-                log_error('client {0}: {1}'.format(str(self.addr), str(err)))
-                break
-
-            if self.cardio:
-                if self.cardio.get_status() == 'STOPPED':
-                    log_error('client {0}: {1}'.format(str(self.addr), 'cardio stopped unexpected'))
+            # ----
+            # See if we still have another command in the input buffer.
+            # ----
+            idx = self.inbuf.find('\n')
+            if idx < 0:
+                # ----
+                # No NEWLINE in there, wait for more data.
+                # ----
+                try:
+                    rdy, _dummy, _dummy = select.select(
+                            (self.conn,), (), (), 5.0)
+                except Exception as err:
+                    log_error('client {0}: {1}'.format(
+                            str(self.addr), str(err)))
                     break
 
-            # ----
-            # If rdy is empty then this was just a timeout to check
-            # for STOP flag.
-            # ----
-            if len(rdy) == 0:
-                continue
+                if self.cardio:
+                    if self.cardio.get_status() == 'STOPPED':
+                        log_error('client {0}: {1}'.format(
+                                str(self.addr), 'cardio stopped unexpected'))
+                        break
 
-            # ----
-            # Receive and process the command
-            # ----
-            try:
-                data = self.rfile.readline()
+                # ----
+                # If rdy is empty then this was just a timeout to check
+                # for STOP flag.
+                # ----
+                if len(rdy) == 0:
+                    continue
+
+                # ----
+                # Receive new data
+                # ----
+                try:
+                    data = self.conn.recv(256)
+                except Exception as err:
+                    log_error('client {0}: {1}'.format(
+                            str(self.addr), str(err)))
+                    break
 
                 # ----
                 # Check of EOF
                 # ----
                 if not data:
                     break
-
+                
                 # ----
-                # Split the command line by spaces and process it.
+                # Add the data to the input buffer. If there's still
+                # no NEWLINE, wait for more.
                 # ----
-                args = data.strip().split(' ')
+                self.inbuf += data
+                idx = self.inbuf.find('\n')
+                if idx < 0:
+                    continue
 
-                try:
-                    if args[0].upper() == 'SEND':
-                        self.cmd_send(args)
+            # ----
+            # We have a NEWLINE in the input buffer. Consume the
+            # first line.
+            # ----
+            line = self.inbuf[0:idx - 1]
+            self.inbuf = self.inbuf[idx + 1:]
 
-                    elif args[0].upper() == 'LIST':
-                        self.cmd_list(args)
+            # ----
+            # Split the command line by spaces and process it.
+            # ----
+            args = line.strip().split(' ')
 
-                    elif args[0].upper() == 'OPEN':
-                        self.cmd_open(args)
+            try:
+                if args[0].upper() == 'SEND':
+                    self.cmd_send(args)
 
-                    elif args[0].upper() == 'QUIT':
-                        break
+                elif args[0].upper() == 'LIST':
+                    self.cmd_list(args)
 
-                    else:
-                        self.send('ERROR unknown command \'' +
-                                args[0].upper() + '\'\n')
+                elif args[0].upper() == 'OPEN':
+                    self.cmd_open(args)
 
-                except Exception as err:
-                    try:
-                        self.send('ERROR ' + str(err) + '\n')
-                    except:
-                        pass
+                elif args[0].upper() == 'QUIT':
+                    break
+
+                else:
+                    self.send('ERROR unknown command \'' +
+                            args[0].upper() + '\'\n')
 
             except Exception as err:
-                log_error('client {0}: {1}'.format(str(self.addr), str(err)))
-                break
+                try:
+                    self.send('ERROR ' + str(err) + '\n')
+                except:
+                    pass
+
 
         # ----
         # Stop the reader thread if one exists.
@@ -457,15 +485,15 @@ class Open8055Reader(threading.Thread):
         return
 
     def get_status(self):
-        self.lock.acquire()
+        #self.lock.acquire()
         ret = self.status
-        self.lock.release()
+        #self.lock.release()
         return ret
 
     def set_status(self, status):
-        self.lock.acquire()
+        #self.lock.acquire()
         self.status = status
-        self.lock.release()
+        #self.lock.release()
 
 
 # ----------------------------------------------------------------------
