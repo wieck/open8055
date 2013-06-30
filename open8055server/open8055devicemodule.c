@@ -164,7 +164,6 @@ device_init(void)
 static int
 device_handle_events(Open8055Card *card, int *completed)
 {
-	struct timeval	tv;
 	int				rc = 0;
 
 	Py_BEGIN_ALLOW_THREADS
@@ -185,9 +184,7 @@ device_handle_events(Open8055Card *card, int *completed)
 					break;
 				}
 
-				tv.tv_sec = 0;
-				tv.tv_usec = 1000;
-				rc = libusb_handle_events_locked(libusbCxt, &tv);
+				rc = libusb_handle_events_locked(libusbCxt, NULL);
 				if (rc != 0)
 					break;
 			}
@@ -214,9 +211,7 @@ device_handle_events(Open8055Card *card, int *completed)
 				 * OK to really wait now.
 				 * ----
 				 */
-				tv.tv_sec = 0;
-				tv.tv_usec = 1000;
-				libusb_wait_for_event(libusbCxt, &tv);
+				libusb_wait_for_event(libusbCxt, NULL);
 			}
 			libusb_unlock_event_waiters(libusbCxt);
 		}
