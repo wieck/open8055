@@ -274,7 +274,7 @@ class Open8055Client(threading.Thread):
             # We have a NEWLINE in the input buffer. Consume the
             # first line.
             # ----
-            line = self.inbuf[0:idx - 1]
+            line = self.inbuf[0:idx]
             self.inbuf = self.inbuf[idx + 1:]
 
             # ----
@@ -305,7 +305,6 @@ class Open8055Client(threading.Thread):
                 except:
                     pass
 
-
         # ----
         # Stop the reader thread if one exists.
         # ----
@@ -313,7 +312,7 @@ class Open8055Client(threading.Thread):
             try:
                 self.cardio.set_status('STOP')
                 try:
-                    open8055io.write(self.cardid, '81')
+                    open8055io.write(self.cardid, '02')
                 except:
                     pass
                 self.cardio.join()
@@ -370,13 +369,15 @@ class Open8055Client(threading.Thread):
         cardio = Open8055Reader(self, cardid)
         cardio.start()
 
-        self.cardid = cardid
-        self.cardio = cardio
+        self.cardid         = cardid
+        self.cardio         = cardio
 
-        try:
-            self.send('OK\n')
-        except:
-            self.set_status('STOP')
+        # ----
+        # We send a GETCONFIG message to the card and the reader
+        # is going to suppress INPUT messages until OUTPUT and CONFIG1
+        # have been reported.
+        # ----
+        open8055io.write(cardid, '04')
 
     # ----------
     # cmd_send()
@@ -444,10 +445,13 @@ class Open8055Reader(threading.Thread):
     def __init__(self, client, cardid):
         threading.Thread.__init__(self)
 
-        self.client = client
-        self.cardid = cardid
-        self.lock   = threading.Lock()
-        self.status = 'RUN'
+        self.client         = client
+        self.cardid         = cardid
+        self.startup        = True
+        self.had_config1    = False
+        self.had_output     = False
+        self.lock           = threading.Lock()
+        self.status         = 'RUN'
 
     def run(self):
         while self.get_status() == 'RUN':
@@ -461,6 +465,22 @@ class Open8055Reader(threading.Thread):
                     break
                 except:
                     pass
+
+            # ----
+            # In client startup mode we suppress all messages until
+            # we sent the CONFIG1 and OUTPUT messages.
+            # ----
+            if self.startup:
+                hid_type = data[0:2]
+                if hid_type == '03':
+                    self.had_config1 = True
+                elif hid_type == '01':
+                    self.had_output = True
+                else:
+                    if self.had_output and self.had_config1:
+                        self.startup = False
+                    else:
+                        continue
 
             try:
                 self.client.send('RECV ' + data + '\n')
