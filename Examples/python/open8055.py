@@ -35,7 +35,7 @@
 import sys, os, socket, threading, Queue
 
 # ----------
-# Constants
+# Port configuration mode values
 # ----------
 MODE_ADC10      = 10
 MODE_ADC9       = 11
@@ -50,6 +50,18 @@ MODE_SERVO      = 31
 MODE_ISERVO     = 32
 
 MODE_PWM        = 40
+
+# ----------
+# HID command and report types encoded in the first byte
+# ----------
+OUTPUT          = 0x01
+GETINPUT        = 0x02
+SETCONFIG1      = 0x03
+GETCONFIG       = 0x04
+SAVECONFIG      = 0x05
+SAVEALL         = 0x06
+RESET           = 0x7F
+INPUT           = 0x81
 
 
 # ----------
@@ -88,15 +100,36 @@ class open8055:
                 not self.last_input:
             args, self.inbuf = _recv(self.sock, self.inbuf)
             if args[0] == 'RECV':
-                hid_type = args[1][0:2]
-                if hid_type == '01':
-                    self.last_output = args[1]
-                elif hid_type == '03':
-                    self.last_config1 = args[1]
-                elif hid_type == '81':
-                    self.last_input = args[1]
+                hid_type = int(args[1])
+                values = [int(x) for x in args[1:]]
+                if hid_type == INPUT:
+                    self.last_input = dict((
+                            ('msgType',         hid_type),
+                            ('inputBits',       values[1]),
+                            ('inputCounter',    values[2:7]),
+                            ('inputADCValue',   values[7:9]),
+                        ))
+                elif hid_type == OUTPUT:
+                    self.last_output = dict((
+                            ('msgType',         hid_type),
+                            ('outputBits',      values[1]),
+                            ('outputValue',     values[2:10]),
+                            ('outputPWMValue',  values[10:12]),
+                            ('resetCounter',    values[12]),
+                        ))
+                elif hid_type == SETCONFIG1:
+                    self.last_config1 = dict((
+                            ('msgType',         hid_type),
+                            ('modeADC',         values[1:3]),
+                            ('modeInput',       values[3:8]),
+                            ('modeOutput',      values[8:16]),
+                            ('modePWM',         values[16:18]),
+                            ('debounceValue',   values[18:23]),
+                            ('cardAddress',     values[23]),
+                        ))
                 else:
-                    raise Exception('unexpected HID report type 0x' + hid_type +
+                    raise Exception('unexpected HID report type ' +
+                            '0x{0:02X}'.format(hid_type) +
                             ' in startup mode')
             elif args[0] == 'ERROR':
                 try:
@@ -129,7 +162,7 @@ class open8055:
         # an INPUT even if no input has changed.
         # ----
         self.receiver.set_status('STOP')
-        self.sock.sendall('SEND 02\n')
+        self.sock.sendall('SEND 2\n')
 
         # ----
         # Wait for the receiver thread to terminate.
@@ -151,7 +184,7 @@ class open8055:
 
     def get_input_all(self):
         self.lock.acquire()
-        result = int(self.last_input[2:4], 16) & 0xFF
+        result = self.last_input['inputBits']
         self.lock.release()
         return result
 
@@ -159,7 +192,7 @@ class open8055:
         if port < 0 or port > 4:
             raise ValueError('illegal digital input port number')
         self.lock.acquire()
-        result = (int(self.last_input[2:4], 16) & (1 << port)) != 0
+        result = result = (self.last_input['inputBits'] & (1 << port)) != 0
         self.lock.release()
         return result
 
@@ -168,7 +201,7 @@ class open8055:
             raise ValueError('illegal digital input port number')
         index = port * 4 + 4
         self.lock.acquire()
-        result = int(self.last_input[index:index+4], 16) & 0xFFFF
+        result = self.last_input['inputCounter'][port]
         self.lock.release()
         return result
 
@@ -177,7 +210,7 @@ class open8055:
             raise ValueError('illegal adc input port number')
         index = port * 4 + 24
         self.lock.acquire()
-        result = int(self.last_input[index:index+4], 16) & 0xFFFF
+        result = self.last_input['inputADCValue'][port]
         self.lock.release()
         return result
 
@@ -200,18 +233,39 @@ class _open8055receiver(threading.Thread):
                 return
 
             if args[0] == 'RECV':
-                hid_type = args[1][0:2]
+                hid_type = int(args[1])
+                values = [int(x) for x in args[1:]]
                 conn.lock.acquire()
-                if hid_type == '81':
-                    conn.last_input = args[1]
-                elif hid_type == '01':
-                    conn.last_output = args[1]
-                elif hid_type == '03':
-                    conn.last_config1 = args[1]
+                if hid_type == INPUT:
+                    conn.last_input = dict((
+                            ('msgType',         hid_type),
+                            ('inputBits',       values[1]),
+                            ('inputCounter',    values[2:7]),
+                            ('inputADCValue',   values[7:9]),
+                        ))
+                elif hid_type == OUTPUT:
+                    conn.last_output = dict((
+                            ('msgType',         hid_type),
+                            ('outputBits',      values[1]),
+                            ('outputValue',     values[2:10]),
+                            ('outputPWMValue',  values[10:12]),
+                            ('resetCounter',    values[12]),
+                        ))
+                elif hid_type == SETCONFIG1:
+                    conn.last_config1 = dict((
+                            ('msgType',         hid_type),
+                            ('modeADC',         values[1:3]),
+                            ('modeInput',       values[3:8]),
+                            ('modeOutput',      values[8:16]),
+                            ('modePWM',         values[16:18]),
+                            ('debounceValue',   values[18:23]),
+                            ('cardAddress',     values[23]),
+                        ))
                 else:
                     conn.lock.release()
                     self.lock.acquire()
-                    self.error = 'unknown HID message type 0x' + hid_type
+                    self.error = 'unknown HID message type 0x{0:02X}'.format(
+                            hid_type);
                     self.status = 'ERROR'
                     self.lock.release()
                     return
