@@ -43,7 +43,6 @@ MODE_ADC8       = 12
 
 MODE_INPUT      = 20
 MODE_FREQUENCY  = 21
-MODE_EUSART     = 22
 
 MODE_OUTPUT     = 30
 MODE_SERVO      = 31
@@ -172,12 +171,24 @@ class open8055:
         # an INPUT even if no input has changed.
         # ----
         self.receiver.set_status('STOP')
-        self.sock.sendall('SEND 2\n')
+        self.sock.sendall('SEND {0}\n'.format(GETINPUT))
 
         # ----
         # Wait for the receiver thread to terminate.
         # ----
         self.receiver.join()
+
+        # ----
+        # Send QUIT to the server and wait for it to close connection.
+        # ----
+        error = False
+        self.sock.sendall('QUIT\n')
+        while True:
+            args, self.inbuf = _recv(self.sock, self.inbuf)
+            if not args:
+                break
+            if args[0] == 'ERROR':
+                error = ' '.join(args[1:])
 
         # ----
         # Shutdown and close the server connection.
@@ -186,10 +197,12 @@ class open8055:
         self.sock.close()
 
         # ----
-        # Finally check that the receiver didn't detect an error.
+        # Finally check if there were any errors along the way.
         # ----
         if self.receiver.status != 'STOPPED':
             raise Exception(self.receiver.error)
+        if error:
+            raise Exception(error)
 
 
     def get_input_all(self):
@@ -238,6 +251,14 @@ class open8055:
         self.lock.release()
         return result
 
+    def get_output_port(self, port):
+        if port < 0 or port > 7:
+            raise ValueError('illegal digital output port number')
+        self.lock.acquire()
+        result = (self.last_output['outputBits'] & (1 << port)) != 0
+        self.lock.release()
+        return result
+
     def set_output_port(self, port, value):
         if port < 0 or port > 7:
             raise ValueError('illegal digital output port number')
@@ -252,17 +273,72 @@ class open8055:
             self.pend_output = True
         self.lock.release()
 
-    def get_output_port(self, port):
+    def get_output_value(self, port):
         if port < 0 or port > 7:
             raise ValueError('illegal digital output port number')
         self.lock.acquire()
-        result = (self.last_output['outputBits'] & (1 << port)) != 0
+        result = self.last_output['outputValue'][port]
+        self.lock.release()
+        return result
+
+    def set_output_value(self, port, value):
+        if port < 0 or port > 7:
+            raise ValueError('illegal digital output port number')
+        if value < 0 or value > 65535:
+            raise ValueError('illegal digital output value')
+        self.lock.acquire()
+        self.last_output['outputValue'][port] = int(value)
+        if self.autoflush:
+            self._send_output()
+        else:
+            self.pend_output = True
+        self.lock.release()
+
+    def get_output_servo(self, port):
+        millisec = self.get_output_value(port) / 12000.0
+        if millisec < 0.5:
+            millisec = 0.5
+        if millisec > 2.5:
+            millisec = 2.5
+        return millisec
+
+    def set_output_servo(self, port, millisec):
+        if port < 0 or port > 7:
+            raise ValueError('illegal digital output port number')
+        if millisec < 0.5 or millisec > 2.5:
+            raise ValueError('illegal value for servo pulse width')
+        self.set_output_value(port, int(millisec * 12000.0)
+
+    def get_pwm(self, port):
+        if port < 0 or port > 1:
+            raise ValueError('illegal pwm port number')
+        self.lock.acquire()
+        result = self.last_output['outputPWMValue'][port]
+        self.lock.release()
+        return result
+
+    def set_pwm(self, port, value):
+        if port < 0 or port > 1:
+            raise ValueError('illegal pwm port number')
+        if value < 0 or value > 1023:
+            raise ValueError('illegal pwm value')
+        self.lock.acquire()
+        self.last_output['outputPWMValue'][port] = int(value)
+        if self.autoflush:
+            self._send_output()
+        else:
+            self.pend_output = True
+        self.lock.release()
+
+    def get_autoflush(self):
+        self.lock.acquire()
+        result = self.autoflush
         self.lock.release()
         return result
 
     def set_autoflush(self, state):
         self.lock.acquire()
-        self.autoflush = state
+        self.autoflush = (state != False)
         if state:
             if self.pend_output:
                 self._send_output()
