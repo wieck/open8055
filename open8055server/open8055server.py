@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import os, sys, time, threading
-import socket, select, random
+import socket, select, random, struct
 import open8055io
 
 if os.name == 'posix':
@@ -312,7 +312,7 @@ class Open8055Client(threading.Thread):
             try:
                 self.cardio.set_status('STOP')
                 try:
-                    open8055io.write(self.cardid, '02')
+                    open8055io.write(self.cardid, struct.pack('B', 0x02))
                 except:
                     pass
                 self.cardio.join()
@@ -327,9 +327,10 @@ class Open8055Client(threading.Thread):
         # ----
         try:
             if self.conn:
-                self.sock.shutdown(socket.SHUT_RDWR)
+                self.conn.shutdown(socket.SHUT_RDWR)
                 self.conn.close()
-        except:
+        except Exception as err:
+            log_error('client {0}: {1}'.format(self.addr, str(err)))
             pass
 
         # ----
@@ -377,23 +378,64 @@ class Open8055Client(threading.Thread):
         # is going to suppress INPUT messages until OUTPUT and CONFIG1
         # have been reported.
         # ----
-        open8055io.write(cardid, '04')
+        open8055io.write(cardid, struct.pack('B', 0x04))
 
     # ----------
     # cmd_send()
     # ----------
     def cmd_send(self, args):
-        if len(args) != 2:
-            raise Exception('usage: SEND data')
         if self.cardid < 0:
             raise Exception('not connected to a card')
 
+        # ----
+        # Get the HID command message format by type
+        # ----
+        hid_type = int(args[1])
+        if hid_type == 0x01:            # OUTPUT
+            msg_fmt = '!BB8H2HB'
+            num_val = 13
+        elif hid_type == 0x02:          # GETINPUT
+            msg_fmt = '!B'
+            num_val = 1
+        elif hid_type == 0x03:          # SETCONFIG1
+            msg_fmt = '!B2B5B8B2B5HB'
+            num_val = 24
+        elif hid_type == 0x04:          # GETCONFIG
+            msg_fmt = '!B'
+            num_val = 1
+        elif hid_type == 0x05:          # SAVECONFIG
+            msg_fmt = '!B'
+            num_val = 1
+        elif hid_type == 0x06:          # SAVEALL
+            msg_fmt = '!B'
+            num_val = 1
+        elif hid_type == 0x7F:          # RESET
+            msg_fmt = '!B'
+            num_val = 1
+        else:
+            raise Exception('invalid HID command type 0x{0:02X}'.format(
+                    hid_type))
+
+
+        # ----
+        # Create a sequence of integers for that format. Add zeroes
+        # for missing members at the end (telnet debugging aid)
+        # ----
+        vals = [int(x) for x in args[1:]]
+        while len(vals) < num_val:
+            vals.append(0)
+
+        # ----
+        # Pack this into the binary message and send it to the card.
+        # ----
+        data = struct.pack(msg_fmt, *vals)
+
         try:
-            open8055io.write(self.cardid, args[1])
+            open8055io.write(self.cardid, data)
         except Exception as err:
             self.set_status('STOP')
             try:
-                self.client.send('ERROR ' + str(err) + '\n')
+                self.client.send('ERROR from write ' + str(err) + '\n')
             except:
                 pass
 
@@ -440,6 +482,10 @@ class Open8055Client(threading.Thread):
 
 
 # ----------------------------------------------------------------------
+# Open8055Reader
+#
+#   Class implementing a thread that reads data from an Open8055 card
+#   and sends it to the associated client.
 # ----------------------------------------------------------------------
 class Open8055Reader(threading.Thread):
     def __init__(self, client, cardid):
@@ -470,11 +516,11 @@ class Open8055Reader(threading.Thread):
             # In client startup mode we suppress all messages until
             # we sent the CONFIG1 and OUTPUT messages.
             # ----
+            hid_type = ord(data[0])
             if self.startup:
-                hid_type = data[0:2]
-                if hid_type == '03':
+                if hid_type == 0x03:
                     self.had_config1 = True
-                elif hid_type == '01':
+                elif hid_type == 0x01:
                     self.had_output = True
                 else:
                     if self.had_output and self.had_config1:
@@ -482,15 +528,39 @@ class Open8055Reader(threading.Thread):
                     else:
                         continue
 
-            try:
-                self.client.send('RECV ' + data + '\n')
-            except:
+            # ----
+            # Format the client message according to the report type.
+            # ----
+            if hid_type == 0x81:
+                msg_fmt = '!BB5H2H'
+            elif hid_type == 0x01:
+                msg_fmt = '!BB8H2HB'
+            elif hid_type == 0x03:
+                msg_fmt = '!B2B5B8B2B5HB'
+            else:
+                try:
+                    self.client.send('ERROR unknown HID packet type ' +
+                            '0x{0:02X} received from card'.format(hid_type))
+                except:
+                    pass
                 break
-                pass
+
+            message = ' '.join(str(elem) for elem in 
+                    struct.unpack(msg_fmt, data[0:struct.calcsize(msg_fmt)]))
+
+            try:
+                self.client.send('RECV ' + message + '\n')
+            except Exception as err:
+                log_error(str(err))
+                break
             
+        # ----
+        # The reader loop exited. Close the card and terminate thread.
+        # ----
         try:
             open8055io.close(self.cardid)
-        except:
+        except Exception as err:
+            log_error('client {0}: {1}'.format(self.client.addr, str(err)))
             pass
 
         self.set_status('STOPPED')

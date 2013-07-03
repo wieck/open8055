@@ -533,9 +533,6 @@ device_read(PyObject *self, PyObject *args)
 	Open8055Card   *card;
 	int				rc;
 	unsigned char	ioBuf[OPEN8055_HID_MESSAGE_SIZE];
-	char			data[OPEN8055_HID_MESSAGE_SIZE * 2 + 1];
-	char		   *cp;
-	int				idx;
 	char			errbuf[1024];
 
 
@@ -589,14 +586,7 @@ device_read(PyObject *self, PyObject *args)
 		return NULL;
 	}
 
-	cp = data;
-	for (idx = 0; idx < OPEN8055_HID_MESSAGE_SIZE; idx++)
-	{
-		sprintf(cp, "%02X", ioBuf[idx] & 0xFF);
-		cp += 2;
-	}
-
-	return Py_BuildValue("s", data);
+	return Py_BuildValue("s#", &ioBuf, OPEN8055_HID_MESSAGE_SIZE);
 }
 
 
@@ -611,9 +601,9 @@ device_write(PyObject *self, PyObject *args)
 {
 	int				cardNumber;
 	Open8055Card   *card;
-	const char	   *data;
+	unsigned char  *data;
 	unsigned char	ioBuf[OPEN8055_HID_MESSAGE_SIZE];
-	int				idx;
+	int				data_len;
 	char			errbuf[1024];
 	int				rc;
 
@@ -621,8 +611,10 @@ device_write(PyObject *self, PyObject *args)
 	 * Parse command args and check card number
 	 * ----
 	 */
-	if (!PyArg_ParseTuple(args, "is", &cardNumber, &data))
+	if (!PyArg_ParseTuple(args, "is#", &cardNumber, 
+			&data, &data_len))
 		return NULL;
+
 	if (cardNumber < 0 || cardNumber >= OPEN8055_MAX_CARDS)
 	{
 		PyErr_SetString(PyExc_ValueError, "invalid card number");
@@ -636,40 +628,11 @@ device_write(PyObject *self, PyObject *args)
 	card = &deviceCard[cardNumber];
 
 	/* ----
-	 * Parse the HID packet data into raw bytes
-	 * ----
-	 */
-	if (data == NULL || strlen(data) > OPEN8055_HID_MESSAGE_SIZE * 2)
-	{
-		PyErr_SetString(PyExc_ValueError, "invalid HID report");
-		return NULL;
-	}
-	idx = 0;
-	memset(ioBuf, 0, sizeof(ioBuf));
-	while (data[0] != '\0')
-	{
-		unsigned int	bval;
-
-		if (data[1] == '\0')
-		{
-			PyErr_SetString(PyExc_ValueError, "invalid HID report");
-			return NULL;
-		}
-
-		if (sscanf(data, "%02x", &bval) != 1)
-		{
-			PyErr_SetString(PyExc_ValueError, "invalid HID report");
-			return NULL;
-		}
-
-		ioBuf[idx++] = bval;
-		data += 2;
-	}
-
-	/* ----
 	 * Send it via interrupt transfer.
 	 * ----
 	 */
+	memset(ioBuf, 0, sizeof(ioBuf));
+	memcpy(ioBuf, data, (data_len > sizeof(ioBuf)) ? sizeof(ioBuf) : data_len);
 	libusb_fill_interrupt_transfer(card->writeTransfer, card->handle,
 			LIBUSB_ENDPOINT_OUT | 1, ioBuf, 
 			OPEN8055_HID_MESSAGE_SIZE,
