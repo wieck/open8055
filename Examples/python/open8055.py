@@ -81,7 +81,9 @@ class open8055:
         self.last_output    = None      # Current OUTPUT data
         self.inbuf          = ''        # Raw input buffer
         self.listener       = None      # Somebody is waiting for input
-        self.autoflush      = False     # If to send changes immediately
+        self.autoflush      = True      # If to send changes immediately
+        self.pend_output    = False     # Pending OUTPUT to flush
+        self.pend_config1   = False     # Pending CONFIG1 to flush
         self.lock           = threading.Lock()
 
         # ----
@@ -156,6 +158,14 @@ class open8055:
 
     def close(self):
         # ----
+        # Try to flush any pending output to the client, just in case.
+        # ----
+        try:
+            self.flush()
+        except:
+            pass
+
+        # ----
         # Set the status of the receiver thread to stop, so that
         # it will exit on the next HID report received.
         # Then send a GETINPUT message, forcing the card to produce
@@ -199,7 +209,6 @@ class open8055:
     def get_counter(self, port):
         if port < 0 or port > 4:
             raise ValueError('illegal digital input port number')
-        index = port * 4 + 4
         self.lock.acquire()
         result = self.last_input['inputCounter'][port]
         self.lock.release()
@@ -208,11 +217,77 @@ class open8055:
     def get_adc(self, port):
         if port < 0 or port > 1:
             raise ValueError('illegal adc input port number')
-        index = port * 4 + 24
         self.lock.acquire()
         result = self.last_input['inputADCValue'][port]
         self.lock.release()
         return result
+
+    def set_output_all(self, value):
+        value &= 0xFF
+        self.lock.acquire()
+        self.last_output['outputBits'] = value
+        if self.autoflush:
+            self._send_output()
+        else:
+            self.pend_output = True
+        self.lock.release()
+
+    def get_output_all(self):
+        self.lock.acquire()
+        result = self.last_output['outputBits']
+        self.lock.release()
+        return result
+
+    def set_output_port(self, port, value):
+        if port < 0 or port > 7:
+            raise ValueError('illegal digital output port number')
+        self.lock.acquire()
+        if value:
+            self.last_output['outputBits'] |= (1 << port)
+        else:
+            self.last_output['outputBits'] &= ~(1 << port)
+        if self.autoflush:
+            self._send_output()
+        else:
+            self.pend_output = True
+        self.lock.release()
+
+    def get_output_port(self, port):
+        if port < 0 or port > 7:
+            raise ValueError('illegal digital output port number')
+        self.lock.acquire()
+        result = (self.last_output['outputBits'] & (1 << port)) != 0
+        self.lock.release()
+        return result
+
+    def set_autoflush(self, state):
+        self.lock.acquire()
+        self.autoflush = state
+        if state:
+            if self.pend_output:
+                self._send_output()
+                self.pend_output = False
+        self.lock.release()
+
+    def flush(self):
+        self.lock.acquire()
+        if self.pend_output:
+            self._send_output()
+            self.pend_output = False
+        self.lock.release()
+
+    def _send_output(self):
+        msg = ' '.join((
+                'SEND',
+                str(self.last_output['msgType']),
+                str(self.last_output['outputBits']),
+                ' '.join(
+                    [str(y) for y in self.last_output['outputValue']]),
+                ' '.join(
+                    [str(y) for y in self.last_output['outputPWMValue']]),
+                str(self.last_output['resetCounter'])
+            )) + '\n'
+        self.sock.sendall(msg)
 
 class _open8055receiver(threading.Thread):
     def __init__(self, conn):
