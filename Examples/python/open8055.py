@@ -1,8 +1,13 @@
-# ----------------------------------------------------------------------
-# open8055.py
-#
-#   A python class to communicate with the open8055server.
-#
+"""
+This module provides access to Open8055 USB experiment cards via TCP/IP
+connection to an Open8055Server instance.
+
+Functions:
+
+cards() -- return a list of cards that are available on the server
+open() -- connect to the server and open the specified card
+"""
+
 # ----------------------------------------------------------------------
 #
 #  Copyright (c) 2013, Jan Wieck
@@ -32,7 +37,9 @@
 #  
 # ----------------------------------------------------------------------
 
-import sys, os, socket, threading, Queue
+import os
+import socket
+import sys
 
 # ----------
 # Port configuration mode values
@@ -63,528 +70,856 @@ RESET           = 0x7F
 INPUT           = 0x81
 
 
-# ----------
-# The open8055 class
-# ----------
-class open8055:
-    def __init__(self, cardid, 
-            host='localhost', port=8055, user='nobody', password=None,
-            timeout=None):
-        # ----
-        # Open the connection and initialize object variables
-        # ----
-        self.sock, self.server_version, salt = _connect(
-                host, port, user, password, timeout)
-        self.last_input     = None      # Last HID report of type INPUT
-        self.last_config1   = None      # Current CONFIG1 data
-        self.last_output    = None      # Current OUTPUT data
-        self.inbuf          = ''        # Raw input buffer
-        self.listener       = None      # Somebody is waiting for input
-        self.autoflush      = True      # If to send changes immediately
-        self.pend_output    = False     # Pending OUTPUT to flush
-        self.pend_config1   = False     # Pending CONFIG1 to flush
-        self.lock           = threading.Lock()
-
-        # ----
-        # Send the OPEN command
-        # ----
-        md5_password = _encrypt_password(user, password, salt)
-        self.sock.sendall('OPEN ' + str(cardid) + ' ' + 
-                user + ' ' + md5_password + '\n')
-
-        # ----
-        # The Open8055Server will make sure we get CONFIG1, OUTPUT
-        # and a forced INPUT report after connecting.
-        # Process the data until we have all of that.
-        # ----
-        while not self.last_config1 or not self.last_output or \
-                not self.last_input:
-            args, self.inbuf = _recv(self.sock, self.inbuf)
-            if args[0] == 'RECV':
-                hid_type = int(args[1])
-                values = [int(x) for x in args[1:]]
-                if hid_type == INPUT:
-                    self.last_input = dict((
-                            ('msgType',         hid_type),
-                            ('inputBits',       values[1]),
-                            ('inputCounter',    values[2:7]),
-                            ('inputADCValue',   values[7:9]),
-                        ))
-                elif hid_type == OUTPUT:
-                    self.last_output = dict((
-                            ('msgType',         hid_type),
-                            ('outputBits',      values[1]),
-                            ('outputValue',     values[2:10]),
-                            ('outputPWMValue',  values[10:12]),
-                            ('resetCounter',    values[12]),
-                        ))
-                elif hid_type == SETCONFIG1:
-                    self.last_config1 = dict((
-                            ('msgType',         hid_type),
-                            ('modeADC',         values[1:3]),
-                            ('modeInput',       values[3:8]),
-                            ('modeOutput',      values[8:16]),
-                            ('modePWM',         values[16:18]),
-                            ('debounceValue',   values[18:23]),
-                            ('cardAddress',     values[23]),
-                        ))
-                else:
-                    raise Exception('unexpected HID report type ' +
-                            '0x{0:02X}'.format(hid_type) +
-                            ' in startup mode')
-            elif args[0] == 'ERROR':
-                try:
-                    self.sock.shutdown(socket.SHUT_RDRW)
-                    self.sock.close()
-                finally:
-                    raise Exception(' '.join(args[1:]))
-            else:
-                try:
-                    self.sock.shutdown(socket.SHUT_RDRW)
-                    self.sock.close()
-                finally:
-                    raise Exception('unexpected server reply: "' + 
-                            ' '.join(args) + '"')
-        # ----
-        # We are fully connected and have the current status of the card.
-        # Switch off timeouts and start the receiver thread.
-        # ----
-        self.sock.settimeout(None)
-        self.sock.setblocking(True)
-        self.receiver = _open8055receiver(self)
-        self.receiver.start()
-
-
-    def close(self):
-        # ----
-        # Try to flush any pending output to the client, just in case.
-        # ----
-        try:
-            self.flush()
-        except:
-            pass
-
-        # ----
-        # Set the status of the receiver thread to stop, so that
-        # it will exit on the next HID report received.
-        # Then send a GETINPUT message, forcing the card to produce
-        # an INPUT even if no input has changed.
-        # ----
-        self.receiver.set_status('STOP')
-        self.sock.sendall('SEND {0}\n'.format(GETINPUT))
-
-        # ----
-        # Wait for the receiver thread to terminate.
-        # ----
-        self.receiver.join()
-
-        # ----
-        # Send QUIT to the server and wait for it to close connection.
-        # ----
-        error = False
-        self.sock.sendall('QUIT\n')
-        while True:
-            args, self.inbuf = _recv(self.sock, self.inbuf)
-            if not args:
-                break
-            if args[0] == 'ERROR':
-                error = ' '.join(args[1:])
-
-        # ----
-        # Shutdown and close the server connection.
-        # ----
-        self.sock.shutdown(socket.SHUT_RDWR)
-        self.sock.close()
-
-        # ----
-        # Finally check if there were any errors along the way.
-        # ----
-        if self.receiver.status != 'STOPPED':
-            raise Exception(self.receiver.error)
-        if error:
-            raise Exception(error)
-
-
-    def get_input_all(self):
-        self.lock.acquire()
-        result = self.last_input['inputBits']
-        self.lock.release()
-        return result
-
-    def get_input_port(self, port):
-        if port < 0 or port > 4:
-            raise ValueError('illegal digital input port number')
-        self.lock.acquire()
-        result = result = (self.last_input['inputBits'] & (1 << port)) != 0
-        self.lock.release()
-        return result
-
-    def get_counter(self, port):
-        if port < 0 or port > 4:
-            raise ValueError('illegal digital input port number')
-        self.lock.acquire()
-        result = self.last_input['inputCounter'][port]
-        self.lock.release()
-        return result
-
-    def get_adc(self, port):
-        if port < 0 or port > 1:
-            raise ValueError('illegal adc input port number')
-        self.lock.acquire()
-        result = self.last_input['inputADCValue'][port]
-        self.lock.release()
-        return result
-
-    def set_output_all(self, value):
-        value &= 0xFF
-        self.lock.acquire()
-        self.last_output['outputBits'] = value
-        if self.autoflush:
-            self._send_output()
-        else:
-            self.pend_output = True
-        self.lock.release()
-
-    def get_output_all(self):
-        self.lock.acquire()
-        result = self.last_output['outputBits']
-        self.lock.release()
-        return result
-
-    def get_output_port(self, port):
-        if port < 0 or port > 7:
-            raise ValueError('illegal digital output port number')
-        self.lock.acquire()
-        result = (self.last_output['outputBits'] & (1 << port)) != 0
-        self.lock.release()
-        return result
-
-    def set_output_port(self, port, value):
-        if port < 0 or port > 7:
-            raise ValueError('illegal digital output port number')
-        self.lock.acquire()
-        if value:
-            self.last_output['outputBits'] |= (1 << port)
-        else:
-            self.last_output['outputBits'] &= ~(1 << port)
-        if self.autoflush:
-            self._send_output()
-        else:
-            self.pend_output = True
-        self.lock.release()
-
-    def get_output_value(self, port):
-        if port < 0 or port > 7:
-            raise ValueError('illegal digital output port number')
-        self.lock.acquire()
-        result = self.last_output['outputValue'][port]
-        self.lock.release()
-        return result
-
-    def set_output_value(self, port, value):
-        if port < 0 or port > 7:
-            raise ValueError('illegal digital output port number')
-        if value < 0 or value > 65535:
-            raise ValueError('illegal digital output value')
-        self.lock.acquire()
-        self.last_output['outputValue'][port] = int(value)
-        if self.autoflush:
-            self._send_output()
-        else:
-            self.pend_output = True
-        self.lock.release()
-
-    def get_output_servo(self, port):
-        millisec = self.get_output_value(port) / 12000.0
-        if millisec < 0.5:
-            millisec = 0.5
-        if millisec > 2.5:
-            millisec = 2.5
-        return millisec
-
-    def set_output_servo(self, port, millisec):
-        if port < 0 or port > 7:
-            raise ValueError('illegal digital output port number')
-        if millisec < 0.5 or millisec > 2.5:
-            raise ValueError('illegal value for servo pulse width')
-        self.set_output_value(port, int(millisec * 12000.0)
-
-    def get_pwm(self, port):
-        if port < 0 or port > 1:
-            raise ValueError('illegal pwm port number')
-        self.lock.acquire()
-        result = self.last_output['outputPWMValue'][port]
-        self.lock.release()
-        return result
-
-    def set_pwm(self, port, value):
-        if port < 0 or port > 1:
-            raise ValueError('illegal pwm port number')
-        if value < 0 or value > 1023:
-            raise ValueError('illegal pwm value')
-        self.lock.acquire()
-        self.last_output['outputPWMValue'][port] = int(value)
-        if self.autoflush:
-            self._send_output()
-        else:
-            self.pend_output = True
-        self.lock.release()
-
-    def get_autoflush(self):
-        self.lock.acquire()
-        result = self.autoflush
-        self.lock.release()
-        return result
-
-    def set_autoflush(self, state):
-        self.lock.acquire()
-        self.autoflush = (state != False)
-        if state:
-            if self.pend_output:
-                self._send_output()
-                self.pend_output = False
-        self.lock.release()
-
-    def flush(self):
-        self.lock.acquire()
-        if self.pend_output:
-            self._send_output()
-            self.pend_output = False
-        self.lock.release()
-
-    def _send_output(self):
-        msg = ' '.join((
-                'SEND',
-                str(self.last_output['msgType']),
-                str(self.last_output['outputBits']),
-                ' '.join(
-                    [str(y) for y in self.last_output['outputValue']]),
-                ' '.join(
-                    [str(y) for y in self.last_output['outputPWMValue']]),
-                str(self.last_output['resetCounter'])
-            )) + '\n'
-        self.sock.sendall(msg)
-
-class _open8055receiver(threading.Thread):
-    def __init__(self, conn):
-        threading.Thread.__init__(self)
-
-        self.conn       = conn
-        self.status     = 'RUN'
-        self.lock       = threading.Lock()
-
-    def run(self):
-        conn = self.conn
-        while self.get_status() == 'RUN':
-            try:
-                args, conn.inbuf = _recv(conn.sock, conn.inbuf)
-            except Exception as err:
-                self.error = str(err)
-                self.status = 'ERROR'
-                return
-
-            if args[0] == 'RECV':
-                hid_type = int(args[1])
-                values = [int(x) for x in args[1:]]
-                conn.lock.acquire()
-                if hid_type == INPUT:
-                    conn.last_input = dict((
-                            ('msgType',         hid_type),
-                            ('inputBits',       values[1]),
-                            ('inputCounter',    values[2:7]),
-                            ('inputADCValue',   values[7:9]),
-                        ))
-                elif hid_type == OUTPUT:
-                    conn.last_output = dict((
-                            ('msgType',         hid_type),
-                            ('outputBits',      values[1]),
-                            ('outputValue',     values[2:10]),
-                            ('outputPWMValue',  values[10:12]),
-                            ('resetCounter',    values[12]),
-                        ))
-                elif hid_type == SETCONFIG1:
-                    conn.last_config1 = dict((
-                            ('msgType',         hid_type),
-                            ('modeADC',         values[1:3]),
-                            ('modeInput',       values[3:8]),
-                            ('modeOutput',      values[8:16]),
-                            ('modePWM',         values[16:18]),
-                            ('debounceValue',   values[18:23]),
-                            ('cardAddress',     values[23]),
-                        ))
-                else:
-                    conn.lock.release()
-                    self.lock.acquire()
-                    self.error = 'unknown HID message type 0x{0:02X}'.format(
-                            hid_type);
-                    self.status = 'ERROR'
-                    self.lock.release()
-                    return
-                
-                if conn.listener:
-                    conn.listener.put(args)
-
-                conn.lock.release()
-
-            elif args[0] == 'ERROR':
-                self.lock.acquire()
-                self.error = ' '.join(args[1:])
-                self.status = 'ERROR'
-                self.lock.release()
-                conn.lock.acquire()
-                if conn.listener:
-                    conn.listener.put(args)
-                conn.lock.release()
-                return
-
-            else:
-                msg = 'unexpected server reply: "' + \
-                        ' '.join(args) + '"'
-                self.lock.acquire()
-                self.error = msg
-                self.status = 'ERROR'
-                self.lock.release()
-                conn.lock.acquire()
-                if conn.listener:
-                    conn.listener.put(('ERROR', msg))
-                conn.lock.release()
-                return
-        
-        self.lock.acquire()
-        if self.status != 'ERROR':
-            self.status = 'STOPPED'
-        self.lock.release()
-
-        conn.lock.acquire()
-        if conn.listener:
-            conn.listener.put(('STOPPED', ))
-        conn.lock.release()
-
-
-    def get_status(self):
-        self.lock.acquire()
-        result = self.status
-        self.lock.release()
-        return result
-        
-    def set_status(self, new):
-        self.lock.acquire()
-        self.status = new
-        self.lock.release()
-        
-
-# ----------
+# ----
 # cards()
-#
-#   Utility function to get the list of available cardids.
-# ----------
-def cards(host='localhost', port=8055, user='nobody', password='nopass',
-        timeout=None):
+# ----
+def cards(host = 'localhost', port = 8055, user = 'nobody', 
+        password = 'nopass', timeout = None):
+    """
+    Returns the available cards on the server as an integer sequence.
+    """
     # ----
-    # Open the connection
+    # Connect to the server.
     # ----
-    sock, server_version, salt = _connect(host, port, user, password, timeout)
-    inbuf = ''
+    card = Open8055()
+    card._connect(host, port, user, password, timeout)
 
     # ----
-    # Send the LIST command
+    # Send the LIST command and read the reply.
+    # TODO: need to do password MD5 encryption here.
     # ----
-    md5_password = _encrypt_password(user, password, salt)
-    sock.sendall('LIST ' + user + ' ' + md5_password + '\n')
+    card._send_message('LIST {0} {1}'.format(user, password))
+    line = card._recv_message(timeout)
+    msg = line.split(' ')
+    if msg[0] != 'LIST':
+        raise Exception(
+                'expected LIST message, got "{0}" instead'.format(line))
+    result = [int(c) for c in msg[1:]]
 
     # ----
-    # Wait for the LIST reply
+    # Disconnect from the server and return the lists of cards.
     # ----
-    while True:
-        args, inbuf = _recv(sock, inbuf)
-        if args[0].upper() == 'LIST':
-            break
-        elif args[0].upper() == 'ERROR':
-            try:
-                sock.shutdown(socket.SHUT_RDRW)
-                sock.close()
-            finally:
-                raise Exception(' '.join(args[1:]))
-        else:
-            try:
-                sock.shutdown(socket.SHUT_RDRW)
-                sock.close()
-            finally:
-                raise Exception('unexpected server reply: "', + 
-                        ' '.join(args) + '"')
+    error = None
+    try:
+        card.send_socket.shutdown(socket.SHUT_RDWR)
+        card.send_socket.close()
+        card.recv_socket.close()
+    except Exception as exc:
+        error = exc
 
-    # ----
-    # Close the connection.
-    # ----
-    sock.shutdown(socket.SHUT_RDWR)
-    sock.close()
+    card.send_socket = None
+    card.recv_socket = None
 
-    # ----
-    # Return the result
-    # ----
-    result = []
-    for card in args[1:]:
-        result.append(int(card))
+    if error is not None:
+        raise error
+
     return result
 
 
-def _encrypt_password(user, password, salt):
-    ##########
-    # TODO: actually encrypt the thing or look it up in ~/.open8055passwd
-    ##########
-    if not password:
-        return 'nopass'
-    return password
+# ----
+# open()
+# ----
+def open(cardid, host = 'localhost', port = 8055, user = 'nobody', 
+        password = 'nopass', timeout = None):
+    """
+    Open an Open8055 card on the server.
+
+    This will also receive the first three messages from the card,
+    which are always the CONFIG1, OUTPUT and INPUT reports. The
+    timeout argument is applied to establishing the TCP/IP
+    connection and each single IO operation, not the whole process.
+    """
+    # ----
+    # Connect to the server.
+    # ----
+    card = Open8055()
+    card._connect(host, port, user, password, timeout)
+
+    # ----
+    # Send the OPEN command.
+    # TODO: need to do password MD5 encryption here.
+    # ----
+    card._send_message('OPEN {0} {1} {2}'.format(cardid, user, password))
+    
+    # ----
+    # After connecting and opening a card, the server makes sure
+    # that we receive a CONFIG1 and OUTPUT message as well as a
+    # forced INPUT report. We can simply wait for that INPUT and
+    # let poll() do all the work.
+    # ----
+    while card.cur_input is None:
+        card.poll(timeout)
+
+    return card
 
 
-def _connect(host='localhost', port=8055, user='nobody', password='nopass',
-        timeout=None):
-    # ----
-    # Open the host connection and set the timeout.
-    # ----
-    sock = socket.create_connection((host, port))
-    sock.settimeout(timeout)
-    inbuf = ''
+# ----------
+# Open8055
+# ----------
+class Open8055:
+    """
+    Object representing one Open8055 USB experiment board.
 
-    # ----
-    # Get the HELLO message and remember the server version
-    # ----
-    args, inbuf = _recv(sock, inbuf)
-    if args[0] != 'HELLO' or args[1] != 'Open8055Server':
+    General methods:
+
+    close() -- close the connection to the server
+    flush() -- send output and configuration changes to the server
+    poll() -- check server for new input states and process all of them
+    poll_single() -- check server for new input and process only one
+    fileno() -- return the receive file desctiptor for use in select()
+
+    Methods related to digital inputs:
+
+    set_input_mode() -- set the operating mode of a digital input
+    get_input_mode() -- get the current operating mode of a digital input
+    get_input_all() -- get the state of all digital input ports
+    get_input() -- get the state of one digital input port
+    get_counter() -- get the counter/frequency of a digital input port
+    reset_counter() -- reset the counter of a digital input port
+    set_debounce() -- set the debounce time of a digital input port
+    get_debounce() -- get the current debounce time of a digital input port
+
+    Methods related to analog inputs:
+
+    set_adc_mode() -- set the operating mode of an analog input
+    get_adc_mode() -- get the current operationg mode of an analog input
+    get_adc() -- get the current value of an analog input
+
+    Methods related to digital outputs:
+
+    set_output_mode() -- set the operating mode of a digital output
+    get_output_mode() -- get the current operating mode of a digital output
+    set_output_all() -- set the state of all digital output ports
+    get_output_all() -- get the current state of all digital output ports
+    set_output() -- set the state of one digital output port
+    get_output() -- get the state of one digital output port
+    set_output_servo() -- set the pulse width of a port in servo mode
+    get_output_servo() -- get the current pulse width of a port in servo mode
+
+    Methods related to PWM outputs:
+
+    set_pwm_mode() -- set the operating mode of a PWM output
+    get_pwm_mode() -- get the current operating mode of a PWM output
+    set_pwm() -- set the duty cycle of a PWM output
+    get_pwm() -- get the current duty cycle of a PWM output
+
+    Variables:
+
+    autoflush -- if to send changes immediately or via flush()
+    """
+    def __init__(self):
+        self.cardid = None              # Card number on the server
+        self.cur_input = None           # Last HID report of type INPUT
+        self.cur_output = None          # Current OUTPUT data
+        self.cur_config1 = None         # Current CONFIG1 data
+
+        self.autoflush = True           # If to send changes immediately
+        self.pend_output = False        # Pending OUTPUT to flush
+        self.pend_config1 = False       # Pending CONFIG1 to flush
+
+        self.input_buffer = ''          # Input buffer used in poll()
+        self.recv_socket = None         # Socket used for receiving
+        self.send_socket = None         # Socket used for sending
+
+    def __del__(self):
         try:
-            sock.shutdown(socket.SHUT_RDWR)
-            sock.close()
-        finally:
-            raise Exception('Expected "HELLO Open8055Server <version>" - ' +
-                    'got "' + line + '" instead')
-    version = args[2]
+            self.close()
+        except:
+            pass
 
-    # ----
-    # Get the SALT
-    # ----
-    args, inbuf = _recv(sock, inbuf)
-    if args[0].upper() != 'SALT':
-        try:
-            sock.shutdown(socket.SHUT_RDWR)
-            sock.close()
-        finally:
-            raise Exception('Expected "SALT <hexdata>" - ' +
-                    'got "' + line + '" instead')
-    salt = args[1]
+    def close(self, timeout = None):
+        """
+        Close the connection to the card. 
+        """
+        # ----
+        # Send out all remaining changes to output or configuration.
+        # ----
+        self.flush()
 
-    return (sock, version, salt)
+        # ----
+        # Send the QUIT command to the server and wait until it
+        # closes the connection. If we don't do it this way and
+        # simply close the connection, the server will likely 
+        # see a "Connection reset by peer" error. We don't want
+        # to have our server logs full of those.
+        # ----
+        error = None
+        if self.recv_socket is not None:
+            try:
+                self._send_message('QUIT')
+                self.recv_socket.settimeout(timeout)
+                while self.recv_socket.recv(4096) != '':
+                    pass
+                self.recv_socket.shutdown(socket.SHUT_RDWR)
+                self.recv_socket.close()
+                self.send_socket.close()
+            except Exception as exc:
+                error = exc
+            finally:
+                self.recv_socket = None
+                self.send_socket = None
+        if error is not None:
+            raise error
+
+    def poll(self, timeout = 0.0):
+        """
+        Attempts to receive data from the server and process all available
+        messages, updating the internal status data accordingly.
+
+        If used in connection with select(), it should be called with
+        a 0.0 timeout (default) to process all available messages and
+        update the known state of the card.
+
+        Returns True if any message(s) were received, False otherwise.
+        """
+        # ----
+        # See if there is at least one line available.
+        # ----
+        line = self._recv_message(timeout)
+        if line is None:
+            return False
+
+        # ----
+        # Process that.
+        # ----
+        self._poll_process_msg(line)
+
+        # ----
+        # Now process any other complete message we received so far.
+        # ----
+        while True:
+            idx = self.input_buffer.find('\n')
+            if idx < 0:
+                return True
+            
+            line = self.input_buffer[0:idx]
+            self.input_buffer = self.input_buffer[idx + 1:]
+            self._poll_process_msg(line)
+
+    def poll_single(self, timeout = 0.0):
+        """
+        Attempts to receive data from the server and process one message.
+        The implementation uses an internal receive buffer and eventually
+        receives multiple messages with one underlying socket.recv().
+
+        If used in connection with select(), poll_single() should be called
+        in a loop with the default 0.0 second timeout until it returns 
+        False or an exception occurs. Otherwise the next call to select()
+        will wait until the server sends more messages, although messages
+        are readily available in the internal receive buffer.
+
+        If you are not interested in single state changes to the input
+        ports, use poll() instead.
+
+        Returns True if a message was received, False otherwise.
+        """
+        # ----
+        # See if there is at least one line available.
+        # ----
+        line = self._recv_message(timeout)
+        if line is None:
+            return False
+
+        # ----
+        # Process that.
+        # ----
+        self._poll_process_msg(line)
+        return True
+
+    def _poll_process_msg(self, line):
+        """
+        Internal function to interpret one server message.
+        """
+        msg = line.split(' ')
+        if msg[0] == 'RECV':
+            # ----
+            # Message is of type RECV, which is the content of one
+            # HID report.
+            # ----
+            hid_type = int(msg[1])
+            values = [int(x) for x in msg[2:]]
+            if hid_type == INPUT:
+                self.cur_input = dict((
+                            ('msg_type', hid_type),
+                            ('input_bits', values[0]),
+                            ('input_counter', values[1:6]),
+                            ('input_adc_value', values[6:8]),
+                        ))
+            elif hid_type == OUTPUT:
+                self.cur_output = dict((
+                            ('msg_type', hid_type),
+                            ('output_bits', values[0]),
+                            ('output_value', values[1:9]),
+                            ('output_pwm_value', values[9:11]),
+                            ('reset_counter', values[11]),
+                        ))
+            elif hid_type == SETCONFIG1:
+                self.cur_config1 = dict((
+                            ('msg_type', hid_type),
+                            ('mode_adc', values[0:2]),
+                            ('mode_input', values[2:7]),
+                            ('mode_output', values[7:15]),
+                            ('mode_pwm', values[15:17]),
+                            ('debounce_value', values[17:22]),
+                            ('card_address', values[22]),
+                        ))
+            else:
+                raise Exception(
+                        'received unknown HID type 0x{0:02X}'.format(hid_type))
+        
+        elif msg[0] == 'ERROR':
+            # ----
+            # Report the server ERROR without the message type.
+            # ----
+            raise Exception('Server error - ' + ' '.join(msg[1:]))
+        
+        else:
+            # ----
+            # The server should not send anything else.
+            # ----
+            raise Exception('Unexpected server message - ' + ' '.join(msg))
+
+    def flush(self):
+        """
+        Send any outstanding changes, made to the output state or the
+        port configurations, to the server.
+
+        This call does nothing in autoflush mode.
+        """
+        if self.pend_config1:
+            self._send_config1()
+            self.pend_config1 = False
+        if self.pend_output:
+            self._send_output()
+            self.pend_output = False
+
+    def fileno():
+        """
+        Returns the small integer system file number for the receiving
+        socket to be used in operations like select() for non-blocking
+        reads from the card.
+        """
+        return self.recv_socket.fileno()
+        
+    # ----------
+    # Functions related to digital input ports
+    # ----------
+
+    def set_input_mode(self, port, mode):
+        """
+        Set the operating mode of a digital input port.
+
+        Modes:
+
+        open8055.MODE_INPUT
+            Normal input operation with on/off state and counter.
+
+        open8055.MODE_FREQUENCY 
+            The port does not report on states (always off) and the counter
+            reflects the number of input signals counted per second. The
+            current firmware can reliably measure frequencies up to 2.5 kHz.
+        """
+        if port < 0 or port > 4:
+            raise ValueError('digital input port number out of range')
+        if mode not in (MODE_INPUT, MODE_FREQUENCY,):
+            raise ValueError('invalid mode for digital input')
+        self.cur_config1['mode_input'][port] = mode
+
+        if self.autoflush:
+            self._send_config1()
+        else:
+            self.pend_config1 = True
+
+    def get_input_mode(self, port):
+        """
+        Get the current operating mode of a digital input port.
+
+        Modes:
+
+        open8055.MODE_INPUT
+            Normal input operation with on/off state and counter.
+
+        open8055.MODE_FREQUENCY 
+            The port does not report on states (always off) and the counter
+            reflects the number of input signals counted per second. The
+            current firmware can reliably measure frequencies up to 2.5 kHz.
+        """
+        if port < 0 or port > 4:
+            raise ValueError('digital input port number out of range')
+        return self.cur_config1['mode_input'][port]
+
+    def get_input_all(self):
+        """
+        Returns the states of the 5 digital inputs as an integer. 
+        """
+        return self.cur_input['input_bits']
+
+    def get_input(self, port):
+        """
+        Returns the state of one digital input as a boolean.
+        """
+        if port < 0 or port > 4:
+            raise ValueError('digital input port number out of range')
+        return (self.cur_input['input_bits'] & (1 << port)) != 0
+
+    def get_counter(self, port):
+        """
+        Returns the current counter value or frequency of a digital input.
+        """
+        if port < 0 or port > 4:
+            raise ValueError('digital input port number out of range')
+        return self.cur_input['input_counter'][port]
+
+    def reset_counter(self, port):
+        """
+        Reset the counter of a digital input port.
+        """
+        if port < 0 or port > 4:
+            raise ValueError('digital input port number out of range')
+        self.cur_output['reset_counter'] |= (1 << port)
+
+        if self.autoflush:
+            self._send_output()
+        else:
+            self.pend_output = True
+
+    def set_debounce(self, port, seconds):
+        """
+        Set the debounce timeout of a digital input counter. 
+
+        The debounce time defines how long the input port must be either open
+        or closed for being considered "changed" with respect to counting.
+        This is used to eliminate multiple counts when mechanical contacts
+        open or close, which often actually do "bounce".
+
+        The value is in seconds between 0.0 and 5.0.  The internal precision
+        of the firmware is 0.1 milliseconds or 0.0001 seconds.
+        """
+        if port < 0 or port > 4:
+            raise ValueError('digital input port number out of range')
+        if seconds < 0.0 or seconds > 5.0:
+            raise ValueError('debounce time out of range')
+
+        self.cur_config1['debounce_value'][port] = int(seconds * 10000) + 1
+
+        if self.autoflush:
+            self._send_config1()
+        else:
+            self.pend_config1 = True
+
+    def get_debounce(self, port):
+        """
+        Returns the current debounce time of a digital input counter
+        in seconds.
+        """
+        if port < 0 or port > 4:
+            raise ValueError('digital input port number out of range')
+        return (self.cur_config1['debounce_value'][port] - 1) / 10000.0
+
+    # ----------
+    # Functions related to analog inputs
+    # ----------
+
+    def set_adc_mode(self, port, mode):
+        """
+        Set the operating mode of an analog input port.
+
+        K8055 and K8055N boards do not provide a stable, clean reference
+        voltage for the ADC. Depending on the power source, the quality
+        of the board assembly and electromagnetic noise in the environment
+        the can show significant fluctuation in the reported ADC value.
+
+        The lower precision modes allow to sacrifice precision in order
+        to reduce the number of input reports sent by the card.
+
+        Modes:
+
+        open8055.MODE_ADC10
+            Operate with 10 bits ADC precision.
+
+        open8055.MODE_ADC9
+            Operate with 9 bits ADC precision.
+
+        open8055.MODE_ADC8
+            Operate with 8 bits ADC precision.
+        """
+        if port < 0 or port > 1:
+            raise ValueError('adc input port number out of range')
+        if mode not in (MODE_ADC10, MODE_ADC9, MODE_ADC8,):
+            raise ValueError('invalid mode for adc input')
+        self.cur_config1['mode_adc'][port] = mode
+
+        if self.autoflush:
+            self._send_config1()
+        else:
+            self.pend_config1 = True
+
+    def get_adc_mode(self, port, mode):
+        """
+        Get the current operating mode of an analog input port.
+
+        K8055 and K8055N boards do not provide a stable, clean reference
+        voltage for the ADC. Depending on the power source, the quality
+        of the board assembly and electromagnetic noise in the environment
+        the can show significant fluctuation in the reported ADC value.
+
+        The lower precision modes allow to sacrifice precision in order
+        to reduce the number of input reports sent by the card.
+
+        Modes:
+
+        open8055.MODE_ADC10
+            Operate with 10 bits ADC precision.
+
+        open8055.MODE_ADC9
+            Operate with 9 bits ADC precision.
+
+        open8055.MODE_ADC8
+            Operate with 8 bits ADC precision.
+        """
+        if port < 0 or port > 1:
+            raise ValueError('adc input port number out of range')
+        return self.cur_config1['mode_adc'][port]
+
+    def get_adc(self, port):
+        """
+        Returns the current value of an analog input. The result is a
+        floating point number between 0.0 and 1.0 representing the range
+        of the ADC converter. By default that is 0.0V to 5.0V, but it
+        can be changed on the card with the attenuator or by installing
+        the resistors for sensitivity gain.
+        """
+        if port < 0 or port > 1:
+            raise ValueError('adc port number out of range')
+
+        if self.cur_config1['mode_adc'][port] == MODE_ADC10:
+            max_value = 1023.0
+        elif self.cur_config1['mode_adc'][port] == MODE_ADC9:
+            max_value = 1022.0
+        elif self.cur_config1['mode_adc'][port] == MODE_ADC8:
+            max_value = 1020.0
+
+        return self.cur_input['input_adc_value'][port] / max_value
+
+    # ----------
+    # Functions related to digital output ports.
+    # ----------
+
+    def set_output_mode(self, port, mode):
+        """
+        Set the operating mode of a digital output port.
+
+        Modes:
+
+        open8055.MODE_OUTPUT
+            Operate as an on/off switch.
+
+        open8055.MODE_SERVO
+            In this mode the output port will generate a pulse width modulated
+            signal suitable for controlling standard hobby servos. It consists
+            of 40 pulses per second with a pulse width between 0.5 and 2.5
+            milliseconds.
+
+        open8055.MODE_ISERVO
+            Like MODE_SERVO but with inverted high/low phases. This mode is
+            useful for connecting the servo signal line directly to the
+            PIC instead of driving it with a pull-up resistor and the
+            final output port connector.
+        """
+        if port < 0 or port > 7:
+            raise ValueError('output port number out of range')
+        if mode not in (MODE_OUTPUT, MODE_SERVO, MODE_ISERVO,):
+            raise ValueError('invalid mode for output port')
+        self.cur_config1['mode_output'][port] = mode
+
+        if self.autoflush:
+            self._send_config1()
+        else:
+            self.pend_config1 = True
+
+    def get_output_mode(self, port, mode):
+        """
+        Get the current operating mode of a digital output port.
+
+        Modes:
+
+        open8055.MODE_OUTPUT
+            Operate as an on/off switch.
+
+        open8055.MODE_SERVO
+            In this mode the output port will generate a pulse width modulated
+            signal suitable for controlling standard hobby servos. It consists
+            of 40 pulses per second with a pulse width between 0.5 and 2.5
+            milliseconds.
+
+        open8055.MODE_ISERVO
+            Like MODE_SERVO but with inverted high/low phases. This mode is
+            useful for connecting the servo signal line directly to the
+            PIC instead of driving it with a pull-up resistor and the
+            final output port connector.
+        """
+        if port < 0 or port > 7:
+            raise ValueError('output port number out of range')
+        return self.cur_config1['mode_output'][port]
+
+    def set_output_all(self, value):
+        """
+        Change the states of all digital outputs, that are configured in
+        MODE_OUTPUT. The on/off states are encoded as bits in an 8-bit
+        integer value. The bit for ports, that are configured in other
+        modes, like MODE_SERVO, are ignored.
+        """
+        value = int(value) & 0xFF
+
+        self.cur_output['output_bits'] = value
+
+        if self.autoflush:
+            self._send_output()
+        else:
+            self.pend_output = True
+
+    def get_output_all(self):
+        """
+        Retrieve the states of all digital outputs. The on/off states are
+        encoded as bits in an 8-bit integer value.
+        """
+        return self.cur_output['output_bits']
+
+    def set_output(self, port, value):
+        """
+        Turn one digital output on or off.
+        """
+        if port < 0 or port > 7:
+            raise ValueError('digital output port number out of range')
+        if value:
+            self.cur_output['output_bits'] |= (1 << port)
+        else:
+            self.cur_output['output_bits'] &= ~(1 << port)
+
+        if self.autoflush:
+            self._send_output()
+        else:
+            self.pend_output = True
+
+    def get_output(self, port):
+        """
+        Retrieve the current on/off state of one digital output port.
+        """
+        if port < 0 or port > 7:
+            raise ValueError('digital output port number out of range')
+        return (self.cur_output['output_bits'] & (1 << port)) != 0
+
+    def set_output_servo(self, port, millisec):
+        """
+        Set the pulse width of a digital output port for operating modes
+        MODE_SERVO and MODE_ISERVO. The value is floating point in
+        milliseconds.
 
 
-def _recv(sock, buf, poll=False):
-    idx = buf.find('\n')
-    while idx < 0:
-        data = sock.recv(4096)
-        if not data:
-            return None, buf
-        buf += data
-        idx = buf.find('\n')
-        if idx < 0 and poll:
-            return '', inbuf
+        WARNING: The Open8055 Firmware accepts values for the pulse width
+        from 0.5 to 2.5 milliseconds. This is a greater range than many
+        hobby servos tolerate. Using values outside 1.0 to 2.0 milliseconds
+        can damage the servo. Use them at your own risk!
+        """
+        if port < 0 or port > 7:
+            raise ValueError('digital output port number out of range')
+        if millisec < 0.5 or millisec > 2.5:
+            raise ValueError('pulse width out of range for servo operation')
 
-    return buf[0:idx].split(' '), buf[idx + 1:]
+        # ----
+        # The timer used by the firmware to turn the output port off
+        # increments 12,000,000 times per second (internal clock frequency
+        # of the micro controller). The pulse width is encoded in clock
+        # ticks. One millisecond is 12,000 clock ticks.
+        # ----
+        self.cur_output['output_value'][port] = int(millisec * 12000)
+
+        if self.autoflush:
+            self._send_output()
+        else:
+            self.pend_output = True
+
+    def get_output_servo(self, port):
+        """
+        Returns the current setting for the pulse width of a digital
+        output in MODE_SERVO or MODE_ISERVO.
+        """
+        if port < 0 or port > 7:
+            raise ValueError('digital output port number out of range')
+        return self.cur_output['output_value'][port] / 12000.0
+
+    def set_pwm_mode(self, port, mode):
+        """
+        Set the operating mode of a PWM output port
+
+        Modes:
+
+        open8055.MODE_PWM
+            Operate as PWM with a frequency of 23.43 kHz
+
+        """
+        if port < 0 or port > 1:
+            raise ValueError('pwm port number out of range')
+        if mode not in (MODE_PWM,):
+            raise ValueError('invalid mode for pwm port')
+        self.cur_config1['mode_pwm'][port] = mode
+
+        if self.autoflush:
+            self._send_config1()
+        else:
+            self.pend_config1 = True
+
+    def get_pwm_mode(self, port, mode):
+        """
+        Get the current operating mode of a PWM output port
+
+        Modes:
+
+        open8055.MODE_PWM
+            Operate as PWM with a frequency of 23.43 kHz
+
+        """
+        if port < 0 or port > 1:
+            raise ValueError('pwm port number out of range')
+        return self.cur_config1['mode_pwm'][port]
+
+    def set_pwm(self, port, duty):
+        """
+        Set the duty cycle of a PWM/DAC output port. The duty cycle is
+        expressed as a floating point value between 0.0 and 1.0.
+        """
+        if port < 0 or port > 1:
+            raise ValueError('pwm output port number out of range')
+        if duty < 0.0 or duty > 1.0:
+            raise ValueError('pwm duty cycle out of range')
+
+        self.cur_output['output_pwm_value'][port] = int(duty * 1023)
+
+        if self.autoflush:
+            self._send_output()
+        else:
+            self.pend_output = True
+
+    def get_pwm(self, port):
+        """
+        Returns the current duty cycle of a PWM/DAC output port. The duty
+        cycle is expressed as a floating point value between 0.0 and 1.0.
+        """
+        if port < 0 or port > 1:
+            raise ValueError('pwm output port number out of range')
+        return self.cur_output['output_pwm_value'][port] / 1023.0
+
+    def _send_output(self):
+        """
+        Internal function to send the OUTPUT data to the server.
+        """
+        msg = 'SEND ' + ' '.join(str(x) for x in
+                    [self.cur_output['msg_type']] +
+                    [self.cur_output['output_bits']] +
+                    self.cur_output['output_value'] +
+                    self.cur_output['output_pwm_value'] +
+                    [self.cur_output['reset_counter']]
+                )
+        self._send_message(msg)
+
+    def _send_config1(self):
+        """
+        Internal function to send the SETCONFIG1 data to the server.
+        """
+        msg = 'SEND ' + ' '.join(str(x) for x in
+                    [self.cur_config1['msg_type']] +
+                    self.cur_config1['mode_adc'] +
+                    self.cur_config1['mode_input'] +
+                    self.cur_config1['mode_output'] +
+                    self.cur_config1['mode_pwm'] +
+                    self.cur_config1['debounce_value'] +
+                    [self.cur_config1['card_address']]
+                )
+        self._send_message(msg)
+
+    def _connect(self, host, port, user, password, timeout):
+        """
+        Internal function to connect to the server and process the
+        initial HELLO and SALT messages.
+        """
+        # ----
+        # Establish the connetion.
+        # ----
+        self.recv_socket = socket.create_connection((host, port), timeout)
+
+        # ----
+        # The first message from the server should be
+        # HELLO Open8055Server <server_version>
+        # ----
+        line = self._recv_message(timeout)
+        msg = line.split(' ')
+        if msg[0] != 'HELLO' or msg[1] != 'Open8055Server':
+            try:
+                self.recv_socket.shutdown(socket.SHUT_RDWR)
+                self.recv_socket.close()
+            except:
+                pass
+            raise Exception(
+                    'expected HELLO message, got "{0}" instead'.format(line))
+        self.server_version = msg[2]
+
+        # ----
+        # The second message from the server should be
+        # SALT <16_hex_characters>
+        # This random data from the server is used to guard against
+        # password replay attacks.
+        # ----
+        line = self._recv_message(timeout)
+        msg = line.split(' ')
+        if msg[0] != 'SALT':
+            try:
+                self.recv_socket.shutdown(socket.SHUT_RDWR)
+                self.recv_socket.close()
+            except:
+                pass
+            raise Exception(
+                    'expected SALT message, got "{0}" instead'.format(line))
+        self.server_salt = msg[1]
+
+        # ----
+        # Duplicate the socket so that we support blocking send()
+        # and non-blocking recv() simultaneously in multi threaded
+        # applications.
+        # ----
+        self.send_socket = socket.fromfd(self.recv_socket.fileno(),
+                self.recv_socket.family, self.recv_socket.type,
+                self.recv_socket.proto)
+
+    def _send_message(self, message):
+        """
+        Internal function to send a message on to the server.
+        """
+        self.send_socket.sendall(message + '\n')
+
+    def _recv_message(self, timeout):
+        """
+        Internal function to receive data from the server and split off
+        the first message, if available.
+        """
+        idx = self.input_buffer.find('\n')
+        if idx < 0:
+            self.recv_socket.settimeout(timeout)
+            try:
+                data = self.recv_socket.recv(4096)
+            except socket.timeout:
+                return None
+
+            if data == '':
+                raise Exception('server closed connection')
+            
+            self.input_buffer += data
+            idx = self.input_buffer.find('\n')
+            if idx < 0:
+                return None
+                
+        result = self.input_buffer[0:idx]
+        self.input_buffer = self.input_buffer[idx + 1:]
+
+        return result
+
 
