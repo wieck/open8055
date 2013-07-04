@@ -1,3 +1,9 @@
+"""
+This module provides direct USB access to an Open8055 USB experiment
+board. It uses PyWIN32 on Windows and a C extension module based on
+libusb on Unix.
+"""
+
 # ----------------------------------------------------------------------
 # open8055io.py
 #
@@ -54,16 +60,16 @@ if os.name == 'nt':
     #
     #   Check if a given card is present in the system.
     # ----------
-    def present(cardNum):
+    def present(card_num):
         # ----
         # Try to open the card to see if it is there. Since _open_card()
         # opens it in shared mode, there is no problem if the card is
         # already open. We close it right away and just report if the
         # open succeeded.
         # ----
-        cardNum = int(cardNum)
-        r, w = _open_card(cardNum)
-        if r:
+        card_num = int(card_num)
+        r, w = _open_card(card_num)
+        if r is not None:
             ret = 1
         else:
             ret = 0
@@ -76,50 +82,50 @@ if os.name == 'nt':
     #
     #   Open a Open8055.
     # ----------
-    def open(cardNum):
-        cardNum = int(cardNum)
-        if cardNum in recv_handles:
+    def open(card_num):
+        card_num = int(card_num)
+        if card_num in recv_handles:
             raise Exception('card already open')
-        r, w = _open_card(cardNum)
-        if not r:
+        r, w = _open_card(card_num)
+        if r is None:
             raise Exception('card not present')
-        recv_handles[cardNum] = r
-        send_handles[cardNum] = w
+        recv_handles[card_num] = r
+        send_handles[card_num] = w
 
     # ----------
     # close()
     #
     #   Close a Open8055.
     # ----------
-    def close(cardNum):
-        cardNum = int(cardNum)
-        if cardNum not in recv_handles:
+    def close(card_num):
+        card_num = int(card_num)
+        if card_num not in recv_handles:
             raise Exception('card not open')
 
-        win32file.CloseHandle(recv_handles[cardNum])
-        win32file.CloseHandle(send_handles[cardNum])
-        del recv_handles[cardNum]
-        del send_handles[cardNum]
+        win32file.CloseHandle(recv_handles[card_num])
+        win32file.CloseHandle(send_handles[card_num])
+        del recv_handles[card_num]
+        del send_handles[card_num]
 
     # ----------
     # read()
     #
     #   Read one HID report from an open card.
     # ----------
-    def read(cardNum):
-        cardNum = int(cardNum)
-        if cardNum not in recv_handles:
+    def read(card_num):
+        card_num = int(card_num)
+        if card_num not in recv_handles:
             raise Exception('card not open')
 
-        hr, ioBuf = win32file.ReadFile(recv_handles[cardNum], 33, None)
+        hr, iobuf = win32file.ReadFile(recv_handles[card_num], 33, None)
         if hr != 0:
             raise IOError('ReadFile() failed')
-        if len(ioBuf) != 33:
-            raise IOError('short read, expected 33, got ' + str(len(ioBuf)))
+        if len(iobuf) != 33:
+            raise IOError('short read, expected 33, got ' + str(len(iobuf)))
 
         data = ''
         for idx in range(1, 33):
-            data += '{0:02X}'.format(ord(ioBuf[idx]))
+            data += '{0:02X}'.format(ord(iobuf[idx]))
         return data
 
     # ----------
@@ -127,22 +133,22 @@ if os.name == 'nt':
     #
     #   Send one HID command to an open card.
     # ----------
-    def write(cardNum, data):
-        cardNum = int(cardNum)
-        if cardNum not in recv_handles:
+    def write(card_num, data):
+        card_num = int(card_num)
+        if card_num not in recv_handles:
             raise Exception('card not open')
 
         if len(data) > 64:
             raise ValueError('invalid HID packet data')
-        ioBuf = chr(0)
+        iobuf = chr(0)
         idx = 0
         while idx < len(data):
-            ioBuf += chr(int(data[idx:idx+2], 16) & 0xFF)
+            iobuf += chr(int(data[idx:idx+2], 16) & 0xFF)
             idx += 2
-        while len(ioBuf) < 33:
-            ioBuf += chr(0)
+        while len(iobuf) < 33:
+            iobuf += chr(0)
         
-        win32file.WriteFile(send_handles[cardNum], ioBuf, None)
+        win32file.WriteFile(send_handles[card_num], iobuf, None)
         return 32
 
     # ----------
@@ -154,7 +160,7 @@ if os.name == 'nt':
     #   in two threads.
     #   On failure we return a tuple of None values.
     # ----------
-    def _open_card(cardNum):
+    def _open_card(card_num):
         # ----
         # Unfortunately PyWIN32 does not expose the SetupDi...
         # interface to search for the current SymbolicLink of a
@@ -166,7 +172,7 @@ if os.name == 'nt':
         path = path + '\\{' + OPEN8055_GUID + '}'
 
         cardinst = 'HID\\Vid_{0:04x}&Pid_{1:04x}\\'.format(
-                OPEN8055_VID, OPEN8055_PID + cardNum)
+                OPEN8055_VID, OPEN8055_PID + card_num)
 
         # ----
         # Loop over all registry keys in the DeviceClasses
@@ -200,7 +206,7 @@ if os.name == 'nt':
                 key3 = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path +
                                       '\\' + val + '\\#')
                 symlink, type = winreg.QueryValueEx(key3, 'SymbolicLink')
-                if not symlink:
+                if symlink is None:
                     continue
                 try:
                     r_handle = win32file.CreateFile(symlink,
