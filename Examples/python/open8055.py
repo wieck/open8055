@@ -167,6 +167,7 @@ class Open8055:
     poll() -- check server for new input states and process all of them
     poll_single() -- check server for new input and process only one
     fileno() -- return the receive file desctiptor for use in select()
+    all_defaults() -- set all configuration and outputs to defaults
     reset() -- send a reset signal to the card causing the PIC to reboot
 
     Methods related to digital inputs:
@@ -232,6 +233,12 @@ class Open8055:
         """
         Close the connection to the card. 
         """
+        # ----
+        # Check that this card is actually still open.
+        # ----
+        if self.recv_socket is None:
+            return
+
         # ----
         # Send out all remaining changes to output or configuration.
         # ----
@@ -394,6 +401,41 @@ class Open8055:
             self._send_output()
             self.pend_output = False
 
+    def all_defaults(self):
+        """
+        Configure the card with all default values as they would be after
+        flashing the firmware and booting it for the first time.
+        
+        Modes and values:
+
+        Digital inputs  = MODE_INPUT, counters reset
+        Analog inputs   = MODE_ADC10
+        digital outputs = MODE_OUTPUT, state off, servo pulse width 1.5 ms
+        PWM outputs     = MODE_PWM, duty 0.0
+        """
+        self.cur_output = {
+            'msg_type': OUTPUT,
+            'output_bits': 0,
+            'output_value': [18000, 18000, 18000, 18000, 18000, 18000, 
+                    18000, 18000],
+            'output_pwm_value': [0, 0],
+            'reset_counter': 0x1F
+        }
+        self.cur_config1 = {
+            'msg_type': SETCONFIG1,
+            'mode_adc': [MODE_ADC10, MODE_ADC10],
+            'mode_input': [MODE_INPUT, MODE_INPUT, MODE_INPUT, MODE_INPUT, 
+                    MODE_INPUT],
+            'mode_output': [MODE_OUTPUT, MODE_OUTPUT, MODE_OUTPUT, MODE_OUTPUT,
+                    MODE_OUTPUT, MODE_OUTPUT, MODE_OUTPUT, MODE_OUTPUT],
+            'mode_pwm': [MODE_PWM, MODE_PWM],
+            'debounce_value': [11, 11, 11, 11, 11],
+            'card_address': 0
+        }
+        self.pend_output = True
+        self.pend_config1 = True
+        self.flush()
+
     def reset(self):
         """
         Instruct the micro controller on the Open8055 to reboot.
@@ -421,7 +463,7 @@ class Open8055:
             raise error
 
 
-    def fileno():
+    def fileno(self):
         """
         Returns the small integer system file number for the receiving
         socket to be used in operations like select() for non-blocking
