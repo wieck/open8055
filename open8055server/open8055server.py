@@ -425,6 +425,7 @@ class Open8055Client(threading.Thread):
             msg_fmt = '!B'
             num_val = 1
         elif hid_type == 0x7F:          # RESET
+            log_info('client {0} sent RESET command'.format(self.addr))
             msg_fmt = '!B'
             num_val = 1
         else:

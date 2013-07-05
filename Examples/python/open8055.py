@@ -167,6 +167,7 @@ class Open8055:
     poll() -- check server for new input states and process all of them
     poll_single() -- check server for new input and process only one
     fileno() -- return the receive file desctiptor for use in select()
+    reset() -- send a reset signal to the card causing the PIC to reboot
 
     Methods related to digital inputs:
 
@@ -392,6 +393,33 @@ class Open8055:
         if self.pend_output:
             self._send_output()
             self.pend_output = False
+
+    def reset(self):
+        """
+        Instruct the micro controller on the Open8055 to reboot.
+
+        As a side effect, the card will disconnect and reconnect from
+        the USB, which causes an error and we will lose the connection
+        to the server.
+        """
+        error = None
+        if self.recv_socket is not None:
+            try:
+                self._send_message('SEND ' + str(RESET))
+                self.recv_socket.settimeout(None)
+                while self.recv_socket.recv(4096) != '':
+                    pass
+                self.recv_socket.shutdown(socket.SHUT_RDWR)
+                self.recv_socket.close()
+                self.send_socket.close()
+            except Exception as exc:
+                error = exc
+            finally:
+                self.recv_socket = None
+                self.send_socket = None
+        if error is not None:
+            raise error
+
 
     def fileno():
         """
