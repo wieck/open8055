@@ -224,6 +224,7 @@ class Open8055Client(threading.Thread):
                 Open8055Server.SERVERNAME, Open8055Server.VERSION))
             self.send('SALT ' + self.salt + '\n')
         except Exception as err:
+            log_error('client {0}: {1}'.format(str(self.addr), str(err)))
             self.set_status(MODE_STOPPED)
             return
 
@@ -309,6 +310,7 @@ class Open8055Client(threading.Thread):
                     self.cmd_open(args)
 
                 elif args[0].upper() == 'QUIT':
+                    self.set_status(MODE_STOP)
                     break
 
                 else:
@@ -316,6 +318,7 @@ class Open8055Client(threading.Thread):
                             args[0].upper() + '\'\n')
 
             except Exception as err:
+                log_error('client {0}: {1}'.format(str(self.addr), str(err)))
                 try:
                     self.send('ERROR ' + str(err) + '\n')
                 except:
@@ -324,25 +327,36 @@ class Open8055Client(threading.Thread):
         # ----
         # Stop the reader thread if one exists.
         # ----
-        if self.cardio:
+        if self.cardio is not None:
             try:
                 self.cardio.set_status(MODE_STOP)
                 try:
                     open8055io.write(self.cardid, struct.pack('B', 0x02))
                 except:
-                    pass
+                    log_error('client {0}: {1}'.format(
+                            str(self.addr), str(err)))
                 self.cardio.join()
             except Exception as err:
+                log_error('client {0}: {1}'.format(str(self.addr), str(err)))
                 try:
                     self.send('ERROR ' + str(err))
                 except:
                     pass
 
         # ----
+        # Close the Open8055
+        # ----
+        try:
+            open8055io.close(self.cardid)
+        except Exception as err:
+            log_error('client {0}: {1}'.format(self.client.addr, str(err)))
+            pass
+
+        # ----
         # Close the remote connection.
         # ----
         try:
-            if self.conn:
+            if self.conn is not None:
                 self.conn.shutdown(socket.SHUT_RDWR)
                 self.conn.close()
         except Exception as err:
@@ -571,14 +585,8 @@ class Open8055Reader(threading.Thread):
                 break
             
         # ----
-        # The reader loop exited. Close the card and terminate thread.
+        # The reader loop exited. Terminate this thread.
         # ----
-        try:
-            open8055io.close(self.cardid)
-        except Exception as err:
-            log_error('client {0}: {1}'.format(self.client.addr, str(err)))
-            pass
-
         self.set_status(MODE_STOPPED)
         return
 
