@@ -1,29 +1,44 @@
 #!/usr/bin/env python
 
-import os, sys, time, threading
-import socket, select, random, struct
+import os
+import random
+import select
+import socket
+import struct
+import sys
+import threading
+import time
+
 import open8055io
 
 if os.name == 'posix':
     import signal
 elif os.name == 'nt':
-    import win32service, win32serviceutil
-    import win32api, win32con
-    import win32event, win32evtlogutil
+    import win32service
+    import win32serviceutil
+    import win32api
+    import win32con
+    import win32event
+    import win32evtlogutil
 else:
     raise Exception('unsupported OS name "' + os.name + '"')
 
+MODE_RUN = 1
+MODE_STOP = 2
+MODE_STOPPED = 3
+
 # ----------------------------------------------------------------------
 # Open8055Server
-#
-#   Class implementing a thread that accepts new client connections
-#   and creates a Open8055Client thread for each of them.
 # ----------------------------------------------------------------------
 class Open8055Server(threading.Thread):
-    SERVERNAME  = 'Open8055Server'
-    VERSION     = '0.1.0'
+    """
+    Implementation of the Open8055 TCP/IP server process or service.
+    """
 
-    MAX_CARDS   = 16
+    SERVERNAME = 'Open8055Server'
+    VERSION = '0.1.0'
+
+    MAX_CARDS = 16
 
     # ----------
     # __init__()
@@ -33,9 +48,9 @@ class Open8055Server(threading.Thread):
     def __init__(self, port):
         threading.Thread.__init__(self)
 
-        self.status     = 'RUN'
-        self.lock       = threading.Lock()
-        self.clients    = []
+        self.status = MODE_RUN
+        self.lock = threading.Lock()
+        self.clients = []
 
         # ----
         # Create the server socket.
@@ -43,7 +58,8 @@ class Open8055Server(threading.Thread):
         self.sock = None
         if socket.has_ipv6:
             try:
-                self.sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM, 0)
+                self.sock = socket.socket(
+                        socket.AF_INET6, socket.SOCK_STREAM, 0)
                 self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 self.sock.bind(('', port))
                 self.sock.listen(10)
@@ -62,13 +78,13 @@ class Open8055Server(threading.Thread):
     def run(self):
         while True:
             self.lock.acquire()
-            if self.status != 'RUN':
+            if self.status != MODE_RUN:
                 # ----
                 # On STOP notify all existing clients to close and
                 # wait for them to finish.
                 # ----
                 for client in self.clients:
-                    client.set_status('STOP')
+                    client.set_status(MODE_STOP)
 
                 for client in self.clients:
                     client.join()
@@ -82,7 +98,7 @@ class Open8055Server(threading.Thread):
                 # ----
                 # Finally set the status to STOPPED and end this thread.
                 # ----
-                self.status = 'STOPPED'
+                self.status = MODE_STOPPED
                 self.lock.release()
                 return
             self.lock.release()
@@ -95,7 +111,7 @@ class Open8055Server(threading.Thread):
             except Exception as err:
                 log_error('select() on server socket failed:' + str(err))
                 self.lock.acquire()
-                self.status = 'STOPPED'
+                self.status = MODE_STOPPED
                 self.lock.release()
                 return
 
@@ -119,7 +135,7 @@ class Open8055Server(threading.Thread):
             except Exception as err:
                 log_error('accept() on server socket failed:' + str(err))
                 self.lock.acquire()
-                self.status = 'STOPPED'
+                self.status = MODE_STOPPED
                 self.lock.release()
                 return
 
@@ -139,7 +155,7 @@ class Open8055Server(threading.Thread):
     def reaper(self):
         clients = []
         for client in self.clients:
-            if client.get_status() == 'STOPPED':
+            if client.get_status() == MODE_STOPPED:
                 client.join()
             else:
                 clients.append(client)
@@ -166,7 +182,7 @@ class Open8055Server(threading.Thread):
     # ----------
     def shutdown(self):
         self.lock.acquire()
-        self.status = 'STOP'
+        self.status = MODE_STOP
         self.lock.release()
         self.join()
 
@@ -183,15 +199,15 @@ class Open8055Client(threading.Thread):
     def __init__(self, conn, addr):
         threading.Thread.__init__(self)
 
-        self.status = 'RUN'
+        self.status = MODE_RUN
 
-        self.lock   = threading.Lock()
-        self.conn   = conn
-        self.inbuf  = ''
-        self.addr   = addr
+        self.lock = threading.Lock()
+        self.conn = conn
+        self.inbuf = ''
+        self.addr = addr
 
-        self.user   = None
-        self.salt   = '{0:016X}'.format(random.getrandbits(64))
+        self.user = None
+        self.salt = '{0:016X}'.format(random.getrandbits(64))
 
         self.cardid = -1
         self.cardio = None
@@ -208,14 +224,14 @@ class Open8055Client(threading.Thread):
                 Open8055Server.SERVERNAME, Open8055Server.VERSION))
             self.send('SALT ' + self.salt + '\n')
         except Exception as err:
-            self.set_status('STOPPED')
+            self.set_status(MODE_STOPPED)
             return
 
         # ----
         # Run until the main server thread tells us to STOP or
         # the remote disconnects.
         # ----
-        while self.get_status() == 'RUN':
+        while self.get_status() == MODE_RUN:
             # ----
             # See if we still have another command in the input buffer.
             # ----
@@ -233,7 +249,7 @@ class Open8055Client(threading.Thread):
                     break
 
                 if self.cardio:
-                    if self.cardio.get_status() == 'STOPPED':
+                    if self.cardio.get_status() == MODE_STOPPED:
                         log_error('client {0}: {1}'.format(
                                 str(self.addr), 'cardio stopped unexpected'))
                         break
@@ -258,7 +274,7 @@ class Open8055Client(threading.Thread):
                 # ----
                 # Check of EOF
                 # ----
-                if not data:
+                if len(data) == 0:
                     break
                 
                 # ----
@@ -310,7 +326,7 @@ class Open8055Client(threading.Thread):
         # ----
         if self.cardio:
             try:
-                self.cardio.set_status('STOP')
+                self.cardio.set_status(MODE_STOP)
                 try:
                     open8055io.write(self.cardid, struct.pack('B', 0x02))
                 except:
@@ -331,12 +347,11 @@ class Open8055Client(threading.Thread):
                 self.conn.close()
         except Exception as err:
             log_error('client {0}: {1}'.format(self.addr, str(err)))
-            pass
 
         # ----
         # Set the run status to STOPPED and end this thread.
         # ----
-        self.set_status('STOPPED')
+        self.set_status(MODE_STOPPED)
         return
 
     # ----------
@@ -370,8 +385,8 @@ class Open8055Client(threading.Thread):
         cardio = Open8055Reader(self, cardid)
         cardio.start()
 
-        self.cardid         = cardid
-        self.cardio         = cardio
+        self.cardid = cardid
+        self.cardio = cardio
 
         # ----
         # We send a GETCONFIG message to the card and the reader
@@ -433,7 +448,7 @@ class Open8055Client(threading.Thread):
         try:
             open8055io.write(self.cardid, data)
         except Exception as err:
-            self.set_status('STOP')
+            self.set_status(MODE_STOP)
             try:
                 self.client.send('ERROR from write ' + str(err) + '\n')
             except:
@@ -491,16 +506,16 @@ class Open8055Reader(threading.Thread):
     def __init__(self, client, cardid):
         threading.Thread.__init__(self)
 
-        self.client         = client
-        self.cardid         = cardid
-        self.startup        = True
-        self.had_config1    = False
-        self.had_output     = False
-        self.lock           = threading.Lock()
-        self.status         = 'RUN'
+        self.client = client
+        self.cardid = cardid
+        self.startup = True
+        self.had_config1 = False
+        self.had_output = False
+        self.lock = threading.Lock()
+        self.status = MODE_RUN
 
     def run(self):
-        while self.get_status() == 'RUN':
+        while self.get_status() == MODE_RUN:
             try:
                 data = open8055io.read(self.cardid)
             except Exception as err:
@@ -563,7 +578,7 @@ class Open8055Reader(threading.Thread):
             log_error('client {0}: {1}'.format(self.client.addr, str(err)))
             pass
 
-        self.set_status('STOPPED')
+        self.set_status(MODE_STOPPED)
         return
 
     def get_status(self):
@@ -623,7 +638,7 @@ if os.name == 'posix':
             # Wait until either the server stopped on its own due to some
             # internal error, or the watchdog tells us to shutdown.
             # ----
-            while server.get_status() != 'STOPPED':
+            while server.get_status() != MODE_STOPPED:
                 try:
                     rdy, _dummy, _dummy = select.select((p_rd,), (), (), 2.0)
                 except Exception as err:
@@ -679,9 +694,9 @@ elif os.name == 'nt':
     import servicemanager
     
     class open8055server(win32serviceutil.ServiceFramework):
-        _svc_name_          = 'open8055server'
-        _svc_display_name_  = 'Open8055Server'
-        _svc_description_   = 'TCP/IP server for Open8055 USB cards'
+        _svc_name_ = 'open8055server'
+        _svc_display_name_ = 'Open8055Server'
+        _svc_description_ = 'TCP/IP server for Open8055 USB cards'
 
         def __init__(self, args):
             win32serviceutil.ServiceFramework.__init__(self, args)
@@ -707,7 +722,7 @@ elif os.name == 'nt':
                     servicemanager.LogInfoMsg('open8055server - STOPPED')
                     break
                 else:
-                    if server.get_status() == 'STOPPED':
+                    if server.get_status() == MODE_STOPPED:
                         servicemanager.LogErrorMsg('open8055server - CRASHED')
                         break
 
