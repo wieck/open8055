@@ -183,6 +183,8 @@ class EventLoop():
         # ----
         num_callbacks = 0
         if have_fds is True:
+            if timeout is not True and timeout < 0.0:
+                timeout = 0.0
             ready_read, ready_write, ready_err = select.select(
                     self.read_fds, self.write_fds, [], timeout)
         else:
