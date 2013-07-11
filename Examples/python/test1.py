@@ -44,7 +44,7 @@ def main(args):
     try:
         mainloop.run_mainloop()
     except KeyboardInterrupt:
-        pass
+        print 'KeyboardInterrupt received'
     print 'mainloop returned'
 
     print 'calling all_defaults()'
@@ -87,7 +87,7 @@ def effect_callback():
         current_state += 1
         if current_state >= 8:
             current_state = 0
-        next_call = (0.1 + 0.4 * (1.0 - card.get_adc(0))) / 8.0
+        next_call = (0.2 + 0.8 * (1.0 - card.get_adc(0))) / 8.0
 
 
     current_event = mainloop.after(next_call, effect_callback)
