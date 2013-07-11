@@ -347,10 +347,10 @@ class Open8055Client(threading.Thread):
         # Close the Open8055
         # ----
         try:
-            open8055io.close(self.cardid)
+            if self.cardid >= 0:
+                open8055io.close(self.cardid)
         except Exception as err:
-            log_error('client {0}: {1}'.format(self.client.addr, str(err)))
-            pass
+            log_error('client {0}: {1}'.format(self.addr, str(err)))
 
         # ----
         # Close the remote connection.

@@ -32,18 +32,19 @@
 #  
 # ----------------------------------------------------------------------
 
+# ----
+# Source in the global Makefile
+# ----
+
+include ../Makefile.global
 
 # ----
 # Global compiler and loader settings
 # ----
 CC=				gcc
 CFLAGS+=		-O2 -Wall -I.. -I../include
-CFLAGS+=		-I/usr/local/include/python2.7
-LDFLAGS+=	
-
-ifeq ($(UNAME), Linux)
-	CFLAGS+= -I/usr/include/libusb-1.0 -fPIC
-endif
+CFLAGS+=		-I$(PYTHON_INCLUDE_DIR)
+LDFLAGS+=		
 
 
 # ----
@@ -52,7 +53,7 @@ endif
 OPEN8055_DLL=			open8055devicemodule.so
 OPEN8055_DLL_OBJS=		open8055devicemodule.o
 OPEN8055_DLL_EXTRA=
-OPEN8055_DLL_LIBS=		-lusb
+OPEN8055_DLL_LIBS=		-l$(LIBUSB)
 
 
 # ----
@@ -85,8 +86,8 @@ install:	all
 # ----
 # Individual toplevel target dependencies and build instructions
 # ----
-$(OPEN8055_DLL):	$(OPEN8055_DLL_OBJS) $(OPEN8055_DLL_EXTRA)
-	$(CC) $(CFLAGS) -shared -o $@ $^ $(OPEN8055_DLL_LIBS)
+$(OPEN8055_DLL):	$(OPEN8055_DLL_OBJS)
+	$(CC) $(LDFLAGS) -shared -o $@ $^ $(OPEN8055_DLL_LIBS)
 
 
 # ----

@@ -33,11 +33,14 @@
 # ----------------------------------------------------------------------
 
 AC_INIT(Open8055, Open8055-0.1.0)
-AC_CONFIG_HEADERS(config.h)
+AC_CONFIG_FILES([Makefile.global])
+AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_AUX_DIR(config)
 
-ACX_LIBUSB()
+CFLAGS="$CFLAGS -I/usr/local/include"
+LDFLAGS="$LDFLAGS -L/usr/local/lib"
 
-AC_SUBST(HAVE_LIBUSB_STRERROR, $HAVE_LIBUSB_STRERROR)
+AX_PYTHON()
+ACX_LIBUSB()
 
 AC_OUTPUT()
