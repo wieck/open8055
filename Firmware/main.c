@@ -159,12 +159,16 @@ uint8_t		tickCounter = 0;
 uint8_t		tickMillisecond = 0;
 uint16_t	tickSecond = 0;
 
-uint8_t		analogValue_1_high = 0;
-uint8_t		analogValue_1_low = 0;
-uint8_t		analogValue_2_high = 0;
-uint8_t		analogValue_2_low = 0;
 uint8_t		analogGoDelay = 2;
 uint8_t		analogInterrupted = 0;
+
+uint16_t	analogValue_1 = 0;
+uint16_t	analogSum_1 = 0;
+uint8_t		analogCount_1 = 0;
+uint16_t	analogValue_2 = 0;
+uint16_t	analogSum_2 = 0;
+uint8_t		analogCount_2 = 0;
+uint8_t		analogAvgCount = 0;
 
 Open8055_hidMessage_t currentConfig1;
 Open8055_hidMessage_t currentOutput;
@@ -496,27 +500,27 @@ void lowPriorityISRCode()
 			#if defined(__18F2550)
 				if(ADCON0bits.CHS0==1)
 				{
-					analogValue_2_high = ADRESH;
-					analogValue_2_low  = ADRESL;
+					analogSum_2 += ((uint16_t)ADRESH << 8) + (uint16_t)ADRESL;
+					analogCount_2 ++;
 					ADCON0bits.CHS0=0;
 				}
 				else
 				{
-					analogValue_1_high = ADRESH;
-					analogValue_1_low  = ADRESL;
+					analogSum_1 += ((uint16_t)ADRESH << 8) + (uint16_t)ADRESL;
+					analogCount_1 ++;
 					ADCON0bits.CHS0=1;
 				}
 			#elif defined(__18F25K50)
 				if(ADCON0bits.CHS==1)
 				{
-					analogValue_2_high = ADRESH;
-					analogValue_2_low  = ADRESL;
+					analogSum_2 += ((uint16_t)ADRESH << 8) + (uint16_t)ADRESL;
+					analogCount_2 ++;
 					ADCON0bits.CHS=0;
 				}
 				else
 				{
-					analogValue_1_high = ADRESH;
-					analogValue_1_low  = ADRESL;
+					analogSum_1 += 10;
+					analogCount_1 ++;
 					ADCON0bits.CHS=1;
 				}
 			#endif
@@ -937,6 +941,25 @@ static void processIO(void)
 			
 			// Per 1 millisecond code comes here
 
+			if (++analogAvgCount >= 5)
+			{
+				analogAvgCount = 0;
+				
+				if (analogCount_1 == 0)
+					analogValue_1 = 0;
+				else
+					analogValue_1 = analogSum_1 / analogCount_1;
+				analogSum_1 = 0;
+				analogCount_1 = 0;
+				
+				if (analogCount_2 == 0)
+					analogValue_2 = 0;
+				else
+					analogValue_2 = analogSum_2 / analogCount_2;
+				analogSum_2 = 0;
+				analogCount_2 = 0;
+			}
+				
 			// Handle Servo ports. We use a 24 microsecond cycle. Every 3 microseconds we check
 			// if one of the ports is configured as servo. If so we let the timer code know to
 			// output a pulse of the desired width.
@@ -1096,30 +1119,31 @@ static void processIO(void)
 		}	
 
 		INTCONbits.GIEL	= 0;
-		currentInput.raw[12] = analogValue_1_high;
+		currentInput.raw[12] = analogValue_1 >> 8;
 		switch (currentConfig1.modeADC[0])
 		{
 			case OPEN8055_MODE_ADC10:
-				currentInput.raw[13] = analogValue_1_low;
+				currentInput.raw[13] = analogValue_1 & 0xFF;
 				break;
 			case OPEN8055_MODE_ADC9:
-				currentInput.raw[13] = analogValue_1_low & 0xFE;
+				currentInput.raw[13] = analogValue_1 & 0xFE;
 				break;
 			case OPEN8055_MODE_ADC8:
-				currentInput.raw[13] = analogValue_1_low & 0xFC;
+				currentInput.raw[13] = analogValue_1 & 0xFC;
 				break;
 		}
-		currentInput.raw[14] = analogValue_2_high;
+		
+		currentInput.raw[14] = analogValue_2 >> 8;
 		switch (currentConfig1.modeADC[1])
 		{
 			case OPEN8055_MODE_ADC10:
-				currentInput.raw[15] = analogValue_2_low;
+				currentInput.raw[15] = analogValue_2 & 0xFF;
 				break;
 			case OPEN8055_MODE_ADC9:
-				currentInput.raw[15] = analogValue_2_low & 0xFE;
+				currentInput.raw[15] = analogValue_2 & 0xFE;
 				break;
 			case OPEN8055_MODE_ADC8:
-				currentInput.raw[15] = analogValue_2_low & 0xFC;
+				currentInput.raw[15] = analogValue_2 & 0xFC;
 				break;
 		}
 		INTCONbits.GIEL	= 1;
