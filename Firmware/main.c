@@ -519,7 +519,7 @@ void lowPriorityISRCode()
 				}
 				else
 				{
-					analogSum_1 += 10;
+					analogSum_1 += ((uint16_t)ADRESH << 8) + (uint16_t)ADRESL;
 					analogCount_1 ++;
 					ADCON0bits.CHS=1;
 				}
