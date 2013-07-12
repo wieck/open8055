@@ -185,7 +185,7 @@ device_handle_events(Open8055Card *card, int *completed)
 					break;
 				}
 
-				tv.tv_sec = LONG_MAX;
+				tv.tv_sec = 0;
 				tv.tv_usec = 0;
 				rc = libusb_handle_events_locked(libusbCxt, &tv);
 				if (rc != 0)
@@ -571,7 +571,7 @@ device_read(PyObject *self, PyObject *args)
 		return NULL;
 	}
 
-	if (device_handle_events(card, &(card->readCompleted)) < 0)
+	if ((rc = device_handle_events(card, &(card->readCompleted))) < 0)
 	{
 		snprintf(errbuf, sizeof(errbuf),
 				"device_handle_transfer(): %s", 
@@ -582,10 +582,8 @@ device_read(PyObject *self, PyObject *args)
 
 	if (card->readTransfer->status != LIBUSB_TRANSFER_COMPLETED)
 	{
-		snprintf(errbuf, sizeof(errbuf),
-				"asynchronous transfer failed: %s", 
-				libusb_strerror(rc));
-		PyErr_SetString(PyExc_IOError, errbuf);
+		PyErr_SetString(PyExc_IOError, 
+				"asynchronous transfer failed: unknown reason");
 		return NULL;
 	}
 
