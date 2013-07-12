@@ -220,8 +220,7 @@ class Open8055:
         self.pend_config1 = False       # Pending CONFIG1 to flush
 
         self.input_buffer = ''          # Input buffer used in poll()
-        self.recv_socket = None         # Socket used for receiving
-        self.send_socket = None         # Socket used for sending
+        self.socket = None              # Connection to the server
 
     def __del__(self):
         try:
@@ -236,7 +235,7 @@ class Open8055:
         # ----
         # Check that this card is actually still open.
         # ----
-        if self.recv_socket is None:
+        if self.socket is None:
             return
 
         # ----
@@ -252,20 +251,18 @@ class Open8055:
         # to have our server logs full of those.
         # ----
         error = None
-        if self.recv_socket is not None:
+        if self.socket is not None:
             try:
                 self._send_message('QUIT')
-                self.recv_socket.settimeout(timeout)
-                while self.recv_socket.recv(4096) != '':
+                self.socket.settimeout(timeout)
+                while self.socket.recv(4096) != '':
                     pass
-                self.recv_socket.shutdown(socket.SHUT_RDWR)
-                self.recv_socket.close()
-                self.send_socket.close()
+                self.socket.shutdown(socket.SHUT_RDWR)
+                self.socket.close()
             except Exception as exc:
                 error = exc
             finally:
-                self.recv_socket = None
-                self.send_socket = None
+                self.socket = None
         if error is not None:
             raise error
 
@@ -445,20 +442,18 @@ class Open8055:
         to the server.
         """
         error = None
-        if self.recv_socket is not None:
+        if self.socket is not None:
             try:
                 self._send_message('SEND ' + str(RESET))
-                self.recv_socket.settimeout(None)
-                while self.recv_socket.recv(4096) != '':
+                self.socket.settimeout(None)
+                while self.socket.recv(4096) != '':
                     pass
-                self.recv_socket.shutdown(socket.SHUT_RDWR)
-                self.recv_socket.close()
-                self.send_socket.close()
+                self.socket.shutdown(socket.SHUT_RDWR)
+                self.socket.close()
             except Exception as exc:
                 error = exc
             finally:
-                self.recv_socket = None
-                self.send_socket = None
+                self.socket = None
         if error is not None:
             raise error
 
@@ -469,7 +464,7 @@ class Open8055:
         socket to be used in operations like select() for non-blocking
         reads from the card.
         """
-        return self.recv_socket.fileno()
+        return self.socket.fileno()
         
     # ----------
     # Functions related to digital input ports
@@ -915,7 +910,7 @@ class Open8055:
         # ----
         # Establish the connetion.
         # ----
-        self.recv_socket = socket.create_connection((host, port), timeout)
+        self.socket = socket.create_connection((host, port), timeout)
 
         # ----
         # The first message from the server should be
@@ -925,8 +920,8 @@ class Open8055:
         msg = line.split(' ')
         if msg[0] != 'HELLO' or msg[1] != 'Open8055Server':
             try:
-                self.recv_socket.shutdown(socket.SHUT_RDWR)
-                self.recv_socket.close()
+                self.socket.shutdown(socket.SHUT_RDWR)
+                self.socket.close()
             except:
                 pass
             raise Exception(
@@ -943,28 +938,19 @@ class Open8055:
         msg = line.split(' ')
         if msg[0] != 'SALT':
             try:
-                self.recv_socket.shutdown(socket.SHUT_RDWR)
-                self.recv_socket.close()
+                self.socket.shutdown(socket.SHUT_RDWR)
+                self.socket.close()
             except:
                 pass
             raise Exception(
                     'expected SALT message, got "{0}" instead'.format(line))
         self.server_salt = msg[1]
 
-        # ----
-        # Duplicate the socket so that we support blocking send()
-        # and non-blocking recv() simultaneously in multi threaded
-        # applications.
-        # ----
-        self.send_socket = socket.fromfd(self.recv_socket.fileno(),
-                self.recv_socket.family, self.recv_socket.type,
-                self.recv_socket.proto)
-
     def _send_message(self, message):
         """
         Internal function to send a message on to the server.
         """
-        self.send_socket.sendall(message + '\n')
+        self.socket.sendall(message + '\n')
 
     def _recv_message(self, timeout):
         """
@@ -973,9 +959,9 @@ class Open8055:
         """
         idx = self.input_buffer.find('\n')
         if idx < 0:
-            self.recv_socket.settimeout(timeout)
+            self.socket.settimeout(timeout)
             try:
-                data = self.recv_socket.recv(4096)
+                data = self.socket.recv(4096)
             except socket.timeout:
                 return None
 
