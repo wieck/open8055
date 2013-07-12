@@ -185,7 +185,7 @@ device_handle_events(Open8055Card *card, int *completed)
 					break;
 				}
 
-				tv.tv_sec = 0;
+				tv.tv_sec = 1;
 				tv.tv_usec = 0;
 				rc = libusb_handle_events_locked(libusbCxt, &tv);
 				if (rc != 0)
