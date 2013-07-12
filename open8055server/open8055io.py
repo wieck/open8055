@@ -123,7 +123,7 @@ if os.name == 'nt':
         if len(iobuf) != 33:
             raise IOError('short read, expected 33, got ' + str(len(iobuf)))
 
-        return iobuf[1, 33]
+        return iobuf[1: 33]
 
     # ----------
     # write()
