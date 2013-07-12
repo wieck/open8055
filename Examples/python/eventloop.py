@@ -263,6 +263,10 @@ class _Event():
         self.ev_args = ev_args
 
     def invoke(self):
-        self.ev_func(*self.ev_args)
+        self.ev_func(self, *self.ev_args)
 
-
+    def interval(self, new_interval = None):
+        result = self.ev_interval
+        if new_interval is not None:
+            self.ev_interval = new_interval
+        return result
