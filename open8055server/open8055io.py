@@ -123,10 +123,7 @@ if os.name == 'nt':
         if len(iobuf) != 33:
             raise IOError('short read, expected 33, got ' + str(len(iobuf)))
 
-        data = ''
-        for idx in range(1, 33):
-            data += '{0:02X}'.format(ord(iobuf[idx]))
-        return data
+        return iobuf[1, 33]
 
     # ----------
     # write()
@@ -140,11 +137,7 @@ if os.name == 'nt':
 
         if len(data) > 64:
             raise ValueError('invalid HID packet data')
-        iobuf = chr(0)
-        idx = 0
-        while idx < len(data):
-            iobuf += chr(int(data[idx:idx+2], 16) & 0xFF)
-            idx += 2
+        iobuf = chr(0) + data
         while len(iobuf) < 33:
             iobuf += chr(0)
         
