@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
+import os
 import sys
+import getopt
 
 import eventloop
 import open8055
@@ -19,7 +21,7 @@ mainloop = None
 card = None
 pwm1_state = False
 
-def main(args):
+def main(argv):
     global card
     global mainloop
     
@@ -28,6 +30,29 @@ def main(args):
     port = 8055
     user = 'nobody'
     password = 'nopass'
+
+    try:
+        opts, args = getopt.getopt(argv, 'c:h:p:u:?', 
+                ['card=', 'host=', 'port=', 'user=', 'help'])
+    except getopt.GetoptError as err:
+        sys.stderr.write('Error: ' + str(err) + '\n')
+        usage()
+        sys.exit(1)
+
+    for opt, arg in opts:
+        if opt in ('-c', '--card', ):
+            cardid = int(arg)
+        elif opt in ('-h', '--host', ):
+            host = arg
+        elif opt in ('-p', '--port', ):
+            port = int(port)
+        elif opt in ('-u', '--user', ):
+            user = arg
+            if user == '':
+                raise Exception('user name cannot be an empty string')
+        elif opt in ('-?', '--help', ):
+            usage()
+            return 0
 
     card = open8055.open(cardid, host = host, port = port,
             user = user, password = password)
@@ -53,6 +78,15 @@ def main(args):
     card.close()
     print 'main() done'
 
+def usage():
+    sys.stderr.write("""\nusage: {0} [options]
+
+    Options:
+    -c, --card=CARDID       Card number to use (0)
+    -h, --host=HOSTNAME     Host of the open8055server (localhost)
+    -p, --port=PORT         TCP/IP port number of open8055server (8055)
+    -u, --user=USERNAME     Username to authenticate as (nobody)
+    \n""".format(os.path.basename(sys.argv[0])))
 def pwm1_toggle():
     global pwm1_state
 
@@ -120,4 +154,4 @@ def card_input():
 
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv))
+    sys.exit(main(sys.argv[1:]))
