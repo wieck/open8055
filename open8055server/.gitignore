@@ -3,4 +3,5 @@
 *.dll
 *.exe
 *.pyc
-open8055server
+open8055.conf
+open8055.users

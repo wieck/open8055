@@ -1,0 +1,83 @@
+# ----------
+# Sample configuration file for the Open8055 server.
+# ----------
+
+[General]
+server_port = 8055
+users_file = ./open8055.users
+
+
+# ----------
+# The entries in the [Access] section below are of the format
+#
+# 		NETWORK			USERNAME		METHOD
+#
+# The NETWORK part is an IPV4 or IPV6 address with prefixlen (netmask).
+# 
+# The USERNAME can be an individual username that appears in the users_file
+# specified above, or the magic word 'all' matching all users.
+#
+# The required authentication METHOD is one of
+#
+# 	trust		- no username or password checking is done at all. Any
+# 				  given username and password will be accepted by the server,
+# 				  even if that username doesn't exist in the users file.
+# 	plain		- passwords can be sent by the client in plain text or 
+# 				  double md5 encoded as below.
+# 	md5			- the user password is encoded into its md5 hexdigest. The
+# 				  random SALT string, sent by the host after the HELLO, is
+# 				  combined with that string and both together again encoded
+# 				  as md5 hexdigest. This prevents password sniffing and
+# 				  replay attacks.
+#	deny		- access is denied.
+#
+# Note that the line with the first matching NETWORK+USERNAME combination
+# will be used. So line denying access from INETADDR_ANY better be the last
+# in a given option. Anything below that line will be ignored.
+# ----------
+
+[Access]
+
+connect = 		# ----
+				# These are the addresses accepted to connect.
+				# A client address not allowed here will be disconnected
+				# immediately, without even getting a HELLO. By default
+				# we allow localhost and private networks. 
+				#
+				# Being allowed here only lets the client connect and
+				# eventually issue a LIST command. The "default" and "card_N"
+				# options below define if the client can OPEN a card. The
+				# username column is ignored for connect but checked for
+				# the LIST command.
+				# ----
+				127.0.0.1/32			all			trust
+				::1/128					all			trust
+
+				192.168.0.0/16			all			md5
+				172.16.0.0/12			all			md5
+				10.0.0.0/8				all			md5
+				fc00::/7				all			md5
+
+				0.0.0.0/0				all			deny
+				::/0					all			deny
+
+default =       # ----
+                # Trust all connections from localhost
+                # ----
+                127.0.0.1/32            all			trust
+                ::1/128                 all			trust
+
+                # ----
+                # Reject everything else
+                # ----
+                0.0.0.0/0               all			deny
+                ::/0                    all			deny
+
+# card_0 =      # ----
+# 				# Allow access to card 0 from 192.168.1.* with encrypted
+# 				# password and the default above (trust connections from
+# 				# localhost).
+# 				# ----
+#               192.168.1.0/24			all			md5
+# 				%(default)s
+

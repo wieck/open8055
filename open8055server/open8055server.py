@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 
+import ConfigParser
+import hashlib
+import netaddr
 import os
 import random
+import re
 import select
 import socket
 import struct
@@ -45,16 +49,18 @@ class Open8055Server(threading.Thread):
     #
     #   Initialize some status data and create the server socket.
     # ----------
-    def __init__(self, port):
+    def __init__(self):
         threading.Thread.__init__(self)
 
         self.status = MODE_RUN
         self.lock = threading.Lock()
         self.clients = []
 
+    def create_server_socket(self):
         # ----
         # Create the server socket.
         # ----
+        port = self.config.getint('General', 'server_port')
         self.sock = None
         if socket.has_ipv6:
             try:
@@ -71,6 +77,45 @@ class Open8055Server(threading.Thread):
             self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.sock.bind(('', port))
             self.sock.listen(10)
+
+    # ----
+    # load_config()
+    # ----
+    def load_config(self, config_locations, is_reload = False):
+        self.config = ConfigParser.SafeConfigParser()
+
+        self.config.add_section('General')
+        self.config.set('General', 'server_port', '8055')
+        self.config.set('General', 'users_file', 'open8055.users')
+
+        self.config.add_section('Access')
+        self.config.set('Access', 'connect', """127.0.0.1/32    allow
+                        ::1/128     allow
+                        0.0.0.0/0   deny
+                        ::/0        deny""")
+        self.config.set('Access', 'default', """127.0.0.1/32    trust
+                        ::1/128     trust
+                        0.0.0.0/0   deny
+                        ::/0        deny""")
+
+        if not is_reload:
+            self.config_fname = None
+            for fname in config_locations:
+                if not os.path.exists(fname):
+                    continue
+                try:
+                    self.config.read(fname)
+                except Exception as err:
+                    log_error('cannot load {0}: {1}'.format(fname, str(err)))
+                    continue
+                
+                log_info('configuration loaded from {0}'.format(fname))
+                self.config_fname = fname
+                break
+        else:
+            if self.config_fname is not None:
+                self.config.read(self.config_fname)
+                
 
     # ----------
     # run()
@@ -140,12 +185,218 @@ class Open8055Server(threading.Thread):
                 return
 
             # ----
+            # Check the client address against the [Access] config section.
+            # ----
+            if not self.check_connect_access(addr):
+                log_error('client {0}: connect denied'.format(addr))
+                try:
+                    conn.send('ERROR access denied\n')
+                    conn.shutdown(socket.SHUT_RDWR)
+                    conn.close()
+                    continue
+                except:
+                    continue
+
+            # ----
             # Create a client thread for it and add it to the list.
             # ----
-            client = Open8055Client(conn, addr)
+            client = Open8055Client(self, conn, addr)
             self.clients.append(client)
             client.start()
+
+    # ----------
+    # check_connect_access()
+    #
+    #   Compare the IP address of the client against the [Access] section
+    #   of the config file.
+    # ----------
+    def check_connect_access(self, addr):
+        try:
+            result = self.lookup_auth_method(addr[0], None,
+                    self.config.get('Access', 'connect'))
+        except Exception as err:
+            log_error('lookup_auth_method() failed: ' + str(err))
+            return False
+        if result in ('trust', 'plain', 'md5', ):
+            return True
+        return False
+
+    # ----------
+    # check_list_access()
+    #
+    #   Compare the address, user and password against the "connect"
+    #   Access entry in the config file, and eventually check the
+    #   username/password given.
+    # ----------
+    def check_list_access(self, addr, user, password, salt):
+        # ----
+        # Get the required authentication method based on client address.
+        # ----
+        try:
+            auth_required = self.lookup_auth_method(addr[0], None,
+                    self.config.get('Access', 'connect'))
+        except Exception as err:
+            log_error('lookup_auth_method() failed: ' + str(err))
+            return False
+
+        # ----
+        # If this is denied based on user or IP, return False.
+        # ----
+        if auth_required == 'deny':
+            return False
+
+        # ----
+        # 'trust' authentication means we accept any username and password.
+        # ----
+        if auth_required == 'trust':
+            return True
+        
+        # ----
+        # Need to check username and password and see if we got the
+        # required password level. A given md5 password satisfies both,
+        # md5 or plain requirement, but not the other way around.
+        # ----
+        auth_ok, auth_issuper, auth_given = self.check_user_password(
+                user, password, salt)
+        if not auth_ok:
+            return False
+        if auth_required == 'md5' and auth_given != 'md5':
+            log_error('client {0}: md5 authentication required, got {1}'.format(
+                    addr, auth_given))
+            return False
+        return True
+
+    # ----------
+    # check_open_access()
+    #
+    #   Compare the address, user and password against the cards
+    #   Access entry in the config file, and eventually check the
+    #   username/password given.
+    # ----------
+    def check_open_access(self, cardid, addr, user, password):
+        return 'deny'
+
+    # ----
+    # check_user_password()
+    # ----
+    def check_user_password(self, user, password, salt):
+        try:
+            # ----
+            # Locate the users file
+            # ----
+            fname = self.config.get('General', 'users_file')
+            if not os.path.isabs(fname):
+                if self.config_fname is not None:
+                    fname = os.path.realpath(os.path.join(
+                            os.path.dirname(
+                            os.path.realpath(self.config_fname)), fname))
+                else:
+                    fname = os.path.realpath(os.path.join(
+                            os.path.dirname(os.path.realpath(__file__)), fname))
+
+            # ----
+            # Read the users file.
+            # ----
+            fd = open(fname, 'r')
+            while True:
+                line = fd.readline()
+                if len(line) == 0:
+                    break
+                auth_user, auth_issuper, auth_password = line.strip().split(':')
+                if auth_user != user:
+                    continue
+                if len(auth_password) != 35 or auth_password[0:3] != 'md5':
+                    auth_password = 'md5' + hashlib.md5(
+                            auth_password).hexdigest()
+                # ----
+                # This is the user. If the given password starts with 'md5'
+                # and is 35 characters long, we expect it to be the md5 hash
+                # of the SALT and the hashed real user password (double hash).
+                # This is done to prevent password repeat attacks.
+                # ----
+                if len(password) == 35 and password[0:3] == 'md5':
+                    salt_password = hashlib.md5(
+                            salt + auth_password[3:]).hexdigest()
+                    if password[3:] == salt_password:
+                        # ----
+                        # That matched. This is a double hashed md5.
+                        # ----
+                        fd.close()
+                        return True, bool(auth_issuper), 'md5'
+                # ----
+                # This is certainly not a double hashed md5. Test if it
+                # is a plain password.
+                # ----
+                if hashlib.md5(password).hexdigest() == auth_password[3:]:
+                    # ----
+                    # This matched, but is only 'plain' authentication.
+                    # ----
+                    fd.close()
+                    return True, bool(auth_issuper), 'plain'
+
+                # ----
+                # Password mismatch
+                # ----
+                fd.close()
+                return False, False, 'none'
+
+            # ----
+            # User not found in users file.
+            # ----
+            fd.close()
+            return False, False, 'none'
+        except Exception as err:
+            log_error('{0}: {1}'.format(
+                    self.config.get('General', 'users_file'), err))
+            return False, False, 'none'
             
+    # ----------
+    # lookup_auth_method()
+    #
+    #   Try to match the give IP address to the narrowest network or
+    #   host address in the access list. 
+    # ----------
+    def lookup_auth_method(self, ipaddr, user, access_list):
+        # ----
+        # We work everything IPV6 mapped
+        # ----
+        ipaddr = netaddr.IPAddress(ipaddr).ipv6()
+
+        re_comment = re.compile('^[ \t]*[#;]')
+        re_lines = re.compile('[ \t\r]*\n[ \t\r]*')
+        re_blank = re.compile('[ \t]+')
+
+        # ----
+        # Process the access list line by line, stop at the first match.
+        # ----
+        for line in re_lines.split(access_list.strip()):
+            # ----
+            # Ignore empty lines and comments.
+            # ----
+            if len(line) == 0:
+                continue
+            if re_comment.match(line):
+                continue
+
+            # ----
+            # Split the line into network address, auth-user  and auth-result.
+            # Return the result if the ipaddr falls into the network.
+            # ----
+            network, auth_user, result = re_blank.split(line)
+            network = netaddr.IPNetwork(network).ipv6()
+            if user is not None and auth_user != 'all':
+                if user != auth_user:
+                    continue
+
+            if len(netaddr.all_matching_cidrs(ipaddr, (network, ))) > 0:
+                return result
+
+        # ----
+        # No match at all? This should not happen. The detault config
+        # contains "deny" lines for INADDR_ANY and its IPV6 counterpart.
+        # ----
+        return 'deny'
+        
     # ----------
     # reaper()
     #
@@ -196,9 +447,10 @@ class Open8055Client(threading.Thread):
     # ----------
     # __init__()
     # ----------
-    def __init__(self, conn, addr):
+    def __init__(self, server, conn, addr):
         threading.Thread.__init__(self)
 
+        self.server = server
         self.status = MODE_RUN
 
         self.lock = threading.Lock()
@@ -207,7 +459,7 @@ class Open8055Client(threading.Thread):
         self.addr = addr
 
         self.user = None
-        self.salt = '{0:016X}'.format(random.getrandbits(64))
+        self.salt = '{0:016x}'.format(random.getrandbits(64))
 
         self.cardid = -1
         self.cardio = None
@@ -376,6 +628,14 @@ class Open8055Client(threading.Thread):
     def cmd_list(self, args):
         if len(args) != 3:
             raise Exception('usage: LIST username password')
+
+        allowed = self.server.check_list_access(self.addr, 
+                args[1], args[2], self.salt)
+        if not allowed:
+            log_error('client {0}: LIST {1} ***** - permission denied'.format(
+                    self.addr, args[1]))
+            self.send('ERROR permission denied\n')
+            return
 
         response = 'LIST'
         for cardid in range(0, Open8055Server.MAX_CARDS):
@@ -637,7 +897,15 @@ if os.name == 'posix':
             # Create the Open8055 server
             # ----
             try:
-                server = Open8055Server(8055)
+                server = Open8055Server()
+
+                config_locations = ['/usr/local/etc/open8055.conf']
+                config_locations.append(os.path.join(os.path.dirname(
+                        os.path.realpath(__file__)), 'open8055.conf'))
+                server.load_config(config_locations)
+
+                server.create_server_socket()
+
                 server.start()
             except Exception as err:
                 log_error('Open8055server failed: ' + str(err))
@@ -720,7 +988,14 @@ elif os.name == 'nt':
                     servicemanager.PYS_SERVICE_STARTED,
                     (self._svc_name_, ''))
 
-            server = Open8055Server(8055)
+            server = Open8055Server()
+
+            config_locations = [os.path.join(os.path.dirname(__file__),
+                    'open8055.conf')]
+            server.load_config(config_locations)
+
+            server.create_server_socket()
+
             server.start()
 
             while True:
