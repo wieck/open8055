@@ -233,7 +233,7 @@ class Open8055Server(threading.Thread):
         # Get the required authentication method based on client address.
         # ----
         try:
-            auth_required = self.lookup_auth_method(addr[0], None,
+            auth_required = self.lookup_auth_method(addr[0], user,
                     self.config.get('Access', 'connect'))
         except Exception as err:
             log_error('lookup_auth_method() failed: ' + str(err))
@@ -273,8 +273,48 @@ class Open8055Server(threading.Thread):
     #   Access entry in the config file, and eventually check the
     #   username/password given.
     # ----------
-    def check_open_access(self, cardid, addr, user, password):
-        return 'deny'
+    def check_open_access(self, cardid, addr, user, password, salt):
+        # ----
+        # Get the required authentication method based on client address.
+        # ----
+        if self.config.has_option('Access', 'card_' + str(cardid)):
+            access_list = 'card_' + str(cardid)
+        else:
+            access_list = 'default'
+
+        try:
+            auth_required = self.lookup_auth_method(addr[0], user,
+                    self.config.get('Access', access_list))
+        except Exception as err:
+            log_error('lookup_auth_method() failed: ' + str(err))
+            return False
+
+        # ----
+        # If this is denied based on user or IP, return False.
+        # ----
+        if auth_required == 'deny':
+            return False
+
+        # ----
+        # 'trust' authentication means we accept any username and password.
+        # ----
+        if auth_required == 'trust':
+            return True
+        
+        # ----
+        # Need to check username and password and see if we got the
+        # required password level. A given md5 password satisfies both,
+        # md5 or plain requirement, but not the other way around.
+        # ----
+        auth_ok, auth_issuper, auth_given = self.check_user_password(
+                user, password, salt)
+        if not auth_ok:
+            return False
+        if auth_required == 'md5' and auth_given != 'md5':
+            log_error('client {0}: md5 authentication required, got {1}'.format(
+                    addr, auth_given))
+            return False
+        return True
 
     # ----
     # check_user_password()
@@ -653,6 +693,14 @@ class Open8055Client(threading.Thread):
             raise Exception('already connected to card ' + str(self.cardid))
 
         cardid = int(args[1])
+
+        allowed = self.server.check_open_access(cardid, self.addr, 
+                args[1], args[2], self.salt)
+        if not allowed:
+            log_error('client {0}: OPEN {1} ***** - permission denied'.format(
+                    self.addr, args[1]))
+            self.send('ERROR permission denied\n')
+            return
 
         open8055io.open(cardid)
 
