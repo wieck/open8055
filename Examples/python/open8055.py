@@ -37,7 +37,11 @@ open() -- connect to the server and open the specified card
 #  
 # ----------------------------------------------------------------------
 
+import __builtin__
+import getpass
+import hashlib
 import os
+import re
 import socket
 import sys
 
@@ -74,7 +78,7 @@ INPUT           = 0x81
 # cards()
 # ----
 def cards(host = 'localhost', port = 8055, user = 'nobody', 
-        password = 'nopass', timeout = None):
+        password = None, timeout = None):
     """
     Returns the available cards on the server as an integer sequence.
     """
@@ -82,12 +86,12 @@ def cards(host = 'localhost', port = 8055, user = 'nobody',
     # Connect to the server.
     # ----
     card = Open8055()
-    card._connect(host, port, user, password, timeout)
+    card._connect(host, port, timeout)
 
     # ----
     # Send the LIST command and read the reply.
-    # TODO: need to do password MD5 encryption here.
     # ----
+    password = card._encrypt_password(host, port, user, password)
     card._send_message('LIST {0} {1}'.format(user, password))
     line = card._recv_message(timeout)
     msg = line.split(' ')
@@ -120,7 +124,7 @@ def cards(host = 'localhost', port = 8055, user = 'nobody',
 # open()
 # ----
 def open(cardid, host = 'localhost', port = 8055, user = 'nobody', 
-        password = 'nopass', timeout = None):
+        password = None, timeout = None):
     """
     Open an Open8055 card on the server.
 
@@ -133,12 +137,12 @@ def open(cardid, host = 'localhost', port = 8055, user = 'nobody',
     # Connect to the server.
     # ----
     card = Open8055()
-    card._connect(host, port, user, password, timeout)
+    card._connect(host, port, timeout)
 
     # ----
     # Send the OPEN command.
-    # TODO: need to do password MD5 encryption here.
     # ----
+    password = card._encrypt_password(host, port, user, password)
     card._send_message('OPEN {0} {1} {2}'.format(cardid, user, password))
     
     # ----
@@ -152,6 +156,52 @@ def open(cardid, host = 'localhost', port = 8055, user = 'nobody',
 
     return card
 
+# ----------
+# username_password()
+# ----------
+def username_password(host = 'localhost', port = 8055, 
+        user = None, password = None):
+    """
+    Attempt to determine username and password. The username defaults to
+    the current login user. If password is None, we attempt to look it
+    up in the ~/.open8055pass file.
+    """
+    if user is None:
+        user = getpass.getuser()
+
+    if password is not None:
+        return user, password
+
+    try:
+        fname = os.path.expanduser('~/.open8055pass')
+        fd = __builtin__.open(fname, 'r')
+    except Exception as err:
+        return user, password
+    try:
+        re_comment = re.compile('^[ \t]*#')
+        re_blank = re.compile('[ \t]+')
+        for line in fd.readlines():
+            if re_comment.match(line):
+                continue
+
+            tokens = re_blank.split(line.strip())
+            if len(tokens) != 4:
+                continue
+
+            if tokens[0] != 'all' and tokens[0] != host:
+                continue
+            if tokens[1] != 'all' and int(tokens[1]) != port:
+                continue
+            if tokens[2] != user:
+                continue
+            
+            password = tokens[3]
+            break
+    finally:
+        fd.close()
+    
+    return user, password
+    
 
 # ----------
 # Open8055
@@ -902,7 +952,7 @@ class Open8055:
                 )
         self._send_message(msg)
 
-    def _connect(self, host, port, user, password, timeout):
+    def _connect(self, host, port, timeout):
         """
         Internal function to connect to the server and process the
         initial HELLO and SALT messages.
@@ -977,5 +1027,15 @@ class Open8055:
         self.input_buffer = self.input_buffer[idx + 1:]
 
         return result
+    
+    def _encrypt_password(self, host, port, user, password):
+        if password is None:
+            return 'nopass'
 
+        if len(password) != 35 or password[0:3] != 'md5':
+            password = 'md5' + hashlib.md5(password).hexdigest()
+
+        return 'md5' + hashlib.md5(
+                self.server_salt + password[3:]).hexdigest()
+                
 

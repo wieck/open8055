@@ -695,10 +695,10 @@ class Open8055Client(threading.Thread):
         cardid = int(args[1])
 
         allowed = self.server.check_open_access(cardid, self.addr, 
-                args[1], args[2], self.salt)
+                args[2], args[3], self.salt)
         if not allowed:
-            log_error('client {0}: OPEN {1} ***** - permission denied'.format(
-                    self.addr, args[1]))
+            log_error('client {0}: OPEN {1} {2} ***** - permission denied'.format(
+                    self.addr, args[1], args[2]))
             self.send('ERROR permission denied\n')
             return
 

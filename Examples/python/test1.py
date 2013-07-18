@@ -3,6 +3,7 @@
 import os
 import sys
 import getopt
+import getpass
 
 # ----
 # Import custom modules that come with Open8055
@@ -42,8 +43,8 @@ def main(argv):
     cardid = 0
     host = 'localhost'
     port = 8055
-    user = 'nobody'
-    password = 'nopass'
+    user = None
+    password = None
 
     try:
         opts, args = getopt.getopt(argv, 'c:h:p:u:?', 
@@ -67,6 +68,14 @@ def main(argv):
         elif opt in ('-?', '--help', ):
             usage()
             return 0
+
+    # ----
+    # Finallize username and password
+    # ----
+    if user is None or password is None:
+        user, password = open8055.username_password(host, port, user, password)
+    if password is None:
+        password = getpass.getpass('Password for {0}:'.format(user))
 
     # ----
     # Connect to the server
