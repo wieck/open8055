@@ -89,14 +89,14 @@ class Open8055Server(threading.Thread):
         self.config.set('General', 'users_file', 'open8055.users')
 
         self.config.add_section('Access')
-        self.config.set('Access', 'connect', """127.0.0.1/32    allow
-                        ::1/128     allow
-                        0.0.0.0/0   deny
-                        ::/0        deny""")
-        self.config.set('Access', 'default', """127.0.0.1/32    trust
-                        ::1/128     trust
-                        0.0.0.0/0   deny
-                        ::/0        deny""")
+        self.config.set('Access', 'connect', """127.0.0.1/32    all     trust
+                        ::1/128     all     trust
+                        0.0.0.0/0   all     deny
+                        ::/0        all     deny""")
+        self.config.set('Access', 'default', """127.0.0.1/32    all     trust
+                        ::1/128     all     trust
+                        0.0.0.0/0   all     deny
+                        ::/0        all     deny""")
 
         if not is_reload:
             self.config_fname = None
@@ -417,7 +417,7 @@ class Open8055Server(threading.Thread):
                 continue
             if re_comment.match(line):
                 continue
-
+            
             # ----
             # Split the line into network address, auth-user  and auth-result.
             # Return the result if the ipaddr falls into the network.
