@@ -42,7 +42,7 @@ include ../Makefile.global
 # Global compiler and loader settings
 # ----
 CC=				gcc
-CFLAGS+=		-O2 -Wall -I.. -I../include
+CFLAGS+=		-O2 -fPIC -Wall -I.. -I../include
 CFLAGS+=		-I$(PYTHON_INCLUDE_DIR)
 LDFLAGS+=		
 
