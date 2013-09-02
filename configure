@@ -3039,7 +3039,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 acx_libusb_version=none
-for acx_try in '' '-1.0' ; do
+for acx_try in '-1.0' '-0.1' '' ; do
 	as_ac_Lib=`$as_echo "ac_cv_lib_usb$acx_try''_libusb_init" | $as_tr_sh`
 { $as_echo "$as_me:$LINENO: checking for libusb_init in -lusb$acx_try" >&5
 $as_echo_n "checking for libusb_init in -lusb$acx_try... " >&6; }
