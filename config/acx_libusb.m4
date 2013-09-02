@@ -5,7 +5,7 @@ AC_REQUIRE([AC_CANONICAL_HOST])
 AC_LANG_C
 
 acx_libusb_version=none
-for acx_try in '' '-1.0' ; do
+for acx_try in '-1.0' '-0.1' '' ; do
 	AC_CHECK_LIB(usb$acx_try, libusb_init, [
 		acx_libusb_version=$acx_try
 		acx_libusb=usb$acx_try
