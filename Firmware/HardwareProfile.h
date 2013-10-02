@@ -69,9 +69,8 @@
 #define PROGRAMMABLE_WITH_USB_HID_BOOTLOADER		
 
 // Timer3 is used for a 100us ticker. At 12 MHz 100 microseconds
-// would be 1200 cycles. The missing cycles elapse while the
-// timer is turned off and reloaded.
-#define OPEN8055_TICK_TIMER_CYCLES		1148
+// are 1200 cycles.
+#define OPEN8055_TICK_TIMER_CYCLES		1200
 #define OPEN8055_TICKS_PER_MS			10
 
 #define OPEN8055_COUNTER_DEBOUNCE_DEFAULT	1
