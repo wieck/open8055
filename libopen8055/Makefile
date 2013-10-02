@@ -1,7 +1,7 @@
 # ----------------------------------------------------------------------
 # Makefile
 #
-#	OS agnostic Makefile for libopen8055
+#   OS agnostic Makefile for libopen8055
 #
 # ----------------------------------------------------------------------
 #
@@ -37,13 +37,13 @@ UNAME=$(shell uname)
 
 
 ifeq ($(UNAME), Linux)
-	OS_MAKEFILE=Makefile.unix
+    OS_MAKEFILE=Makefile.unix
 else ifeq ($(UNAME), FreeBSD)
-	OS_MAKEFILE=Makefile.unix
+    OS_MAKEFILE=Makefile.unix
 else ifeq ($(findstring MINGW32, $(UNAME)), MINGW32)
-	OS_MAKEFILE=Makefile.win32
+    OS_MAKEFILE=Makefile.win32
 else
-Unsupported_OS:	; $(error Operating system $(UNAME) not supported (yet))
+Unsupported_OS: ; $(error Operating system $(UNAME) not supported (yet))
 endif
 
 

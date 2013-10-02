@@ -1,7 +1,7 @@
 # ----------------------------------------------------------------------
 # Makefile.unix
 #
-#	Unix specific Makefile for the open8055.so
+#   Unix specific Makefile for the open8055.so
 #
 # ----------------------------------------------------------------------
 #
@@ -36,30 +36,30 @@
 # ----
 # Global compiler and loader settings
 # ----
-CC=						gcc
-CFLAGS+=				-O2 -Wall -I../include
-LDFLAGS+=	
-AR=						ar
+CC=                     gcc
+CFLAGS+=                -O2 -Wall -I../include
+LDFLAGS+=   
+AR=                     ar
 
 ifeq ($(UNAME), Linux)
-	CFLAGS+= -I/usr/include/libusb-1.0 -fPIC
+    CFLAGS+= -I/usr/include/libusb-1.0 -fPIC
 endif
 
 
 # ----
 # Stuff required for building the open8055.a static library
 # ----
-OPEN8055_A=				libopen8055.a
-OPEN8055_A_OBJS=		open8055.o
-OPEN8055_A_EXTRA=	
+OPEN8055_A=             libopen8055.a
+OPEN8055_A_OBJS=        open8055.o
+OPEN8055_A_EXTRA=   
 OPEN8055_A_LIBS=
 
 
 # ----
 # Stuff required for building the open8055.so
 # ----
-OPEN8055_DLL=			libopen8055.so
-OPEN8055_DLL_OBJS=		open8055.o
+OPEN8055_DLL=           libopen8055.so
+OPEN8055_DLL_OBJS=      open8055.o
 OPEN8055_DLL_EXTRA=
 OPEN8055_DLL_LIBS=
 
@@ -68,46 +68,46 @@ OPEN8055_DLL_LIBS=
 # Combine individual stuff into all my stuff.
 # (Do I start sounding like George Carlin?)
 # ----
-ALL=		$(OPEN8055_A) $(OPEN8055_DLL)
-ALL_OBJS=	$(OPEN8055_A_OBJS) $(OPEN8055_DLL_OBJS)
+ALL=        $(OPEN8055_A) $(OPEN8055_DLL)
+ALL_OBJS=   $(OPEN8055_A_OBJS) $(OPEN8055_DLL_OBJS)
 
 
 # ----
 # Default target is to build all my stuff.
 # ----
-all:		$(ALL)
+all:        $(ALL)
 
 
 # ----
 # Remove all the stuff that wasn't there before.
 # ----
 clean:
-	rm -f $(ALL) $(ALL_EXE) $(ALL_OBJS)
+    rm -f $(ALL) $(ALL_EXE) $(ALL_OBJS)
 
 
 # ----
 # Put here whatever is needed to screw up your system
 # ----
-install:	all
-#	cp *.dll C:/bin
+install:    all
+#   cp *.dll C:/bin
 
 # ----
 # Individual toplevel target dependencies and build instructions
 # ----
-$(OPEN8055_A):		$(OPEN8055_A_OBJS)
-	$(AR) -rs $@ $^
+$(OPEN8055_A):      $(OPEN8055_A_OBJS)
+    $(AR) -rs $@ $^
 
-$(OPEN8055_DLL):	$(OPEN8055_DLL_OBJS) $(OPEN8055_DLL_EXTRA)
-	$(CC) $(CFLAGS) -shared -o $@ $^ $(OPEN8055_DLL_LIBS)
+$(OPEN8055_DLL):    $(OPEN8055_DLL_OBJS) $(OPEN8055_DLL_EXTRA)
+    $(CC) $(CFLAGS) -shared -o $@ $^ $(OPEN8055_DLL_LIBS)
 
 
 # ----
 # Component dependencies that can be resolved by default
 # GNUmake rules.
 # ----
-open8055.o:		open8055.c								\
-				../include/open8055.h					\
-				../include/open8055_compat.h			\
-				../include/open8055_hid_protocol.h
-	$(CC) $(CFLAGS) -c -o $@ $<
+open8055.o:     open8055.c                              \
+                ../include/open8055.h                   \
+                ../include/open8055_compat.h            \
+                ../include/open8055_hid_protocol.h
+    $(CC) $(CFLAGS) -c -o $@ $<
 
