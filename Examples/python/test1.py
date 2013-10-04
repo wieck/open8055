@@ -62,7 +62,6 @@ def main(argv):
     # Finallize username and password
     # ----
     conninfo = open8055.conninfo(destination)
-    print 'conninfo:', conninfo
     # if user is None or password is None:
     #     user, password = open8055.username_password(host, port, user, password)
     # if password is None:
