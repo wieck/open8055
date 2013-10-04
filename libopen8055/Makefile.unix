@@ -11,13 +11,13 @@
 #  Redistribution and use in source and binary forms, with or without
 #  modification, are permitted provided that the following conditions are met:
 #      * Redistributions of source code must retain the above copyright
-#        notice, this list of conditions and the following disclaimer.
+#	 notice, this list of conditions and the following disclaimer.
 #      * Redistributions in binary form must reproduce the above copyright
-#        notice, this list of conditions and the following disclaimer in the
-#        documentation and/or other materials provided with the distribution.
+#	 notice, this list of conditions and the following disclaimer in the
+#	 documentation and/or other materials provided with the distribution.
 #      * Neither the name of the <organization> nor the
-#        names of its contributors may be used to endorse or promote products
-#        derived from this software without specific prior written permission.
+#	 names of its contributors may be used to endorse or promote products
+#	 derived from this software without specific prior written permission.
 #  
 #  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 #  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -36,21 +36,21 @@
 # ----
 # Global compiler and loader settings
 # ----
-CC=                     gcc
-CFLAGS+=                -O2 -Wall -I../include
+CC=			gcc
+CFLAGS+=		-O2 -Wall -I../include
 LDFLAGS+=   
-AR=                     ar
+AR=			ar
 
 ifeq ($(UNAME), Linux)
-    CFLAGS+= -I/usr/include/libusb-1.0 -fPIC
+	CFLAGS+= -I/usr/include/libusb-1.0 -fPIC
 endif
 
 
 # ----
 # Stuff required for building the open8055.a static library
 # ----
-OPEN8055_A=             libopen8055.a
-OPEN8055_A_OBJS=        open8055.o
+OPEN8055_A=		libopen8055.a
+OPEN8055_A_OBJS=	open8055.o
 OPEN8055_A_EXTRA=   
 OPEN8055_A_LIBS=
 
@@ -58,8 +58,8 @@ OPEN8055_A_LIBS=
 # ----
 # Stuff required for building the open8055.so
 # ----
-OPEN8055_DLL=           libopen8055.so
-OPEN8055_DLL_OBJS=      open8055.o
+OPEN8055_DLL=		libopen8055.so
+OPEN8055_DLL_OBJS=	open8055.o
 OPEN8055_DLL_EXTRA=
 OPEN8055_DLL_LIBS=
 
@@ -68,21 +68,21 @@ OPEN8055_DLL_LIBS=
 # Combine individual stuff into all my stuff.
 # (Do I start sounding like George Carlin?)
 # ----
-ALL=        $(OPEN8055_A) $(OPEN8055_DLL)
+ALL=	    $(OPEN8055_A) $(OPEN8055_DLL)
 ALL_OBJS=   $(OPEN8055_A_OBJS) $(OPEN8055_DLL_OBJS)
 
 
 # ----
 # Default target is to build all my stuff.
 # ----
-all:        $(ALL)
+all:	    $(ALL)
 
 
 # ----
 # Remove all the stuff that wasn't there before.
 # ----
 clean:
-    rm -f $(ALL) $(ALL_EXE) $(ALL_OBJS)
+	rm -f $(ALL) $(ALL_EXE) $(ALL_OBJS)
 
 
 # ----
@@ -94,20 +94,20 @@ install:    all
 # ----
 # Individual toplevel target dependencies and build instructions
 # ----
-$(OPEN8055_A):      $(OPEN8055_A_OBJS)
-    $(AR) -rs $@ $^
+$(OPEN8055_A):	    $(OPEN8055_A_OBJS)
+	$(AR) -rs $@ $^
 
 $(OPEN8055_DLL):    $(OPEN8055_DLL_OBJS) $(OPEN8055_DLL_EXTRA)
-    $(CC) $(CFLAGS) -shared -o $@ $^ $(OPEN8055_DLL_LIBS)
+	$(CC) $(CFLAGS) -shared -o $@ $^ $(OPEN8055_DLL_LIBS)
 
 
 # ----
 # Component dependencies that can be resolved by default
 # GNUmake rules.
 # ----
-open8055.o:     open8055.c                              \
-                ../include/open8055.h                   \
-                ../include/open8055_compat.h            \
-                ../include/open8055_hid_protocol.h
-    $(CC) $(CFLAGS) -c -o $@ $<
+open8055.o:	open8055.c				\
+		../include/open8055.h			\
+		../include/open8055_compat.h		\
+		../include/open8055_hid_protocol.h
+	$(CC) $(CFLAGS) -c -o $@ $<
 

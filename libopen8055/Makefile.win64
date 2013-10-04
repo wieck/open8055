@@ -11,13 +11,13 @@
 #  Redistribution and use in source and binary forms, with or without
 #  modification, are permitted provided that the following conditions are met:
 #      * Redistributions of source code must retain the above copyright
-#        notice, this list of conditions and the following disclaimer.
+#	 notice, this list of conditions and the following disclaimer.
 #      * Redistributions in binary form must reproduce the above copyright
-#        notice, this list of conditions and the following disclaimer in the
-#        documentation and/or other materials provided with the distribution.
+#	 notice, this list of conditions and the following disclaimer in the
+#	 documentation and/or other materials provided with the distribution.
 #      * Neither the name of the <organization> nor the
-#        names of its contributors may be used to endorse or promote products
-#        derived from this software without specific prior written permission.
+#	 names of its contributors may be used to endorse or promote products
+#	 derived from this software without specific prior written permission.
 #  
 #  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 #  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -36,12 +36,12 @@
 # ----
 # Global compiler and loader settings
 # ----
-CC=     gcc
+CC=	gcc
 CFLAGS+=    -O2 -Wa,--64 -Wall -I../firmware
 LDFLAGS+=   
-AR=     ar
+AR=	ar
 
-MINGW64_PATH=   /c/mingw64
+MINGW64_PATH=	/c/mingw64
 LIBPTHREAD= $(MINGW64_PATH)/x86_64-w64-mingw32/lib/libpthread.a
 
 
@@ -49,7 +49,7 @@ LIBPTHREAD= $(MINGW64_PATH)/x86_64-w64-mingw32/lib/libpthread.a
 # ----
 # Stuff required for building the open8055_w64.a
 # ----
-OPEN8055_A=     open8055_w64.a
+OPEN8055_A=	open8055_w64.a
 OPEN8055_A_OBJS=    open8055_w64.o
 OPEN8055_A_EXTRA=   $(LIBPTHREAD)
 OPEN8055_A_LIBS=    -L. -lsetupapi -lrpcrt4 -lws2_32
@@ -58,7 +58,7 @@ OPEN8055_A_LIBS=    -L. -lsetupapi -lrpcrt4 -lws2_32
 # ----
 # Stuff required for building the open8055_w64.dll
 # ----
-OPEN8055_DLL=       open8055_w64.dll
+OPEN8055_DLL=	    open8055_w64.dll
 OPEN8055_DLL_OBJS=  open8055_w64.so
 OPEN8055_DLL_EXTRA= $(LIBPTHREAD)
 OPEN8055_DLL_LIBS=  -L. -lsetupapi -lrpcrt4 -lws2_32
@@ -68,21 +68,21 @@ OPEN8055_DLL_LIBS=  -L. -lsetupapi -lrpcrt4 -lws2_32
 # Combine individual stuff into all my stuff.
 # (Do I start sounding like George Carlin?)
 # ----
-ALL=        $(OPEN8055_A) $(OPEN8055_DLL)
+ALL=	    $(OPEN8055_A) $(OPEN8055_DLL)
 ALL_OBJS=   $(OPEN8055_A_OBJS) $(OPEN8055_DLL_OBJS)
 
 
 # ----
 # Default target is to build all my stuff.
 # ----
-all:        $(ALL)
+all:	    $(ALL)
 
 
 # ----
 # Remove all the stuff that wasn't there before.
 # ----
 clean:
-    rm -f $(ALL) $(ALL_EXE) $(ALL_OBJS)
+	rm -f $(ALL) $(ALL_EXE) $(ALL_OBJS)
 
 
 # ----
@@ -94,11 +94,11 @@ install:    all
 # ----
 # Individual toplevel target dependencies and build instructions
 # ----
-$(OPEN8055_A):  $(OPEN8055_A_OBJS)
-    $(AR) -rs $@ $^
+$(OPEN8055_A):	$(OPEN8055_A_OBJS)
+	$(AR) -rs $@ $^
 
 $(OPEN8055_DLL):    $(OPEN8055_DLL_OBJS) $(OPEN8055_DLL_EXTRA)
-    $(CC) $(CFLAGS) -shared -o $@ $^ $(OPEN8055_DLL_LIBS) -Wl,--add-stdcall-alias
+	$(CC) $(CFLAGS) -shared -o $@ $^ $(OPEN8055_DLL_LIBS) -Wl,--add-stdcall-alias
 
 
 # ----
@@ -106,9 +106,9 @@ $(OPEN8055_DLL):    $(OPEN8055_DLL_OBJS) $(OPEN8055_DLL_EXTRA)
 # GNUmake rules.
 # ----
 open8055_w64.o: open8055.c open8055.h open8055_compat.h ../include/open8055_hid_protocol.h
-    $(CC) -DOPEN8055_STATIC $(CFLAGS) -c -o $@ $<
+	$(CC) -DOPEN8055_STATIC $(CFLAGS) -c -o $@ $<
 
 open8055_w64.so:    open8055.c open8055.h open8055_compat.h ../include/open8055_hid_protocol.h
-    $(CC) -DOPEN8055_BUILD_DLL $(CFLAGS) -c -o $@ $<
+	$(CC) -DOPEN8055_BUILD_DLL $(CFLAGS) -c -o $@ $<
 
 

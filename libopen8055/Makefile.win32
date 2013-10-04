@@ -11,13 +11,13 @@
 #  Redistribution and use in source and binary forms, with or without
 #  modification, are permitted provided that the following conditions are met:
 #      * Redistributions of source code must retain the above copyright
-#        notice, this list of conditions and the following disclaimer.
+#	 notice, this list of conditions and the following disclaimer.
 #      * Redistributions in binary form must reproduce the above copyright
-#        notice, this list of conditions and the following disclaimer in the
-#        documentation and/or other materials provided with the distribution.
+#	 notice, this list of conditions and the following disclaimer in the
+#	 documentation and/or other materials provided with the distribution.
 #      * Neither the name of the <organization> nor the
-#        names of its contributors may be used to endorse or promote products
-#        derived from this software without specific prior written permission.
+#	 names of its contributors may be used to endorse or promote products
+#	 derived from this software without specific prior written permission.
 #  
 #  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 #  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -36,10 +36,10 @@
 # ----
 # Global compiler and loader settings
 # ----
-CC=     gcc
+CC=	gcc
 CFLAGS+=    -O2 -Wall -I../include
 LDFLAGS+=   
-AR=     ar
+AR=	ar
 
 MINGW_PATH= /c/mingw
 LIBPTHREAD= $(MINGW_PATH)/lib/libpthreadGC2.dll.a
@@ -47,7 +47,7 @@ LIBPTHREAD= $(MINGW_PATH)/lib/libpthreadGC2.dll.a
 # ----
 # Stuff required for building the libopen8055.a
 # ----
-OPEN8055_A=     libopen8055.a
+OPEN8055_A=	libopen8055.a
 OPEN8055_A_OBJS=    open8055.o
 OPEN8055_A_LIBS=    -L. -lsetupapi -lrpcrt4 -lws2_32
 
@@ -55,7 +55,7 @@ OPEN8055_A_LIBS=    -L. -lsetupapi -lrpcrt4 -lws2_32
 # ----
 # Stuff required for building the libopen8055.dll
 # ----
-OPEN8055_DLL=       libopen8055.dll
+OPEN8055_DLL=	    libopen8055.dll
 OPEN8055_DLL_OBJS=  open8055.so
 OPEN8055_DLL_LIBS=  -L. -lsetupapi -lrpcrt4 -lws2_32
 
@@ -64,14 +64,14 @@ OPEN8055_DLL_LIBS=  -L. -lsetupapi -lrpcrt4 -lws2_32
 # Combine individual stuff into all my stuff.
 # (Do I start sounding like George Carlin?)
 # ----
-ALL=        $(OPEN8055_A) $(OPEN8055_DLL)
+ALL=	    $(OPEN8055_A) $(OPEN8055_DLL)
 ALL_OBJS=   $(OPEN8055_A_OBJS) $(OPEN8055_DLL_OBJS)
 
 
 # ----
 # Default target is to build all my stuff.
 # ----
-all:        $(ALL)
+all:	    $(ALL)
 	cp $(OPEN8055_DLL) ../Examples/Open8055Demo_VC2008/Release/$(OPEN8055_DLL)
 
 
@@ -92,7 +92,7 @@ install:    all
 # ----
 # Individual toplevel target dependencies and build instructions
 # ----
-$(OPEN8055_A):  $(OPEN8055_A_OBJS)
+$(OPEN8055_A):	$(OPEN8055_A_OBJS)
 	$(AR) -rs $@ $^
 
 $(OPEN8055_DLL):    $(OPEN8055_DLL_OBJS)
@@ -106,6 +106,6 @@ $(OPEN8055_DLL):    $(OPEN8055_DLL_OBJS)
 open8055.o: open8055.c ../include/open8055.h ../include/open8055_compat.h ../include/open8055_hid_protocol.h
 	$(CC) -DOPEN8055_STATIC $(CFLAGS) -c -o $@ $<
 
-open8055.so:    open8055.c ../include/open8055.h ../include/open8055_compat.h ../include/open8055_hid_protocol.h
+open8055.so:	open8055.c ../include/open8055.h ../include/open8055_compat.h ../include/open8055_hid_protocol.h
 	$(CC) -DOPEN8055_BUILD_DLL $(CFLAGS) -c -o $@ $<
 
