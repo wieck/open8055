@@ -56,6 +56,13 @@ typedef struct {
     int                     idLocal;
     char                    destination[1024];
 
+    SOCKET		    sock;
+    char		    net_input_buffer[1024];
+    char		   *net_input_pos;
+    int			    net_input_have;
+    char		    net_input_line[1024];
+    char		   *net_input_out;
+
     char                    errorMessage[1024];
 
     Open8055_hidMessage_t   currentConfig1;
@@ -110,6 +117,12 @@ static void UnlockAndRefcount(Open8055_card_t *card);
 static int Open8055_Init(void);
 static void SetError(Open8055_card_t *card, char *fmt, ...);
 
+static int CardRead(Open8055_card_t *card, void *buffer, int timeout);
+static int CardReadLine(Open8055_card_t *card, char *buffer, int len, int timeout);
+static int CardWrite(Open8055_card_t *card, void *buffer);
+static int CardWriteLine(Open8055_card_t *card, char *fmt, ...);
+static int CardClose(Open8055_card_t *card);
+
 static int DeviceInit(void);
 static int DevicePresent(int cardNumber);
 static int DeviceOpen(Open8055_card_t *card);
@@ -133,6 +146,7 @@ static int              connectionsSize = 0;
 static int              connectionsUsed = 0;
 #ifdef _WIN32
 static CRITICAL_SECTION connectionsLock;
+WSADATA			WSAData;
 #else
 static pthread_mutex_t  connectionsLock;
 #endif
@@ -217,33 +231,6 @@ Open8055_Connect(char *destination, char *password)
     }
 
     /* ----
-     * Parse the destination. At some point in the future this string
-     * will look like a URI in the format of open8055://user@host/card0-n.
-     * For now we just parse the "card0-n" part.
-     * ----
-     */
-    if (sscanf(destination, "card%d", &cardNumber) != 1)
-    {
-        SetError(NULL, "Syntax error in local card address '%s'", destination);
-        return -1;
-    }
-
-    /* ----
-     * Check the card number for validity and make sure it isn't open yet.
-     * ----
-     */
-    if (cardNumber < 0 || cardNumber >= OPEN8055_MAX_CARDS)
-    {
-        SetError(NULL, "Card number %d out of bounds", cardNumber);
-        return -1;
-    }
-    if (openLocalCards[cardNumber] != 0)
-    {
-        SetError(NULL, "Local card %d already open", cardNumber);
-        return -1;
-    }
-
-    /* ----
      * Allocate the card status data.
      * ----
      */
@@ -255,48 +242,288 @@ Open8055_Connect(char *destination, char *password)
     }
     memset(card, 0, sizeof(Open8055_card_t));
     strncpy(card->destination, destination, sizeof(card->destination));
-    card->isLocal   = TRUE;
-    card->idLocal   = cardNumber;
     card->autoFlush = TRUE;
-    LockCreate(&(card->cardLock));
-    LockAcquire(&(card->cardLock));
 
     /* ----
-     * Try to open the actual local card.
+     * Parse the destination. We first check for the remote
+     * format of open8055://user@host/cardN.
      * ----
      */
-    if (DeviceOpen(card) < 0)
+    if (strnicmp(destination, "open8055://", 11) == 0)
     {
-        strncpy(lastErrorMessage, card->errorMessage, sizeof(lastErrorMessage));
-        LockRelease(&(card->cardLock));
-        LockDestroy(&(card->cardLock));
-        free(card);
-        return -1;
+    	char           *destcopy = strdup(&destination[11]);
+	char           *user = "nobody";
+	char           *host = "localhost";
+	int	        port = 8055;
+	char           *parsepos = destcopy;
+	char           *pos;
+	struct hostent *hent;
+	struct sockaddr_in	addr;
+	char		line[256];
+	char		salt[256];
+	int		rc;
+
+	/* ----
+	 * If present, extract the USER@ part at the beginning of the destination.
+	 * ----
+	 */
+	if ((pos = strchr(parsepos, '@')) != NULL)
+	{
+	    user = parsepos;
+	    *pos++ = '\0';
+	    parsepos = pos;
+	}
+
+	/* ----
+	 * We now expect either "host:port/cardN" or "host/cardN".
+	 * ----
+	 */
+	if ((pos = strchr(parsepos, ':')) != NULL)
+	{
+	    /* ----
+	     * There is a colon, so get the host and port.
+	     * ----
+	     */
+	    host = parsepos;
+	    *pos++ = '\0';
+	    parsepos = pos;
+	    if ((pos = strchr(parsepos, '/')) == NULL)
+	    {
+	    	SetError(NULL, "Invalid destination");
+		free(card);
+		free(destcopy);
+		return -1;
+	    }
+	    *pos++ = '\0';
+	    if (sscanf(parsepos, "%d", &port) != 1)
+	    {
+	    	SetError(NULL, "Invalid destination");
+		free(card);
+		free(destcopy);
+		return -1;
+	    }
+	    parsepos = pos;
+	}
+	else
+	{
+	    /* ----
+	     * No colon, so it is just going to be a host name
+	     * followed by /cardN.
+	     * ----
+	     */
+	    if ((pos = strchr(parsepos, '/')) == NULL)
+	    {
+	    	SetError(NULL, "Invalid destination");
+		free(card);
+		free(destcopy);
+		return -1;
+	    }
+	    *pos++ = '\0';
+	    host = parsepos;
+	    parsepos = pos;
+	}
+
+	/* ----
+	 * The final element in the remote card address must be "cardN".
+	 * ----
+	 */
+	if (sscanf(parsepos, "card%d", &cardNumber) != 1)
+	{
+	    SetError(NULL, "Invalid destination");
+	    free(card);
+	    free(destcopy);
+	    return -1;
+	}
+
+	/* ----
+	 * Get the actual host address.
+	 * ----
+	 */
+	hent = gethostbyname(host);
+	if (hent == NULL)
+	{
+	    SetError(NULL, "%s: unknown host", host);
+	    free(card);
+	    free(destcopy);
+	    return -1;
+	}
+	free(destcopy);
+
+	/* ----
+	 * Connect to the Open8055Server.
+	 * ----
+	 */
+	addr.sin_family = AF_INET;
+	addr.sin_addr = *((struct in_addr *)(hent->h_addr));
+	addr.sin_port = htons(port);
+	card->sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (card->sock == INVALID_SOCKET)
+	{
+	    SetError(NULL, "%s", ErrorString());
+	    free(card);
+	    return -1;
+	}
+	if (connect(card->sock, (struct sockaddr *)&addr, sizeof(addr)) != 0)
+	{
+	    SetError(NULL, "%s", ErrorString());
+	    closesocket(card->sock);
+	    free(card);
+	    return -1;
+	}
+
+	/* ----
+	 * Create and acquire the card lock and mark the card being remote.
+	 * ----
+	 */
+	LockCreate(&(card->cardLock));
+	LockAcquire(&(card->cardLock));
+	card->isLocal   = FALSE;
+	card->idLocal   = -1;
+	card->net_input_pos = card->net_input_buffer;
+	card->net_input_out = card->net_input_line;
+
+	/* ----
+	 * Get the HELLO and SALT messages.
+	 * ----
+	 */
+	if ((rc = CardReadLine(card, line, sizeof(line), 60000)) <= 0)
+	{
+	    if (rc < 0)
+		strncpy(lastErrorMessage, card->errorMessage, sizeof(lastErrorMessage));
+	    else
+	        SetError(NULL, "timeout receiving HELLO");
+	    CardClose(card);
+	    LockRelease(&(card->cardLock));
+	    LockDestroy(&(card->cardLock));
+	    free(card);
+	    return -1;
+	}
+	if (strncmp(line, "HELLO Open8055Server ", 21) != 0)
+	{
+	    SetError(NULL, "Expected HELLO, got '%s'", line);
+	    CardClose(card);
+	    LockRelease(&(card->cardLock));
+	    LockDestroy(&(card->cardLock));
+	    free(card);
+	    return -1;
+	}
+
+	if ((rc = CardReadLine(card, line, sizeof(line), 60000)) <= 0)
+	{
+	    if (rc < 0)
+		strncpy(lastErrorMessage, card->errorMessage, sizeof(lastErrorMessage));
+	    else
+	        SetError(NULL, "timeout receiving SALT");
+	    CardClose(card);
+	    LockRelease(&(card->cardLock));
+	    LockDestroy(&(card->cardLock));
+	    free(card);
+	    return -1;
+	}
+	if (sscanf(line, "SALT %s", salt) != 1)
+	{
+	    SetError(NULL, "Expected SALT, got '%s'", line);
+	    CardClose(card);
+	    LockRelease(&(card->cardLock));
+	    LockDestroy(&(card->cardLock));
+	    free(card);
+	    return -1;
+	}
+
+	/* ----
+	 * Send the OPEN command with username and password.
+	 * TODO: MD5 hashing
+	 * ----
+	 */
+    	if (CardWriteLine(card, "open %d %s %s\n", cardNumber, user, "dummy") < 0)
+	{
+	    strncpy(lastErrorMessage, card->errorMessage, sizeof(lastErrorMessage));
+	    CardClose(card);
+	    LockRelease(&(card->cardLock));
+	    LockDestroy(&(card->cardLock));
+	    free(card);
+	    return -1;
+	}
+    }
+    else
+    {
+	/* ----
+	 * Destination does not start with "open8055://". The requested card must be a local card.
+	 * ----
+	 */
+	if (sscanf(destination, "card%d", &cardNumber) != 1)
+	{
+	    SetError(NULL, "Syntax error in local card address '%s'", destination);
+	    free(card);
+	    return -1;
+	}
+
+	/* ----
+	 * Check the card number for validity and make sure it isn't open yet.
+	 * ----
+	 */
+	if (cardNumber < 0 || cardNumber >= OPEN8055_MAX_CARDS)
+	{
+	    SetError(NULL, "Card number %d out of bounds", cardNumber);
+	    free(card);
+	    return -1;
+	}
+	if (openLocalCards[cardNumber] != 0)
+	{
+	    SetError(NULL, "Local card %d already open", cardNumber);
+	    free(card);
+	    return -1;
+	}
+
+	/* ----
+	 * Try to open the actual local card.
+	 * ----
+	 */
+	if (DeviceOpen(card) < 0)
+	{
+	    strncpy(lastErrorMessage, card->errorMessage, sizeof(lastErrorMessage));
+	    free(card);
+	    return -1;
+	}
+
+	/* ----
+	 * Create and acquire the card lock.
+	 * ----
+	 */
+	LockCreate(&(card->cardLock));
+	LockAcquire(&(card->cardLock));
+
+	card->isLocal   = TRUE;
+	card->idLocal   = cardNumber;
     }
 
     /* ----
-     * Query current card status.
+     * Query current card status. When connecting to an Open8055Server,
+     * The OPEN command automatically responds with those messages.
      * ----
      */
-    memset(&outputMessage, 0, sizeof(outputMessage));
-    outputMessage.msgType = OPEN8055_HID_MESSAGE_GETCONFIG;
-    if (DeviceWrite(card, &outputMessage) < 0)
+    if (card->isLocal)
     {
-        SetError(NULL, "Sending of GETCONFIG failed - %s", ErrorString());
-        DeviceClose(card);
-        LockRelease(&(card->cardLock));
-        LockDestroy(&(card->cardLock));
-        free(card);
-        return -1;
+	memset(&outputMessage, 0, sizeof(outputMessage));
+	outputMessage.msgType = OPEN8055_HID_MESSAGE_GETCONFIG;
+	if (CardWrite(card, &outputMessage) < 0)
+	{
+	    strncpy(lastErrorMessage, card->errorMessage, sizeof(lastErrorMessage));
+	    CardClose(card);
+	    LockRelease(&(card->cardLock));
+	    LockDestroy(&(card->cardLock));
+	    free(card);
+	    return -1;
+	}
     }
     while (card->currentConfig1.msgType == 0x00 
         || card->currentOutput.msgType == 0x00
         || card->currentInput.msgType == 0x00)
     {
-        if (DeviceRead(card, &inputMessage, 1000) < 0)
+        if (CardRead(card, &inputMessage, 1000) < 0)
         {
-            SetError(NULL, "DeviceRead failed - %s", ErrorString());
-            DeviceClose(card);
+	    strncpy(lastErrorMessage, card->errorMessage, sizeof(lastErrorMessage));
+            CardClose(card);
             LockRelease(&(card->cardLock));
             LockDestroy(&(card->cardLock));
             free(card);
@@ -339,7 +566,7 @@ Open8055_Connect(char *destination, char *password)
         {
             initialized = 0;
             SetError(NULL, "out of memory");
-            DeviceClose(card);
+            CardClose(card);
             LockRelease(&(card->cardLock));
             LockDestroy(&(card->cardLock));
             free(card);
@@ -419,7 +646,7 @@ Open8055_Close(int h)
         memset(&message, 0, sizeof(message));
         message.msgType = OPEN8055_HID_MESSAGE_GETINPUT;
 
-        if (DeviceWrite(card, &message) < 0)
+        if (CardWrite(card, &message) < 0)
         {
             UnlockAndRefcount(card);
             return -1;
@@ -435,7 +662,7 @@ Open8055_Close(int h)
      * Close the device and free the card structure.
      * ----
      */
-    if (DeviceClose(card) < 0)
+    if (CardClose(card) < 0)
     {
         strncpy(lastErrorMessage, card->errorMessage, sizeof(lastErrorMessage));
         UnlockAndRefcount(card);
@@ -512,7 +739,7 @@ Open8055_Reset(int h)
         memset(&message, 0, sizeof(message));
         message.msgType = OPEN8055_HID_MESSAGE_GETINPUT;
 
-        if (DeviceWrite(card, &message) < 0)
+        if (CardWrite(card, &message) < 0)
         {
             UnlockAndRefcount(card);
             return -1;
@@ -529,7 +756,7 @@ Open8055_Reset(int h)
      */
     memset(&message, 0, sizeof(message));
     message.msgType = OPEN8055_HID_MESSAGE_RESET;
-    if (DeviceWrite(card, &message) < 0)
+    if (CardWrite(card, &message) < 0)
     {
         strncpy(lastErrorMessage, card->errorMessage, sizeof(lastErrorMessage));
         UnlockAndRefcount(card);
@@ -540,7 +767,7 @@ Open8055_Reset(int h)
      * Close the card and free all data.
      * ----
      */
-    if (DeviceClose(card) < 0)
+    if (CardClose(card) < 0)
     {
         strncpy(lastErrorMessage, card->errorMessage, sizeof(lastErrorMessage));
         UnlockAndRefcount(card);
@@ -566,7 +793,7 @@ Open8055_Wait(int h)
 {
     int             rc;
 
-    while ((rc = Open8055_WaitEx(h, 60000, 0)) == 0);
+    while ((rc = Open8055_WaitEx(h, 1000, 0)) == 0);
     return rc;
 }
 
@@ -617,7 +844,7 @@ Open8055_WaitEx(int h, int timeout, int skipMessages)
         while (rc == 0)
         {
             memset(&inputMessage, 0, sizeof(inputMessage));
-            rc = DeviceRead(card, &inputMessage, 0);
+            rc = CardRead(card, &inputMessage, 0);
 
             if (rc < 0 || card->cardClosed)
             {
@@ -649,7 +876,7 @@ Open8055_WaitEx(int h, int timeout, int skipMessages)
                     break;
 
                 default:
-                    SetError(card, "Received unknown message type 0x%02x", inputMessage.msgType);
+                    SetError(card, "Received unknown message type 0x%02x (1)", inputMessage.msgType);
                     rc = -1;
             }
         }
@@ -683,9 +910,9 @@ Open8055_WaitEx(int h, int timeout, int skipMessages)
     while (rc == 0 && haveInput == 0)
     {
         memset(&inputMessage, 0, sizeof(inputMessage));
-        rc = DeviceRead(card, &inputMessage, timeout);
+        rc = CardRead(card, &inputMessage, timeout);
 
-        if (card->cardClosed)
+        if (rc < 0 || card->cardClosed)
         {
             rc = -1;
             break;
@@ -712,7 +939,7 @@ Open8055_WaitEx(int h, int timeout, int skipMessages)
                 break;
 
             default:
-                SetError(card, "Received unknown message type 0x%02x", inputMessage.msgType);
+                SetError(card, "Received unknown message type 0x%02x (2)", inputMessage.msgType);
                 rc = -1;
         }
     }
@@ -794,7 +1021,7 @@ Open8055_SetAutoFlush(int h, int flag)
     {
         if (card->pendingConfig1)
         {
-            if (DeviceWrite(card, &(card->currentConfig1)) < 0)
+            if (CardWrite(card, &(card->currentConfig1)) < 0)
                 rc = -1;
             else
                 card->pendingConfig1 = FALSE;
@@ -802,7 +1029,7 @@ Open8055_SetAutoFlush(int h, int flag)
 
         if (rc == 0 && card->pendingOutput)
         {
-            if (DeviceWrite(card, &(card->currentOutput)) < 0)
+            if (CardWrite(card, &(card->currentOutput)) < 0)
                 rc = -1;
             else
             {
@@ -834,7 +1061,7 @@ Open8055_Flush(int h)
 
     if (card->pendingConfig1)
     {
-        if (DeviceWrite(card, &(card->currentConfig1)) < 0)
+        if (CardWrite(card, &(card->currentConfig1)) < 0)
             rc = -1;
         else
             card->pendingConfig1 = FALSE;
@@ -842,7 +1069,7 @@ Open8055_Flush(int h)
 
     if (rc == 0 && card->pendingOutput)
     {
-        if (DeviceWrite(card, &(card->currentOutput)) < 0)
+        if (CardWrite(card, &(card->currentOutput)) < 0)
             return -1;
         else
         {
@@ -979,7 +1206,7 @@ Open8055_ResetCounter(int h, int port)
     card->currentOutput.resetCounter |= (1 << port);
     if (card->autoFlush)
     {
-        if (DeviceWrite(card, &(card->currentOutput)) < 0)
+        if (CardWrite(card, &(card->currentOutput)) < 0)
             rc = -1;
         else
         {
@@ -1019,7 +1246,7 @@ Open8055_ResetCounterAll(int h)
     card->currentOutput.resetCounter |= 0x1F;
     if (card->autoFlush)
     {
-        if (DeviceWrite(card, &(card->currentOutput)) < 0)
+        if (CardWrite(card, &(card->currentOutput)) < 0)
             rc = -1;
         else
         {
@@ -1100,7 +1327,7 @@ Open8055_SetDebounce(int h, int port, double ms)
     card->currentConfig1.debounceValue[port] = htons((uint16_t)floor(ms * 10.0) + 1);
     if (card->autoFlush)
     {
-        if (DeviceWrite(card, &(card->currentConfig1)) < 0)
+        if (CardWrite(card, &(card->currentConfig1)) < 0)
             rc = -1;
         else
             card->pendingConfig1 = FALSE;
@@ -1317,7 +1544,7 @@ Open8055_SetOutput(int h, int port, int val)
 
     if (card->autoFlush)
     {
-        if (DeviceWrite(card, &(card->currentOutput)) < 0)
+        if (CardWrite(card, &(card->currentOutput)) < 0)
             rc = -1;
         else
         {
@@ -1359,7 +1586,7 @@ Open8055_SetOutputAll(int h, int bits)
     card->currentOutput.outputBits = bits;
     if (card->autoFlush)
     {
-        if (DeviceWrite(card, &(card->currentOutput)) < 0)
+        if (CardWrite(card, &(card->currentOutput)) < 0)
             rc = -1;
         else
         {
@@ -1426,7 +1653,7 @@ Open8055_SetOutputValue(int h, int port, int val)
 
     if (card->autoFlush)
     {
-        if (DeviceWrite(card, &(card->currentOutput)) < 0)
+        if (CardWrite(card, &(card->currentOutput)) < 0)
             rc = -1;
         else
         {
@@ -1478,7 +1705,7 @@ Open8055_SetPWM(int h, int port, int value)
     card->currentOutput.outputPwmValue[port] = htons(value);
     if (card->autoFlush)
     {
-        if (DeviceWrite(card, &(card->currentOutput)) < 0)
+        if (CardWrite(card, &(card->currentOutput)) < 0)
             rc = -1;
         else
         {
@@ -1553,7 +1780,7 @@ Open8055_SetModeADC(int h, int port, int mode)
         card->currentConfig1.modeADC[port] = mode;
         if (card->autoFlush)
         {
-            if (DeviceWrite(card, &(card->currentConfig1)) < 0)
+            if (CardWrite(card, &(card->currentConfig1)) < 0)
                 rc = -1;
             else
                 card->pendingConfig1 = FALSE;
@@ -1625,7 +1852,7 @@ Open8055_SetModeInput(int h, int port, int mode)
         card->currentConfig1.modeInput[port] = mode;
         if (card->autoFlush)
         {
-            if (DeviceWrite(card, &(card->currentConfig1)) < 0)
+            if (CardWrite(card, &(card->currentConfig1)) < 0)
                 rc = -1;
             else
                 card->pendingConfig1 = FALSE;
@@ -1641,7 +1868,7 @@ Open8055_SetModeInput(int h, int port, int mode)
         card->currentOutput.resetCounter |= (1 << port);
         if (card->autoFlush)
         {
-            if (DeviceWrite(card, &(card->currentOutput)) < 0)
+            if (CardWrite(card, &(card->currentOutput)) < 0)
                 rc = -1;
             else
             {
@@ -1751,7 +1978,7 @@ Open8055_SetModeOutput(int h, int port, int mode)
         card->currentConfig1.modeOutput[port] = mode;
         if (card->autoFlush)
         {
-            if (DeviceWrite(card, &(card->currentConfig1)) < 0)
+            if (CardWrite(card, &(card->currentConfig1)) < 0)
                 rc = -1;
             else
                 card->pendingConfig1 = FALSE;
@@ -1766,7 +1993,7 @@ Open8055_SetModeOutput(int h, int port, int mode)
             card->currentOutput.outputValue[port] = val;
             if (card->autoFlush)
             {
-                if (DeviceWrite(card, &(card->currentOutput)) < 0)
+                if (CardWrite(card, &(card->currentOutput)) < 0)
                     rc = -1;
                 else
                     card->pendingOutput = FALSE;
@@ -1806,6 +2033,14 @@ Open8055_Init(void)
 
     if (DeviceInit() < 0)
         return -1;
+
+#ifdef _WIN32
+    if (WSAStartup(MAKEWORD(2,2), &WSAData) != 0)
+    {
+    	SetError(NULL, "WSAStartup() failed");
+	return -1;
+    }
+#endif
 
     initialized = TRUE;
     return 0;
@@ -1867,6 +2102,370 @@ SetError(Open8055_card_t *card, char *fmt, ...)
     else
         vsnprintf(card->errorMessage, sizeof(card->errorMessage), fmt, ap);
     va_end(ap);
+}
+
+
+/* ----
+ * CardRead()
+ *
+ *  Read one HID report from an open card. In case of a local card, DeviceRead()
+ *  is used. In the case of a remote card, this function handles the TCP/IP
+ *  communication with the server.
+ * ----
+ */
+static int
+CardRead(Open8055_card_t *card, void *buffer, int timeout)
+{
+    char	line[256];
+    int		rc;
+    int		msgType;
+    int		values[24];
+    Open8055_hidMessage_t *message;
+
+    if (card->isLocal)
+    	return DeviceRead(card, buffer, timeout);
+
+    if ((rc = CardReadLine(card, line, sizeof(line), timeout)) <= 0)
+	return rc;
+
+    if (sscanf(line, "RECV %d ", &msgType) != 1)
+    {
+	if (strncmp(line, "ERROR ", 6) == 0)
+	    SetError(card, "%s", line);
+	else
+	    SetError(card, "Expected RECV - got '%s'", line);
+	return -1;
+    }
+
+    memset(buffer, 0, OPEN8055_HID_MESSAGE_SIZE);
+    message = (Open8055_hidMessage_t *)buffer;
+
+    switch (msgType)
+    {
+	case OPEN8055_HID_MESSAGE_INPUT:
+		if (sscanf(line, "RECV %d %d %d %d %d %d %d %d %d",
+			&values[0], &values[1], &values[2], &values[3],
+			&values[4], &values[5], &values[6], &values[7],
+			&values[8]) != 9)
+		{
+		    SetError(card, "CardRead(): incomplete INPUT message");
+		    return -1;
+		}
+		message->msgType = values[0];
+		message->inputBits = values[1];
+		message->inputCounter[0] = ntohs(values[2]);
+		message->inputCounter[1] = ntohs(values[3]);
+		message->inputCounter[2] = ntohs(values[4]);
+		message->inputCounter[3] = ntohs(values[5]);
+		message->inputCounter[4] = ntohs(values[6]);
+		message->inputAdcValue[0] = ntohs(values[7]);
+		message->inputAdcValue[1] = ntohs(values[8]);
+		return 1;
+
+	case OPEN8055_HID_MESSAGE_OUTPUT:
+		if (sscanf(line, "RECV %d %d %d %d %d %d %d %d %d %d %d %d %d",
+			&values[0], &values[1], &values[2], &values[3],
+			&values[4], &values[5], &values[6], &values[7],
+			&values[8], &values[9], &values[10], &values[11],
+			&values[12]) != 13)
+		{
+		    SetError(card, "CardRead(): incomplete INPUT message");
+		    return -1;
+		}
+		message->msgType = values[0];
+		message->outputBits = values[1];
+		message->outputValue[0] = ntohs(values[2]);
+		message->outputValue[1] = ntohs(values[3]);
+		message->outputValue[2] = ntohs(values[4]);
+		message->outputValue[3] = ntohs(values[5]);
+		message->outputValue[4] = ntohs(values[6]);
+		message->outputValue[5] = ntohs(values[7]);
+		message->outputValue[6] = ntohs(values[8]);
+		message->outputValue[7] = ntohs(values[9]);
+		message->outputPwmValue[0] = ntohs(values[10]);
+		message->outputPwmValue[1] = ntohs(values[11]);
+		message->resetCounter = values[12];
+		return 1;
+
+	case OPEN8055_HID_MESSAGE_SETCONFIG1:
+		if (sscanf(line, "RECV %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
+			&values[0], &values[1], &values[2], &values[3],
+			&values[4], &values[5], &values[6], &values[7],
+			&values[8], &values[9], &values[10], &values[11],
+			&values[12], &values[13], &values[14], &values[15],
+			&values[16], &values[17], &values[18], &values[19],
+			&values[20], &values[21], &values[22], &values[23]) != 24)
+		{
+		    SetError(card, "CardRead(): incomplete SETCONFIG1 message");
+		    return -1;
+		}
+		message->msgType = values[0];
+		message->modeADC[0] = values[1];
+		message->modeADC[1] = values[2];
+		message->modeInput[0] = values[3];
+		message->modeInput[1] = values[4];
+		message->modeInput[2] = values[5];
+		message->modeInput[3] = values[6];
+		message->modeInput[4] = values[7];
+		message->modeOutput[0] = values[8];
+		message->modeOutput[1] = values[9];
+		message->modeOutput[2] = values[10];
+		message->modeOutput[3] = values[11];
+		message->modeOutput[4] = values[12];
+		message->modeOutput[5] = values[13];
+		message->modeOutput[6] = values[14];
+		message->modeOutput[7] = values[15];
+		message->modePWM[0] = values[16];
+		message->modePWM[1] = values[17];
+		message->debounceValue[0] = ntohs(values[18]);
+		message->debounceValue[1] = ntohs(values[19]);
+		message->debounceValue[2] = ntohs(values[20]);
+		message->debounceValue[3] = ntohs(values[21]);
+		message->debounceValue[4] = ntohs(values[22]);
+		message->cardAddress = values[23];
+		return 1;
+
+    	default:
+		// SetError(card, "CardRead(): unknown message type 0x%02x", msgType);
+		SetError(card, "CardRead(): line='%s'", line);
+		return -1;
+    }
+}
+
+
+/* ----
+ * CardReadLine()
+ *
+ *  Helper function for CardRead() to receive one single line at a time
+ *  with IO buffering.
+ * ----
+ */
+static int
+CardReadLine(Open8055_card_t *card, char *buffer, int buflen, int timeout)
+{
+    fd_set		rfds;
+    struct timeval	tv;
+    int			rc;
+
+    /* ----
+     * Don't allow the caller to request more than what we can handle with
+     * the cards line buffering.
+     * ----
+     */
+    if (buflen > sizeof(card->net_input_line))
+    	buflen = sizeof(card->net_input_line);
+
+    /* ----
+     * Receive one line from the server.
+     * ----
+     */
+    for (;;)
+    {
+	while (card->net_input_have > 0)
+	{
+	    /* ----
+	     * Discard any carriage return characters.
+	     * ----
+	     */
+	    if (*(card->net_input_pos) == '\r')
+	    {
+		card->net_input_pos++;
+		card->net_input_have--;
+		continue;
+	    }
+
+	    /* ----
+	     * If we found a line feed, we got a complete line. Terminate
+	     * the line buffer, copy the content to the user buffer and
+	     * reset it.
+	     * ----
+	     */
+	    if (*(card->net_input_pos) == '\n')
+	    {
+		card->net_input_pos++;
+		card->net_input_have--;
+		*(card->net_input_out) = '\0';
+		strncpy(buffer, card->net_input_line, buflen);
+
+		card->net_input_out = card->net_input_line;
+		return 1;
+	    }
+
+	    /* ----
+	     * Ordinary character. Just copy it into the line buffer
+	     * and keep moving, unless we run out of space.
+	     * ----
+	     */
+	    *(card->net_input_out++) = *(card->net_input_pos++);
+	    card->net_input_have--;
+
+	    if (card->net_input_out >= (card->net_input_line + buflen))
+	    {
+	    	SetError(card, "Server sent oversize line");
+		return -1;
+	    }
+    	}
+
+	/* ----
+	 * We ran out of data from the server. Check if there is more
+	 * according to our timeout requirements.
+	 * ----
+	 */
+	if (timeout < 0)
+	    timeout = 0;
+	FD_ZERO(&rfds);
+	FD_SET(card->sock, &rfds);
+	tv.tv_sec  = timeout / 1000;
+	tv.tv_usec = (timeout % 1000) * 1000;
+	LockRelease(&(card->cardLock));
+	rc = select(card->sock + 1, &rfds, NULL, NULL, &tv);
+	LockAcquire(&(card->cardLock));
+	if (rc < 0)
+	{
+	    SetError(card, "select(): %s", ErrorString());
+	    return -1;
+	}
+	if (rc == 0)
+	    return 0;
+
+	/* ----
+	 * More data is available. Receive it.
+	 * ----
+	 */
+	rc = recv(card->sock, card->net_input_buffer, sizeof(card->net_input_buffer), 0);
+	if (rc < 0)
+	{
+	    SetError(card, "%s", ErrorString());
+	    return -1;
+	}
+	if (rc == 0)
+	{
+	    SetError(card, "Server closed connection");
+	    return -1;
+	}
+	card->net_input_have = rc;
+	card->net_input_pos = card->net_input_buffer;
+    }
+}
+
+
+/* ----
+ * CardWrite()
+ *
+ *  Write an HID command message to the card. For local cards use DeviceWrite().
+ *  For remote cards translate it into the SEND command and send it to the server.
+ * ----
+ */
+static int
+CardWrite(Open8055_card_t *card, void *buffer)
+{
+    Open8055_hidMessage_t  *message;
+
+    if (card->isLocal)
+    	return DeviceWrite(card, buffer);
+
+    message = (Open8055_hidMessage_t *)buffer;
+    switch (message->msgType)
+    {
+	case OPEN8055_HID_MESSAGE_OUTPUT:
+		return CardWriteLine(card, "SEND %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
+			message->msgType, message->outputBits,
+			htons(message->outputValue[0]), htons(message->outputValue[1]),
+			htons(message->outputValue[2]), htons(message->outputValue[3]),
+			htons(message->outputValue[4]), htons(message->outputValue[5]),
+			htons(message->outputValue[6]), htons(message->outputValue[7]),
+			htons(message->outputPwmValue[0]), htons(message->outputPwmValue[1]),
+			message->resetCounter);
+
+	case OPEN8055_HID_MESSAGE_SETCONFIG1:
+		return CardWriteLine(card, "SEND %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
+			message->msgType,
+			message->modeADC[0], message->modeADC[1],
+			message->modeInput[0], message->modeInput[1], message->modeInput[2],
+			message->modeInput[3], message->modeInput[4],
+			message->modeOutput[0], message->modeOutput[1],
+			message->modeOutput[2], message->modeOutput[3],
+			message->modeOutput[4], message->modeOutput[5],
+			message->modeOutput[6], message->modeOutput[7],
+			message->modePWM[0], message->modePWM[1],
+			htons(message->debounceValue[0]), htons(message->debounceValue[1]),
+			htons(message->debounceValue[1]), htons(message->debounceValue[3]),
+			htons(message->debounceValue[4]),
+			message->cardAddress);
+
+	case OPEN8055_HID_MESSAGE_GETINPUT:
+	case OPEN8055_HID_MESSAGE_GETCONFIG:
+	case OPEN8055_HID_MESSAGE_SAVECONFIG:
+	case OPEN8055_HID_MESSAGE_SAVEALL:
+	case OPEN8055_HID_MESSAGE_RESET:
+		return CardWriteLine(card, "SEND %d\n", message->msgType);
+
+    	default:	
+		SetError(card, "CardWrite(): unknown message type 0x%02x", message->msgType);
+		return -1;
+
+    }
+
+    return 0;
+}
+
+
+/* ----
+ * CardWriteLine()
+ *
+ *  Helper function for CardWrite() to format and send a server message.
+ * ----
+ */
+static int
+CardWriteLine(Open8055_card_t *card, char *fmt, ...)
+{
+    char	buf[256];
+    va_list     ap;
+
+    if (card->sock == INVALID_SOCKET)
+    {
+    	SetError(card, "CardWriteLine(): card is closed");
+	return -1;
+    }
+
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+
+    if (send(card->sock, buf, strlen(buf), 0) != strlen(buf))
+    {
+    	SetError(card, "send(): %s", ErrorString());
+	return -1;
+    }
+
+    return 0;
+}
+
+
+/* ----
+ * CardClose()
+ *
+ *  Local/Remote card abstraction for close.
+ * ----
+ */
+static int
+CardClose(Open8055_card_t *card)
+{
+    if (card->isLocal)
+    	return DeviceClose(card);
+
+    if (card->sock != INVALID_SOCKET)
+    {
+	send(card->sock, "quit\n", 5, 0);
+	closesocket(card->sock);
+	card->sock = INVALID_SOCKET;
+	return 0;
+    }
+    else
+    {
+    	SetError(card, "Card already closed");
+	return -1;
+    }
 }
 
 

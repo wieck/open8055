@@ -371,7 +371,7 @@ private: System::Windows::Forms::Label^  label37;
 			this->cardDestination->Name = L"cardDestination";
 			this->cardDestination->Size = System::Drawing::Size(196, 20);
 			this->cardDestination->TabIndex = 0;
-			this->cardDestination->Text = L"card0";
+			this->cardDestination->Text = L"open8055://nobody@localhost/card0";
 			this->cardDestination->TextChanged += gcnew System::EventHandler(this, &Form1::cardDestination_TextChanged);
 			// 
 			// label1
@@ -397,7 +397,7 @@ private: System::Windows::Forms::Label^  label37;
 			// 
 			this->connectedMessage->Location = System::Drawing::Point(387, 20);
 			this->connectedMessage->Name = L"connectedMessage";
-			this->connectedMessage->Size = System::Drawing::Size(426, 13);
+			this->connectedMessage->Size = System::Drawing::Size(493, 13);
 			this->connectedMessage->TabIndex = 3;
 			this->connectedMessage->Text = L"Not connected";
 			// 
@@ -1993,9 +1993,8 @@ private: System::Windows::Forms::Label^  label37;
 				 // See if we actually found the requested card
 				 if (cardHandle < 0)
 				 {
-					 connectedMessage->Text = "Connection to '" + cardDestination->Text +
-						 "' failed: " + 
-						 Marshal::PtrToStringAnsi((System::IntPtr)Open8055_LastError(NULL));
+					 connectedMessage->Text = "Error: " +
+						 Marshal::PtrToStringAnsi((System::IntPtr)Open8055_LastError(-1));
 				 } else {
 					 int	value;
 
