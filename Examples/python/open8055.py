@@ -119,12 +119,82 @@ def cards(host = 'localhost', port = 8055, user = 'nobody',
 
     return result
 
+# ----
+# conninfo()
+# ----
+def conninfo(destination):
+    result = {'host': 'localhost', 'port': '8055', 'user': getpass.getuser(),
+            'cardid': '0', 'password': None}
+
+    while True:
+        # ----
+        # Try matching a plain "cardN" string.
+        # ----
+        m = re.match('card([0-9]+)$', destination)
+        if m is not None:
+            result['cardid'] = m.groups()[0]
+            break
+
+        # ----
+        # Try matching "open8055://user@host:port/cardN"
+        # ----
+        m = re.match('open8055://([^@]+)@([^/:]+):([0-9]+)/card([0-9]+)$',
+                destination)
+        if m is not None:
+            result['user'] = m.groups()[0]
+            result['host'] = m.groups()[1]
+            result['port'] = m.groups()[2]
+            result['cardid'] = m.groups()[3]
+            break
+
+        # ----
+        # Try matching "open8055://host:port/cardN"
+        # ----
+        m = re.match('open8055://([^/:]+):([0-9]+)/card([0-9]+)$',
+                destination)
+        if m is not None:
+            result['host'] = m.groups()[0]
+            result['port'] = m.groups()[1]
+            result['cardid'] = m.groups()[2]
+            break
+
+        # ----
+        # Try matching "open8055://user@host/cardN"
+        # ----
+        m = re.match('open8055://([^@]+)@([^/]+)/card([0-9]+)$',
+                destination)
+        if m is not None:
+            result['user'] = m.groups()[0]
+            result['host'] = m.groups()[1]
+            result['cardid'] = m.groups()[2]
+            break
+
+        # ----
+        # Finally try matching "open8055://host/cardN"
+        # ----
+        m = re.match('open8055://([^@/:]+)/card([0-9]+)$', destination)
+        if m is not None:
+            result['host'] = m.groups()[0]
+            result['cardid'] = m.groups()[1]
+            break
+
+        # ----
+        # Nothing matched.
+        # ----
+        raise Exception('failed to parse destination ' + destination)
+
+    # ----
+    # Try to lookup the password for the user from the ~/.open8055pass file.
+    # ----
+    result['user'], result['password'] = username_password(
+            host = result['host'], port = int(result['port']),
+            user = result['user'], password = None)
+    return result
 
 # ----
 # open()
 # ----
-def open(cardid, host = 'localhost', port = 8055, user = 'nobody', 
-        password = None, timeout = None):
+def open(conninfo, timeout = None):
     """
     Open an Open8055 card on the server.
 
@@ -137,13 +207,15 @@ def open(cardid, host = 'localhost', port = 8055, user = 'nobody',
     # Connect to the server.
     # ----
     card = Open8055()
-    card._connect(host, port, timeout)
+    card._connect(conninfo['host'], int(conninfo['port']), timeout)
 
     # ----
     # Send the OPEN command.
     # ----
-    password = card._encrypt_password(host, port, user, password)
-    card._send_message('OPEN {0} {1} {2}'.format(cardid, user, password))
+    password = card._encrypt_password(conninfo['host'], int(conninfo['port']), 
+            conninfo['user'], conninfo['password'])
+    card._send_message('OPEN {0} {1} {2}'.format(conninfo['cardid'], 
+            conninfo['user'], conninfo['password']))
     
     # ----
     # After connecting and opening a card, the server makes sure
@@ -170,6 +242,8 @@ def username_password(host = 'localhost', port = 8055,
         user = getpass.getuser()
 
     if password is not None:
+        if len(password) != 35 or password[0:3] != 'md5':
+            password = 'md5' + hashlib.md5(password).hexdigest()
         return user, password
 
     try:
@@ -200,6 +274,9 @@ def username_password(host = 'localhost', port = 8055,
     finally:
         fd.close()
     
+    if password is not None:
+        if len(password) != 35 or password[0:3] != 'md5':
+            password = 'md5' + hashlib.md5(password).hexdigest()
     return user, password
     
 

@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 from Tkinter import *
-import sys, signal
+import sys
+import signal
 import open8055
 
 signal.signal(signal.SIGINT, signal.SIG_DFL)

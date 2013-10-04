@@ -40,31 +40,20 @@ def main(argv):
     # ----
     # Default values and parsing of command line options
     # ----
-    cardid = 0
-    host = 'localhost'
-    port = 8055
-    user = None
+    destination = 'card0'
     password = None
 
     try:
-        opts, args = getopt.getopt(argv, 'c:h:p:u:?', 
-                ['card=', 'host=', 'port=', 'user=', 'help'])
+        opts, args = getopt.getopt(argv, 'd:?', 
+                ['destination=', 'help'])
     except getopt.GetoptError as err:
         sys.stderr.write('Error: ' + str(err) + '\n')
         usage()
         sys.exit(1)
 
     for opt, arg in opts:
-        if opt in ('-c', '--card', ):
-            cardid = int(arg)
-        elif opt in ('-h', '--host', ):
-            host = arg
-        elif opt in ('-p', '--port', ):
-            port = int(port)
-        elif opt in ('-u', '--user', ):
-            user = arg
-            if user == '':
-                raise Exception('user name cannot be an empty string')
+        if opt in ('-d', '--destination', ):
+            destination = arg
         elif opt in ('-?', '--help', ):
             usage()
             return 0
@@ -72,16 +61,17 @@ def main(argv):
     # ----
     # Finallize username and password
     # ----
-    if user is None or password is None:
-        user, password = open8055.username_password(host, port, user, password)
-    if password is None:
-        password = getpass.getpass('Password for {0}:'.format(user))
+    conninfo = open8055.conninfo(destination)
+    print 'conninfo:', conninfo
+    # if user is None or password is None:
+    #     user, password = open8055.username_password(host, port, user, password)
+    # if password is None:
+    #     password = getpass.getpass('Password for {0}:'.format(user))
 
     # ----
     # Connect to the server
     # ----
-    card = open8055.open(cardid, host = host, port = port,
-            user = user, password = password)
+    card = open8055.open(conninfo, password)
 
     # ----
     # Set the card to default values and then activate the 0x55 pattern on
