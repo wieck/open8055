@@ -122,9 +122,9 @@ def cards(host = 'localhost', port = 8055, user = 'nobody',
 # ----
 # conninfo()
 # ----
-def conninfo(destination):
+def conninfo(destination, password = None):
     result = {'host': 'localhost', 'port': '8055', 'user': getpass.getuser(),
-            'cardid': '0', 'password': None}
+            'cardid': '0', 'password': password}
 
     while True:
         # ----
@@ -188,7 +188,7 @@ def conninfo(destination):
     # ----
     result['user'], result['password'] = username_password(
             host = result['host'], port = int(result['port']),
-            user = result['user'], password = None)
+            user = result['user'], password = password)
     return result
 
 # ----
