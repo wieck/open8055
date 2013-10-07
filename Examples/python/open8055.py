@@ -747,7 +747,7 @@ class Open8055:
         else:
             self.pend_config1 = True
 
-    def get_adc_mode(self, port, mode):
+    def get_adc_mode(self, port):
         """
         Get the current operating mode of an analog input port.
 
@@ -830,7 +830,7 @@ class Open8055:
         else:
             self.pend_config1 = True
 
-    def get_output_mode(self, port, mode):
+    def get_output_mode(self, port):
         """
         Get the current operating mode of a digital output port.
 
@@ -962,7 +962,7 @@ class Open8055:
         else:
             self.pend_config1 = True
 
-    def get_pwm_mode(self, port, mode):
+    def get_pwm_mode(self, port):
         """
         Get the current operating mode of a PWM output port
 
