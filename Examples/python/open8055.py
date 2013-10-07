@@ -42,6 +42,7 @@ import getpass
 import hashlib
 import os
 import re
+import select
 import socket
 import sys
 
@@ -1086,11 +1087,16 @@ class Open8055:
         """
         idx = self.input_buffer.find('\n')
         if idx < 0:
-            self.socket.settimeout(timeout)
-            try:
-                data = self.socket.recv(4096)
-            except socket.timeout:
-                return None
+            # ----
+            # If a timeout is specified, check with select(2) that
+            # the recv(2) will not block.
+            # ----
+            if timeout is not None:
+                r_rdy, w_rdy, x_rdy = select.select([self.socket], 
+                        [], [], timeout)
+                if len(r_rdy) == 0:
+                    return None
+            data = self.socket.recv(4096)
 
             if data == '':
                 raise Exception('server closed connection')
