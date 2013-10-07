@@ -154,10 +154,6 @@ class Open8055Demo(tk.Frame):
         return f
 
     def connect(self, event=None):
-        print 'connect()'
-        print 'destination:', self.destination.get()
-        print 'password:', self.password.get()
-
         self.e0.configure(state=tk.DISABLED)
         self.e1.configure(state=tk.DISABLED)
         self.b0.configure(state=tk.DISABLED)
