@@ -24,7 +24,7 @@ def main(argv):
 # ----------------------------------------------------------------------
 class Open8055Demo(tk.Frame):
     def __init__(self, parent):
-        tk.Frame.__init__(self, parent, borderwidth=0, relief=tk.FLAT)
+        tk.Frame.__init__(self, parent, borderwidth=8, relief=tk.FLAT)
 
         parent.wm_protocol('WM_DELETE_WINDOW', self.cancel)
         self.parent = parent
@@ -156,6 +156,23 @@ class Open8055Demo(tk.Frame):
         self.pwm2 = Open8055Pwm(f1, self, 1)
         self.pwm2.grid(column=1, row=8, sticky='w')
 
+        self.out1 = Open8055Out(f1, self, 0)
+        self.out1.grid(column=1, row=9, sticky='w')
+        self.out2 = Open8055Out(f1, self, 1)
+        self.out2.grid(column=1, row=10, sticky='w')
+        self.out3 = Open8055Out(f1, self, 2)
+        self.out3.grid(column=1, row=11, sticky='w')
+        self.out4 = Open8055Out(f1, self, 3)
+        self.out4.grid(column=1, row=12, sticky='w')
+        self.out5 = Open8055Out(f1, self, 4)
+        self.out5.grid(column=1, row=13, sticky='w')
+        self.out6 = Open8055Out(f1, self, 5)
+        self.out6.grid(column=1, row=14, sticky='w')
+        self.out7 = Open8055Out(f1, self, 6)
+        self.out7.grid(column=1, row=15, sticky='w')
+        self.out8 = Open8055Out(f1, self, 7)
+        self.out8.grid(column=1, row=16, sticky='w')
+
     def connect(self, event=None):
         self.e0.configure(state=tk.DISABLED)
         self.e1.configure(state=tk.DISABLED)
@@ -238,6 +255,14 @@ class Open8055Demo(tk.Frame):
         self.in5.update()
         self.pwm1.update()
         self.pwm2.update()
+        self.out1.update()
+        self.out2.update()
+        self.out3.update()
+        self.out4.update()
+        self.out5.update()
+        self.out6.update()
+        self.out7.update()
+        self.out8.update()
 
 class Open8055In(tk.Frame):
     def __init__(self, parent, main, port):
@@ -410,6 +435,87 @@ class Open8055Pwm(tk.Frame):
         if self.main.conn is not None:
             self.main.conn.set_pwm(self.port, self.value.get())
             self.strval.set('{0:.6f}'.format(self.main.conn.get_pwm(self.port)))
+
+class Open8055Out(tk.Frame):
+    def __init__(self, parent, main, port):
+        tk.Frame.__init__(self, parent, borderwidth=0)
+
+        self.parent = parent
+        self.main = main
+        self.port = port
+        self.active = tk.BooleanVar(value=False)
+        self.strval = tk.StringVar(value='')
+        self.value = tk.DoubleVar(value=0.0)
+        self.curmode = tk.StringVar(value='')
+
+        self.cb = tk.Checkbutton(self, borderwidth=0, relief=tk.SUNKEN,
+                variable=self.active, state=tk.DISABLED,
+                command=self.state_change)
+        self.cb.pack(side=tk.LEFT, padx=2, pady=2)
+        self.mode = ttk.Combobox(self, 
+                textvariable=self.curmode, width=15, state=tk.DISABLED,
+                values=['Mode Normal', 'Mode Servo', 'Mode IServo'])
+        self.curmode.trace('w', self.mode_change)
+        self.mode.pack(side=tk.LEFT, padx=4, pady=2)
+        l = tk.Label(self, borderwidth=2, relief=tk.FLAT,
+                text='Value:', anchor=tk.W)
+        l.pack(side=tk.LEFT, padx=2, pady=2)
+        l = tk.Label(self, borderwidth=2, relief=tk.SUNKEN,
+                width=8, textvariable=self.strval, anchor=tk.W)
+        l.pack(side=tk.LEFT, padx=2, pady=2)
+        self.slider = tk.Scale(self, width=11, borderwidth=2, relief=tk.SUNKEN,
+                orient=tk.HORIZONTAL, showvalue=False, from_=0.5, to=2.5,
+                resolution=0.00001, state=tk.DISABLED,
+                variable=self.value, length=400, command=self.moved)
+        self.slider.pack(side=tk.LEFT, padx=4, pady=2)
+
+    def update(self):
+        if self.main.conn is not None:
+            self.cb.configure(state=tk.NORMAL)
+            self.active.set(self.main.conn.get_output(self.port))
+            self.mode.configure(state=tk.NORMAL)
+            if self.main.conn.get_output_mode(self.port) == open8055.MODE_OUTPUT and self.curmode.get() != 'Mode Normal':
+                self.curmode.set('Mode Normal')
+            elif self.main.conn.get_output_mode(self.port) == open8055.MODE_SERVO and self.curmode.get() != 'Mode Servo':
+                self.curmode.set('Mode Servo')
+            elif self.main.conn.get_output_mode(self.port) == open8055.MODE_ISERVO and self.curmode.get() != 'Mode IServo':
+                self.curmode.set('Mode IServo')
+
+            if self.main.conn.get_output_mode(self.port) == open8055.MODE_OUTPUT:
+                self.value.set(0.0)
+                self.slider.configure(state=tk.DISABLED)
+                self.strval.set('')
+            else:
+                self.value.set(self.main.conn.get_output_servo(self.port))
+                self.strval.set('{0:.5f}'.format(self.value.get()))
+                self.slider.configure(state=tk.NORMAL)
+        else:
+            self.cb.configure(state=tk.DISABLED)
+            self.active.set(False)
+            self.mode.configure(state=tk.DISABLED)
+            self.curmode.set('')
+            self.slider.configure(state=tk.DISABLED)
+            self.value.set(0.0)
+            self.strval.set('')
+
+    def mode_change(self, var, val, action):
+        if self.curmode.get() == 'Mode Normal':
+            self.main.conn.set_output_mode(self.port, open8055.MODE_OUTPUT)
+            self.main.conn.set_output(self.port, self.active.get())
+        elif self.curmode.get() == 'Mode Servo':
+            self.main.conn.set_output_mode(self.port, open8055.MODE_SERVO)
+        elif self.curmode.get() == 'Mode IServo':
+            self.main.conn.set_output_mode(self.port, open8055.MODE_ISERVO)
+        self.update()
+
+    def state_change(self, event=None):
+        self.main.conn.set_output(self.port, self.active.get())
+
+    def moved(self, event=None):
+        print 'value:', self.value.get()
+        if self.main.conn is not None:
+            self.main.conn.set_output_servo(self.port, self.value.get())
+            self.update()
 
 # ----------------------------------------------------------------------
 # Call main()
