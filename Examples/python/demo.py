@@ -151,6 +151,11 @@ class Open8055Demo(tk.Frame):
         self.in5 = Open8055In(f1, self, 4)
         self.in5.grid(column=1, row=6, sticky='w')
 
+        self.pwm1 = Open8055Pwm(f1, self, 0)
+        self.pwm1.grid(column=1, row=7, sticky='w')
+        self.pwm2 = Open8055Pwm(f1, self, 1)
+        self.pwm2.grid(column=1, row=8, sticky='w')
+
     def connect(self, event=None):
         self.e0.configure(state=tk.DISABLED)
         self.e1.configure(state=tk.DISABLED)
@@ -231,6 +236,8 @@ class Open8055Demo(tk.Frame):
         self.in3.update()
         self.in4.update()
         self.in5.update()
+        self.pwm1.update()
+        self.pwm2.update()
 
 class Open8055In(tk.Frame):
     def __init__(self, parent, main, port):
@@ -369,6 +376,40 @@ class Open8055Adc(tk.Frame):
 
     def change_bits(self):
         self.main.conn.set_adc_mode(self.port, self.curmode.get())
+
+class Open8055Pwm(tk.Frame):
+    def __init__(self, parent, main, port):
+        tk.Frame.__init__(self, parent, borderwidth=0)
+
+        self.parent = parent
+        self.main = main
+        self.port = port
+        self.strval = tk.StringVar(value='')
+        self.value = tk.DoubleVar(value=0.0)
+
+        l = tk.Label(self, borderwidth=2, relief=tk.SUNKEN,
+                width=8, textvariable=self.strval, anchor=tk.W)
+        l.pack(side=tk.LEFT, padx=2, pady=2)
+        self.slider = tk.Scale(self, width=11, borderwidth=2, relief=tk.SUNKEN,
+                orient=tk.HORIZONTAL, showvalue=False, from_=0.0, to=1.0,
+                resolution=0.000001, state=tk.DISABLED,
+                variable=self.value, length=500, command=self.moved)
+        self.slider.pack(side=tk.LEFT, padx=4, pady=2)
+
+    def update(self):
+        if self.main.conn is not None:
+            self.value.set(self.main.conn.get_pwm(self.port))
+            self.strval.set('{0:.6f}'.format(self.main.conn.get_pwm(self.port)))
+            self.slider.configure(state=tk.NORMAL)
+        else:
+            self.value.set(0.0)
+            self.strval.set('')
+            self.slider.configure(state=tk.DISABLED)
+
+    def moved(self, event=None):
+        if self.main.conn is not None:
+            self.main.conn.set_pwm(self.port, self.value.get())
+            self.strval.set('{0:.6f}'.format(self.main.conn.get_pwm(self.port)))
 
 # ----------------------------------------------------------------------
 # Call main()
