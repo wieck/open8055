@@ -2,15 +2,18 @@
 
 import Tkinter as tk
 import ttk
+import signal
 import sys
+import threading
 import open8055
 
 def main(argv):
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
     root = tk.Tk()
     # root.geometry('400x300')
     root.title('Open8055 Demo')
 
-    demo = Open8055Demo(root)
+    demo = Demo(root)
     demo.pack(side=tk.TOP, fill=tk.BOTH, expand=True, pady=8)
 
     root.mainloop()
@@ -18,11 +21,11 @@ def main(argv):
     return 0
 
 # ----------------------------------------------------------------------
-# Open8055Demo
+# Demo
 #
 #   Class implementing the demo application.
 # ----------------------------------------------------------------------
-class Open8055Demo(tk.Frame):
+class Demo(tk.Frame):
     def __init__(self, parent):
         tk.Frame.__init__(self, parent, borderwidth=8, relief=tk.FLAT)
 
@@ -135,43 +138,45 @@ class Open8055Demo(tk.Frame):
         lo8 = tk.Label(f1, text='O8:', borderwidth=2, relief=tk.FLAT, anchor='w')
         lo8.grid(column=0, row=16, sticky='w')
 
-        self.adc1 = Open8055Adc(f1, self, 0)
+        self.adc1 = Adc(f1, self, 0)
         self.adc1.grid(column=1, row=0, sticky='w')
-        self.adc2 = Open8055Adc(f1, self, 1)
+        self.adc2 = Adc(f1, self, 1)
         self.adc2.grid(column=1, row=1, sticky='w')
 
-        self.in1 = Open8055In(f1, self, 0)
+        self.in1 = Input(f1, self, 0)
         self.in1.grid(column=1, row=2, sticky='w')
-        self.in2 = Open8055In(f1, self, 1)
+        self.in2 = Input(f1, self, 1)
         self.in2.grid(column=1, row=3, sticky='w')
-        self.in3 = Open8055In(f1, self, 2)
+        self.in3 = Input(f1, self, 2)
         self.in3.grid(column=1, row=4, sticky='w')
-        self.in4 = Open8055In(f1, self, 3)
+        self.in4 = Input(f1, self, 3)
         self.in4.grid(column=1, row=5, sticky='w')
-        self.in5 = Open8055In(f1, self, 4)
+        self.in5 = Input(f1, self, 4)
         self.in5.grid(column=1, row=6, sticky='w')
 
-        self.pwm1 = Open8055Pwm(f1, self, 0)
+        self.pwm1 = Pwm(f1, self, 0)
         self.pwm1.grid(column=1, row=7, sticky='w')
-        self.pwm2 = Open8055Pwm(f1, self, 1)
+        self.pwm2 = Pwm(f1, self, 1)
         self.pwm2.grid(column=1, row=8, sticky='w')
 
-        self.out1 = Open8055Out(f1, self, 0)
+        self.out1 = Output(f1, self, 0)
         self.out1.grid(column=1, row=9, sticky='w')
-        self.out2 = Open8055Out(f1, self, 1)
+        self.out2 = Output(f1, self, 1)
         self.out2.grid(column=1, row=10, sticky='w')
-        self.out3 = Open8055Out(f1, self, 2)
+        self.out3 = Output(f1, self, 2)
         self.out3.grid(column=1, row=11, sticky='w')
-        self.out4 = Open8055Out(f1, self, 3)
+        self.out4 = Output(f1, self, 3)
         self.out4.grid(column=1, row=12, sticky='w')
-        self.out5 = Open8055Out(f1, self, 4)
+        self.out5 = Output(f1, self, 4)
         self.out5.grid(column=1, row=13, sticky='w')
-        self.out6 = Open8055Out(f1, self, 5)
+        self.out6 = Output(f1, self, 5)
         self.out6.grid(column=1, row=14, sticky='w')
-        self.out7 = Open8055Out(f1, self, 6)
+        self.out7 = Output(f1, self, 6)
         self.out7.grid(column=1, row=15, sticky='w')
-        self.out8 = Open8055Out(f1, self, 7)
+        self.out8 = Output(f1, self, 7)
         self.out8.grid(column=1, row=16, sticky='w')
+
+        self.bind('<<Open8055>>', self.conn_readable)
 
     def connect(self, event=None):
         self.e0.configure(state=tk.DISABLED)
@@ -195,11 +200,15 @@ class Open8055Demo(tk.Frame):
         self.b1.focus()
 
         self.conn_update()
-        self.parent.tk.createfilehandler(self.conn, tk.tkinter.READABLE, 
-                self.conn_readable)
+
+        self.bgworker = BackgroundWorker(self, self.conn, '<<Open8055>>')
+        self.bgworker.start()
 
     def disconnect(self, event=None):
-        self.parent.tk.deletefilehandler(self.conn)
+        self.bgworker.set_term_flag()
+        self.conn.request_input()
+        self.bgworker.join()
+
         self.conn.close()
         self.conn = None
         self.message.set('Connection closed')
@@ -221,7 +230,10 @@ class Open8055Demo(tk.Frame):
         self.parent.destroy()
 
     def reset_card(self, event=None):
-        self.parent.tk.deletefilehandler(self.conn)
+        self.bgworker.set_term_flag()
+        self.conn.request_input()
+        self.bgworker.join()
+
         self.conn.reset()
         self.conn = None
         self.message.set('Card reset')
@@ -237,9 +249,8 @@ class Open8055Demo(tk.Frame):
 
         self.conn_update()
 
-    def conn_readable(self, conn, mask):
+    def conn_readable(self, event=None):
         try:
-            self.conn.poll()
             self.conn_update()
         except Exception as err:
             self.disconnect()
@@ -264,7 +275,7 @@ class Open8055Demo(tk.Frame):
         self.out7.update()
         self.out8.update()
 
-class Open8055In(tk.Frame):
+class Input(tk.Frame):
     def __init__(self, parent, main, port):
         tk.Frame.__init__(self, parent, borderwidth=0)
 
@@ -349,7 +360,7 @@ class Open8055In(tk.Frame):
             deb = '5000.0'
         self.main.conn.set_debounce(self.port, float(deb) / 1000.0)
 
-class Open8055Adc(tk.Frame):
+class Adc(tk.Frame):
     def __init__(self, parent, main, port):
         tk.Frame.__init__(self, parent, borderwidth=0)
 
@@ -402,7 +413,7 @@ class Open8055Adc(tk.Frame):
     def change_bits(self):
         self.main.conn.set_adc_mode(self.port, self.curmode.get())
 
-class Open8055Pwm(tk.Frame):
+class Pwm(tk.Frame):
     def __init__(self, parent, main, port):
         tk.Frame.__init__(self, parent, borderwidth=0)
 
@@ -436,7 +447,7 @@ class Open8055Pwm(tk.Frame):
             self.main.conn.set_pwm(self.port, self.value.get())
             self.strval.set('{0:.6f}'.format(self.main.conn.get_pwm(self.port)))
 
-class Open8055Out(tk.Frame):
+class Output(tk.Frame):
     def __init__(self, parent, main, port):
         tk.Frame.__init__(self, parent, borderwidth=0)
 
@@ -512,10 +523,44 @@ class Open8055Out(tk.Frame):
         self.main.conn.set_output(self.port, self.active.get())
 
     def moved(self, event=None):
-        print 'value:', self.value.get()
         if self.main.conn is not None:
             self.main.conn.set_output_servo(self.port, self.value.get())
             self.update()
+
+class BackgroundWorker(threading.Thread):
+    def __init__(self, main, conn, event):
+        threading.Thread.__init__(self)
+        self.main = main
+        self.conn = conn
+        main.event = event
+        self.term_flag = False
+        self.lock = threading.Lock()
+
+    def run(self):
+        while not self.get_term_flag():
+            if self.conn.socket is None:
+                break
+            self.conn.poll(timeout = None)
+            self.lock.acquire()
+            # ----
+            # When we receive the forced input on disconnect, we cannot
+            # send the event to Tkinter because the Tkinter thread is
+            # waiting for us to terminate.
+            # ----
+            if not self.term_flag:
+                self.main.event_generate(self.main.event)
+            self.lock.release()
+
+    def get_term_flag(self):
+        self.lock.acquire()
+        res = self.term_flag
+        self.lock.release()
+        return res
+
+    def set_term_flag(self):
+        self.lock.acquire()
+        self.term_flag = True
+        self.lock.release()
 
 # ----------------------------------------------------------------------
 # Call main()

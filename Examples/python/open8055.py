@@ -296,6 +296,7 @@ class Open8055:
     poll_single() -- check server for new input and process only one
     fileno() -- return the receive file desctiptor for use in select()
     all_defaults() -- set all configuration and outputs to defaults
+    request_input() -- request a forced input report, even if nothing changed
     reset() -- send a reset signal to the card causing the PIC to reboot
 
     Methods related to digital inputs:
@@ -585,6 +586,20 @@ class Open8055:
         if error is not None:
             raise error
 
+    def request_input(self):
+        """
+        Instruct the micro controller on the Open8055 to force an input report.
+        """
+        error = None
+        if self.socket is not None:
+            try:
+                self._send_message('SEND ' + str(GETINPUT))
+            except Exception as exc:
+                error = exc
+            finally:
+                self.socket = None
+        if error is not None:
+            raise error
 
     def fileno(self):
         """
