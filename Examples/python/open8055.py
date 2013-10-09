@@ -588,7 +588,7 @@ class Open8055:
 
     def request_input(self):
         """
-        Instruct the micro controller on the Open8055 to force an input report.
+        Instruct the Open8055 to force an input report.
         """
         error = None
         if self.socket is not None:
