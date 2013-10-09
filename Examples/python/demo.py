@@ -140,18 +140,16 @@ class Open8055Demo(tk.Frame):
         self.adc2 = Open8055Adc(f1, self, 1)
         self.adc2.grid(column=1, row=1, sticky='w')
 
-        self.input_ctrl = {}
-        self.new_input_ctrl(f1, 'I1').grid(column=1, row=2, sticky='w')
-
-    def new_input_ctrl(self, parent, name):
-        f = tk.Frame(parent, borderwidth=0)
-        var = tk.BooleanVar(value=False)
-        cb = tk.Checkbutton(f, borderwidth=2, relief=tk.FLAT,
-                state=tk.DISABLED, variable=var)
-        cb.pack(side=tk.LEFT)
-
-        self.input_ctrl[name] = {'var': var, 'cb': cb}
-        return f
+        self.in1 = Open8055In(f1, self, 0)
+        self.in1.grid(column=1, row=2, sticky='w')
+        self.in2 = Open8055In(f1, self, 1)
+        self.in2.grid(column=1, row=3, sticky='w')
+        self.in3 = Open8055In(f1, self, 2)
+        self.in3.grid(column=1, row=4, sticky='w')
+        self.in4 = Open8055In(f1, self, 3)
+        self.in4.grid(column=1, row=5, sticky='w')
+        self.in5 = Open8055In(f1, self, 4)
+        self.in5.grid(column=1, row=6, sticky='w')
 
     def connect(self, event=None):
         self.e0.configure(state=tk.DISABLED)
@@ -178,9 +176,6 @@ class Open8055Demo(tk.Frame):
         self.parent.tk.createfilehandler(self.conn, tk.tkinter.READABLE, 
                 self.conn_readable)
 
-        self.adc1.enable()
-        self.adc2.enable()
-
     def disconnect(self, event=None):
         self.parent.tk.deletefilehandler(self.conn)
         self.conn.close()
@@ -196,8 +191,7 @@ class Open8055Demo(tk.Frame):
         self.e0.selection_range(0, 'end')
         self.e0.focus()
 
-        self.adc1.disable()
-        self.adc2.disable()
+        self.conn_update()
 
     def cancel(self, event=None):
         if self.conn is not None:
@@ -205,7 +199,7 @@ class Open8055Demo(tk.Frame):
         self.parent.destroy()
 
     def reset_card(self, event=None):
-        pass
+        self.conn.reset()
 
     def conn_readable(self, conn, mask):
         try:
@@ -216,12 +210,99 @@ class Open8055Demo(tk.Frame):
             self.message.set(str(err))
 
     def conn_update(self):
-        self.input_ctrl['I1']['var'].set(self.conn.get_input(0))
-        self.adc1.set(self.conn.get_adc(0))
-        self.adc1.mode(self.conn.get_adc_mode(0))
-        self.adc2.set(self.conn.get_adc(1))
-        self.adc2.mode(self.conn.get_adc_mode(1))
-        
+        self.adc1.update()
+        self.adc2.update()
+        self.in1.update()
+        self.in2.update()
+        self.in3.update()
+        self.in4.update()
+        self.in5.update()
+
+class Open8055In(tk.Frame):
+    def __init__(self, parent, main, port):
+        tk.Frame.__init__(self, parent, borderwidth=0)
+
+        self.parent = parent
+        self.main = main
+        self.port = port
+        self.active = tk.BooleanVar(value=False)
+        self.counter = tk.StringVar(value='')
+        self.curmode = tk.StringVar(value='')
+        self.curdebounce = tk.StringVar(value='')
+        self.lastdebounce = -1.0
+
+        self.cb = tk.Checkbutton(self, borderwidth=0, relief=tk.SUNKEN,
+                variable=self.active, state=tk.DISABLED,
+                disabledforeground='black')
+        self.cb.pack(side=tk.LEFT, padx=2, pady=2)
+        self.mode = ttk.Combobox(self, 
+                textvariable=self.curmode, width=15, state=tk.DISABLED,
+                values=['Mode Normal', 'Mode Frequency'])
+        self.curmode.trace('w', self.mode_change)
+        self.mode.pack(side=tk.LEFT, padx=4, pady=2)
+        l = tk.Label(self, borderwidth=2, relief=tk.FLAT, text='Counter:')
+        l.pack(side=tk.LEFT, padx=4, pady=2)
+        l = tk.Label(self, borderwidth=2, relief=tk.SUNKEN, width=8,
+                textvariable=self.counter, anchor='e')
+        l.pack(side=tk.LEFT, padx=4, pady=2)
+        self.reset = tk.Button(self, borderwidth=2, relief=tk.RAISED,
+                text='Reset', command=self.reset_counter, state=tk.DISABLED)
+        self.reset.pack(side=tk.LEFT, padx=4, pady=2)
+        l = tk.Label(self, borderwidth=2, relief=tk.FLAT, text='Debounce (ms):')
+        l.pack(side=tk.LEFT, padx=4, pady=2)
+        self.debounce = tk.Entry(self, textvariable=self.curdebounce, 
+                state=tk.DISABLED)
+        self.debounce.pack(side=tk.LEFT, padx=4, pady=2)
+        self.debset = tk.Button(self, borderwidth=2, relief=tk.RAISED,
+                text='Set', command=self.set_debounce, state=tk.DISABLED)
+        self.debset.pack(side=tk.LEFT, padx=4, pady=2)
+        self.debounce.bind('<Return>', self.set_debounce)
+
+    def update(self):
+        if self.main.conn is not None:
+            self.active.set(self.main.conn.get_input(self.port))
+            self.mode.configure(state=tk.NORMAL)
+            if self.main.conn.get_input_mode(self.port) == open8055.MODE_INPUT and self.curmode.get() != 'Mode Normal':
+                self.curmode.set('Mode Normal')
+            elif self.main.conn.get_input_mode(self.port) == open8055.MODE_FREQUENCY and self.curmode.get() != 'Mode Frequency':
+                self.curmode.set('Mode Frequency')
+            self.counter.set(str(self.main.conn.get_counter(self.port)))
+            self.reset.configure(state=tk.NORMAL)
+            self.debounce.configure(state=tk.NORMAL)
+            self.debset.configure(state=tk.NORMAL)
+            deb = self.main.conn.get_debounce(self.port) * 1000.0
+            if deb != self.lastdebounce:
+                self.curdebounce.set('{0:.1f}'.format(deb))
+                self.lastdebounce = deb
+        else:
+            self.active.set(False)
+            self.mode.configure(state=tk.DISABLED)
+            self.curmode.set('')
+            self.counter.set('')
+            self.reset.configure(state=tk.DISABLED)
+            self.debounce.configure(state=tk.DISABLED)
+            self.debset.configure(state=tk.DISABLED)
+            self.curdebounce.set('')
+            self.lastdebounce = -1.0
+
+    def mode_change(self, var, val, action):
+        if self.curmode.get() == 'Mode Normal':
+            self.main.conn.set_input_mode(self.port, open8055.MODE_INPUT)
+        elif self.curmode.get() == 'Mode Frequency':
+            self.main.conn.set_input_mode(self.port, open8055.MODE_FREQUENCY)
+
+    def reset_counter(self):
+        self.main.conn.reset_counter(self.port)
+
+    def set_debounce(self, dummy=None):
+        try:
+            deb = '{0:.1}'.format(float(self.curdebounce.get()))
+        except Exception:
+            deb = '{0:.1}'.format(self.lastdebounce)
+        if float(deb) > 5000.0:
+            deb = '5000.0'
+        self.main.conn.set_debounce(self.port, float(deb) / 1000.0)
+
 class Open8055Adc(tk.Frame):
     def __init__(self, parent, main, port):
         tk.Frame.__init__(self, parent, borderwidth=0)
@@ -255,28 +336,22 @@ class Open8055Adc(tk.Frame):
                 state=tk.DISABLED, command=self.change_bits)
         self.adc8.pack(side=tk.LEFT, padx=4, pady=2)
 
-    def set(self, value):
-        if str(value) == '':
-            self.value.set('')
-            self.can.coords('bar', -1, -1, -1, -1)
-        else:
-            self.value.set('{0:7.6f}'.format(value))
+    def update(self):
+        if self.main.conn is not None:
+            self.adc10.configure(state=tk.NORMAL)
+            self.adc9.configure(state=tk.NORMAL)
+            self.adc8.configure(state=tk.NORMAL)
+            self.value.set('{0:7.6f}'.format(
+                    self.main.conn.get_adc(self.port)))
             self.can.coords('bar', 0, 0, float(self.value.get()) * 512, 50)
-
-    def mode(self, value):
-        self.curmode.set(value)
-        
-    def disable(self):
-        self.adc10.configure(state=tk.DISABLED)
-        self.adc9.configure(state=tk.DISABLED)
-        self.adc8.configure(state=tk.DISABLED)
-        self.set('')
-        self.mode(None)
-
-    def enable(self):
-        self.adc10.configure(state=tk.NORMAL)
-        self.adc9.configure(state=tk.NORMAL)
-        self.adc8.configure(state=tk.NORMAL)
+            self.curmode.set(self.main.conn.get_adc_mode(self.port))
+        else:
+            self.adc10.configure(state=tk.DISABLED)
+            self.adc9.configure(state=tk.DISABLED)
+            self.adc8.configure(state=tk.DISABLED)
+            self.value.set('')
+            self.can.coords('bar', 0, 0, 0, 0)
+            self.curmode.set(None)
 
     def change_bits(self):
         self.main.conn.set_adc_mode(self.port, self.curmode.get())
