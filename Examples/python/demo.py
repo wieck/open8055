@@ -199,7 +199,21 @@ class Open8055Demo(tk.Frame):
         self.parent.destroy()
 
     def reset_card(self, event=None):
+        self.parent.tk.deletefilehandler(self.conn)
         self.conn.reset()
+        self.conn = None
+        self.message.set('Card reset')
+
+        self.e0.configure(state=tk.NORMAL)
+        self.e1.configure(state=tk.NORMAL)
+        self.b0.configure(state=tk.NORMAL)
+        self.b1.configure(state=tk.DISABLED)
+        self.b2.configure(state=tk.DISABLED)
+
+        self.e0.selection_range(0, 'end')
+        self.e0.focus()
+
+        self.conn_update()
 
     def conn_readable(self, conn, mask):
         try:

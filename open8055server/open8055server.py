@@ -621,12 +621,13 @@ class Open8055Client(threading.Thread):
         # ----
         if self.cardio is not None:
             try:
-                self.cardio.set_status(MODE_STOP)
-                try:
-                    open8055io.write(self.cardid, struct.pack('B', 0x02))
-                except:
-                    log_error('client {0}: {1}'.format(
-                            str(self.addr), str(err)))
+                if self.cardio.get_status() != MODE_STOPPED:
+                    self.cardio.set_status(MODE_STOP)
+                    try:
+                        open8055io.write(self.cardid, struct.pack('B', 0x02))
+                    except Exception as err:
+                        log_error('client {0}: {1}'.format(
+                                str(self.addr), str(err)))
                 self.cardio.join()
             except Exception as err:
                 log_error('client {0}: {1}'.format(str(self.addr), str(err)))
