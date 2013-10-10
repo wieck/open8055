@@ -75,6 +75,7 @@ typedef struct sockaddr_in  SOCKADDR_IN;
 
 #define closesocket(_s)     close(_s)
 #define stricmp(_s1,_s2)    strcasecmp((_s1),(_s2))
+#define strnicmp(_s1,_s2)   strncasecmp((_s1),(_s2))
 #define WSACleanup()        {}
 
 #endif /* _WIN32 */

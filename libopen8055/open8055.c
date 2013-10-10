@@ -249,7 +249,7 @@ Open8055_Connect(char *destination, char *password)
      * format of open8055://user@host/cardN.
      * ----
      */
-    if (strnicmp(destination, "open8055://", 11) == 0)
+    if (strncasecmp(destination, "open8055://", 11) == 0)
     {
     	char           *destcopy = strdup(&destination[11]);
 	char           *user = "nobody";
@@ -919,7 +919,7 @@ Open8055_WaitEx(int h, int timeout, int skipMessages)
         }
 
         if (rc == 0)
-            continue;
+            return 0;
 
         /* ----
          * Handle by message type.

@@ -81,13 +81,13 @@ main(int argc, char *argv[])
 		T2kelvin = T1kelvin * Beta / log(R1/R2) / 
 					(Beta / log(R1/R2) - T1kelvin);
 
-		printf("\r%5.1f C %5.1f F", T2kelvin - 273.15,
+		printf("\r %5.1f C %5.1f F", T2kelvin - 273.15,
 					(T2kelvin - 273.15) / 5.0 * 9.0 + 32.0);
 		fflush(stdout);
 
-		Open8055_Sleep(500);
+		// Open8055_Sleep(500);
 
-		if (Open8055_WaitEx(card, 0, TRUE) < 0)
+		if ((x = Open8055_WaitEx(card, 1000, TRUE)) < 0)
 		{
 			printf("\r                   \r");
 			fflush(stdout);
