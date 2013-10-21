@@ -228,7 +228,6 @@ main(const int argc, char * const argv[])
 			processCommand(commandLine);
 	}
 
-
 	/* ----
 	 * Close the board.
 	 * ----

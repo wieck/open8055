@@ -2451,12 +2451,15 @@ CardWriteLine(Open8055_card_t *card, char *fmt, ...)
 static int
 CardClose(Open8055_card_t *card)
 {
+    char buf[256];
+
     if (card->isLocal)
     	return DeviceClose(card);
 
     if (card->sock != INVALID_SOCKET)
     {
 	send(card->sock, "quit\n", 5, 0);
+	while (recv(card->sock, buf, sizeof(buf), 0) > 0) {}
 	closesocket(card->sock);
 	card->sock = INVALID_SOCKET;
 	return 0;
