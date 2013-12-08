@@ -137,6 +137,20 @@ class k8055_hid_command(object):
         self.cvar.analog_out_2 = val
     analog_out_2 = property(_get_analog_out_2, _set_analog_out_2)
 
+    def _get_counter_1_debounce(self):
+        return self.cvar.counter_1_debounce
+    def _set_counter_1_debounce(self, val):
+        self.cvar.counter_1_debounce = val
+    counter_1_debounce = property(_get_counter_1_debounce, 
+            _set_counter_1_debounce)
+
+    def _get_counter_2_debounce(self):
+        return self.cvar.counter_2_debounce
+    def _set_counter_2_debounce(self, val):
+        self.cvar.counter_2_debounce = val
+    counter_2_debounce = property(_get_counter_2_debounce, 
+            _set_counter_2_debounce)
+
     def get_binary_data(self):
         return ctypes.string_at(ctypes.addressof(self.cvar), 8)
 
@@ -268,9 +282,10 @@ class pyopen8055:
                 binval = 1
             if binval > 255:
                 binval = 255
+            print 'debounce:', binval
 
             self.send_buffer.command_tag = TAG_K8055_SET_DEBOUNCE + port
-            if port == 1:
+            if port == 0:
                 self.send_buffer.counter_1_debounce = binval
             else:
                 self.send_buffer.counter_2_debounce = binval

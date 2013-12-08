@@ -22,7 +22,7 @@ def main(argv):
     card.set_digital_all(0x54)
     card.set_digital_port(0, True)
     card.set_counter_debounce_time(0, 1)
-    card.set_counter_debounce_time(1, 1)
+    card.set_counter_debounce_time(1, 1000)
     card.reset_counter(1)
     cur_d = -1
     cur_c1 = -1

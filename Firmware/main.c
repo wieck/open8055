@@ -931,6 +931,8 @@ static void processIO(void)
     else 
     if(cardConnected && !HIDRxHandleBusy(outputHandle) && USBActiveConfiguration == 1)
     {   
+	    unsigned short dval;
+	    
         // Process host message
         switch (receivedDataBuffer.msgType)
 		{
@@ -959,9 +961,23 @@ static void processIO(void)
 				break;
 			
 			case 1: // Set counter 1 debounce time K8055
+				dval = (unsigned short)receivedDataBuffer.raw[6];
+				switchStatus[0].debounceConfig = (dval * 3) * (dval / 2);
+				if (switchStatus[0].debounceConfig < 1)
+					switchStatus[0].debounceConfig = 1;
+				if (switchStatus[0].debounceConfig > 50000)
+					switchStatus[0].debounceConfig = 50000;
+				switchStatus[0].debounceCounter = 0;
 				break;
 				
 			case 2: // Set counter 2 debounce time K8055
+				dval = (unsigned short)receivedDataBuffer.raw[7];
+				switchStatus[1].debounceConfig = (dval * 3) * (dval / 2);
+				switchStatus[1].debounceCounter = 0;
+				if (switchStatus[1].debounceConfig < 1)
+					switchStatus[1].debounceConfig = 1;
+				if (switchStatus[1].debounceConfig > 50000)
+					switchStatus[1].debounceConfig = 50000;
 				break;	
 		}
         
