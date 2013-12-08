@@ -833,8 +833,8 @@ static void processIO(void)
 	else
     	cardConnected = 1;
     	
-    // Check if data was received from the host.
-    if(cardConnected && !HIDRxHandleBusy(outputHandle))
+    // Check if Open8055 style data was received from the host.
+    if(cardConnected && !HIDRxHandleBusy(outputHandle) && USBActiveConfiguration == 2)
     {   
         // Process host message
         switch (receivedDataBuffer.msgType)
@@ -925,6 +925,48 @@ static void processIO(void)
         
         //Re-arm the OUT endpoint for the next packet
         outputHandle = HIDRxPacket(HID_EP, (BYTE*)&receivedDataBuffer, sizeof(receivedDataBuffer));
+    }
+
+    // Check if K8055 style data was received from the host.
+    else 
+    if(cardConnected && !HIDRxHandleBusy(outputHandle) && USBActiveConfiguration == 1)
+    {   
+        // Process host message
+        switch (receivedDataBuffer.msgType)
+		{
+			case 5: // Set output values K8055
+				currentOutput.msgType = receivedDataBuffer.msgType;
+				currentOutput.outputBits = receivedDataBuffer.raw[1];
+				PORTB = currentOutput.outputBits;
+									
+				value = currentOutput.outputPwmValue[0] = (uint16_t)(receivedDataBuffer.raw[2]) << 2;
+				CCPR1L = value >> 2;
+				CCP1CON = (CCP1CON & 0xCF) | 
+					    ((value & 0x03) << 4);
+
+				value = currentOutput.outputPwmValue[1] = (uint16_t)(receivedDataBuffer.raw[3]) << 2;
+				CCPR2L = value >> 2;
+				CCP2CON = (CCP2CON & 0xCF) | 
+					    ((value & 0x03) << 4);
+				break;
+						    
+			case 3: // Reset counter 1 K8055
+				switchStatus[0].counter = 0;
+				break;
+				
+			case 4: // Reset counter 2 K8055
+				switchStatus[1].counter = 0;
+				break;
+			
+			case 1: // Set counter 1 debounce time K8055
+				break;
+				
+			case 2: // Set counter 2 debounce time K8055
+				break;	
+		}
+        
+        //Re-arm the OUT endpoint for the next packet
+        outputHandle = HIDRxPacket(HID_EP, (BYTE*)&receivedDataBuffer, 8);
     }
 
 	// Get and process timer ticks
@@ -1026,6 +1068,31 @@ static void processIO(void)
 	while (cardConnected && !HIDTxHandleBusy(inputHandle))
 	{
 		// Time to send a report.
+		
+		// If we are in K8055 compatibility mode, send an old style report blindly.
+		if (USBActiveConfiguration == 1)
+		{
+			INTCONbits.GIEL	= 0;
+			toSendDataBuffer.raw[0] = 
+					switchStatus[0].currentState << 4 |
+					switchStatus[1].currentState << 5 |
+					switchStatus[2].currentState |
+					switchStatus[3].currentState << 6 |
+					switchStatus[4].currentState << 7;
+			toSendDataBuffer.raw[1] = cardAddress + 1;
+			INTCONbits.GIEL	= 0;
+			toSendDataBuffer.raw[2] = (analogValue_1 >> 2) & 0xff;
+			toSendDataBuffer.raw[3] = (analogValue_2 >> 2) & 0xff;
+			INTCONbits.GIEL	= 1;
+			toSendDataBuffer.raw[4] = switchStatus[0].counter & 0xff;
+			toSendDataBuffer.raw[5] = switchStatus[0].counter >> 8;
+			toSendDataBuffer.raw[6] = switchStatus[1].counter & 0xff;
+			toSendDataBuffer.raw[7] = switchStatus[1].counter >> 8;
+			inputHandle = HIDTxPacket(HID_EP, (BYTE*)&toSendDataBuffer, 8);
+			break;
+		}	
+
+		// If config1 information readback was requested, send that.
 		if (currentConfig1Requested)
 		{
 			currentConfig1Requested = FALSE;
@@ -1034,6 +1101,7 @@ static void processIO(void)
 			break;
 		}	
 		
+		// If output information readback was requested, send that.
 		if (currentOutputRequested)
 		{
 			currentOutputRequested = FALSE;
@@ -1049,6 +1117,10 @@ static void processIO(void)
 			break;
 		}
 		
+		// Suppress the regular input report if not requested.
+		if (!currentInputRequested && memcmp((void *)&currentInput, (void *)&toSendDataBuffer, sizeof(currentInput)) == 0)
+			break;
+			
 		// Construct a standard input state report.
 		memset(&currentInput, 0, sizeof(currentInput));
 		currentInput.msgType			= OPEN8055_HID_MESSAGE_INPUT;
@@ -1148,10 +1220,6 @@ static void processIO(void)
 		}
 		INTCONbits.GIEL	= 1;
 										  
-		// Suppress this report if nothing has changed and 100 ms didn't elapse.
-		if (!currentInputRequested && memcmp((void *)&currentInput, (void *)&toSendDataBuffer, sizeof(currentInput)) == 0)
-			break;
-			
 		// Send this report
 		currentInputRequested = FALSE;
 		memcpy((void *)&toSendDataBuffer, (void *)&currentInput, sizeof(toSendDataBuffer));
@@ -1464,7 +1532,10 @@ void USBCBInitEP(void)
     //enable the HID endpoint
     USBEnableEndpoint(HID_EP,USB_IN_ENABLED|USB_OUT_ENABLED|USB_HANDSHAKE_ENABLED|USB_DISALLOW_SETUP);
     //Re-arm the OUT endpoint for the next packet
-    outputHandle = HIDRxPacket(HID_EP,(BYTE*)&receivedDataBuffer,64);
+    if (USBActiveConfiguration == 1)
+	    outputHandle = HIDRxPacket(HID_EP,(BYTE*)&receivedDataBuffer,8);
+	else
+	    outputHandle = HIDRxPacket(HID_EP,(BYTE*)&receivedDataBuffer,32);
 }
 
 /********************************************************************
