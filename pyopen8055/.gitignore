@@ -1,0 +1,5 @@
+*.swp
+*.pyc
+build
+dist
+py8055n.egg-info
