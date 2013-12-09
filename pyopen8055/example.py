@@ -60,7 +60,6 @@ def main(argv):
             cur_a2 = new_a2
             print 'ANALOG_2:', new_a2
         card.set_analog_all(new_a1, new_a2)
-        card.set_analog_port(0, new_a1)
         if (new_d & 0x10) != 0:
             break
         #card.send()
