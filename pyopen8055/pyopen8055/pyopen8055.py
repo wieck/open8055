@@ -440,15 +440,16 @@ class pyopen8055:
             else:
                 raise ValueError('invalid port number %d' % port)
         elif self.card_type == K8055:
-            if port < 0 or port > 1:
-                raise ValueError('invalid port number %d' % port)
-            self._autorecv()
             if port == 0:
+                self._autorecv()
                 return (self.recv_buffer.counter_1_low | 
                         (self.recv_buffer.counter_1_high << 8))
-            else:
+            elif port == 1:
+                self._autorecv()
                 return (self.recv_buffer.counter_2_low | 
                         (self.recv_buffer.counter_2_high << 8))
+            else:
+                raise ValueError('invalid port number %d' % port)
         else:
             raise NotImplementedError("Protocol '%s' not implemented" %
                     self.card_type)
@@ -478,21 +479,23 @@ class pyopen8055:
     ##########
     def read_analog_port(self, port):
         if self.card_type == K8055N:
-            if port < 0 or port > 1:
-                raise ValueError('invalid port number %d' % port)
-            self._autorecv(tag = TAG_K8055N_GET_ANALOG_IN)
             if port == 0:
+                self._autorecv(tag = TAG_K8055N_GET_ANALOG_IN)
                 return self.recv_buffer.analog_in_1
-            else:
+            elif port == 1:
+                self._autorecv(tag = TAG_K8055N_GET_ANALOG_IN)
                 return self.recv_buffer.analog_in_2
+            else:
+                raise ValueError('invalid port number %d' % port)
         elif self.card_type == K8055:
-            if port < 0 or port > 1:
-                raise ValueError('invalid port number %d' % port)
-            self._autorecv()
             if port == 0:
+                self._autorecv()
                 return self.recv_buffer.analog_in_1
-            else:
+            elif port == 1:
+                self._autorecv()
                 return self.recv_buffer.analog_in_2
+            else:
+                raise ValueError('invalid port number %d' % port)
         else:
             raise NotImplementedError("Protocol '%s' not implemented" %
                     self.card_type)
