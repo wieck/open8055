@@ -76,6 +76,26 @@ class _usbio:
         _debug("  bConfigurationValue = %d" % config.bConfigurationValue)
         usb.set_configuration(self.handle, config.bConfigurationValue)
 
+        if self.card_type == pyopen8055.K8055:
+            _debug("  attempting to switch to K8055N protocol")
+            buf = ctypes.create_string_buffer(8)
+            buf[0] = chr(pyopen8055.TAG_K8055N_SET_PROTO)
+            _debug("    sending SET_PROTO")
+            self.send_pkt(buf)
+            _debug("    reading reply")
+            reply = self.recv_pkt(8)
+            if ord(reply[1]) > 10:
+                _debug("    reply card_id=%d" % ord(reply[1]))
+                if ord(reply[1]) <= 20:
+                    self.send_pkt(buf)
+                while ord(reply[1]) <= 20:
+                    reply = self.recv_pkt(8)
+                    _debug("    reply card_id=%d" % ord(reply[1]))
+                self.card_type = pyopen8055.K8055N
+                _debug("  successfully switched to K8055N protocol")
+            else:
+                _debug("  found original K8055 - no protocol change")
+
         _debug("  %s: card_type = %s" % (card_address, self.card_type))
 
     def close(self):

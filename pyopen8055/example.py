@@ -14,10 +14,10 @@ def main(argv):
         return 1
     print "card0 of type '%s' opened" % card.card_type
 
-    #print 'DIGITAL_OUT:', card.readback_digital_all()
-    #print 'ANALOG_OUT:', card.readback_analog_all()
-    #print 'IN_1:', card.read_digital_port(0)
-    #print 'A_1:', card.read_analog_port(0)
+    print 'DIGITAL_OUT:', card.readback_digital_all()
+    print 'ANALOG_OUT:', card.readback_analog_all()
+    print 'IN_1:', card.read_digital_port(0)
+    print 'A_1:', card.read_analog_port(0)
 
     card.set_digital_all(0x54)
     card.set_digital_port(0, True)
@@ -35,11 +35,11 @@ def main(argv):
     print 'press digital input 5 to end example'
     print '===================='
     print ''
-    card.autosend = False
-    card.autorecv = False
-    card.recv()
+    #card.autosend = False
+    #card.autorecv = False
+    #card.recv()
     while True:
-        card.recv()
+        #card.recv()
         new_d = card.read_digital_all()
         if new_d != cur_d:
             cur_d = new_d
@@ -60,12 +60,13 @@ def main(argv):
             cur_a2 = new_a2
             print 'ANALOG_2:', new_a2
         card.set_analog_all(new_a1, new_a2)
+        card.set_analog_port(0, new_a1)
         if (new_d & 0x10) != 0:
             break
-        card.send()
+        #card.send()
     card.set_digital_all(0x00)
     card.set_analog_all(0, 0)
-    card.send()
+    #card.send()
     card.close()
 
 if __name__ == '__main__':

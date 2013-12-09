@@ -25,20 +25,25 @@ OPEN8055 = 'OPEN8055'
 ##########
 # K8055 message types
 ##########
-TAG_K8055_SET_DEBOUNCE = 1
-TAG_K8055_RESET_COUNTER = 3
+TAG_K8055_SET_DEBOUNCE_1 = 1
+TAG_K8055_SET_DEBOUNCE_2 = 2
+TAG_K8055_RESET_COUNTER_1 = 3
+TAG_K8055_RESET_COUNTER_2 = 4
 TAG_K8055_SET_OUTPUT = 5
 
 ##########
 # K8055N message types
 ##########
 TAG_K8055N_SET_PROTO = 6
-TAG_K8055N_SET_DEBOUNCE = 11
-TAG_K8055N_RESET_COUNTER = 13      # 13 and 14
-TAG_K8055N_SET_DIGITAL_OUT = 15
+TAG_K8055N_SET_DEBOUNCE_1 = 11
+TAG_K8055N_SET_DEBOUNCE_2 = 12
+TAG_K8055N_RESET_COUNTER_1 = 13
+TAG_K8055N_RESET_COUNTER_2 = 14
+TAG_K8055N_SET_OUTPUT = 15
 TAG_K8055N_GET_DIGITAL_IN = 16
 TAG_K8055N_GET_ANALOG_IN = 17
-TAG_K8055N_GET_COUNTER = 18        # 18 and 19
+TAG_K8055N_GET_COUNTER_1 = 18
+TAG_K8055N_GET_COUNTER_2 = 19
 TAG_K8055N_GET_COUNTER16 = 20      # 21 and 21
 TAG_K8055N_GET_DIGITAL_OUT = 24
 TAG_K8055N_GET_ANALOG_OUT = 25
@@ -77,15 +82,21 @@ class k8055_hid_report(object):
 
     def _get_digital_in(self):
         return self.cvar.digital_in
-    digital_in = property(_get_digital_in)
+    def _set_digital_in(self, value):
+        self.cvar.digital_in = value
+    digital_in = property(_get_digital_in, _set_digital_in)
 
     def _get_analog_in_1(self):
         return self.cvar.analog_in_1
-    analog_in_1 = property(_get_analog_in_1)
+    def _set_analog_in_1(self, value):
+        self.cvar.analog_in_1 = value
+    analog_in_1 = property(_get_analog_in_1, _set_analog_in_1)
 
     def _get_analog_in_2(self):
         return self.cvar.analog_in_2
-    analog_in_2 = property(_get_analog_in_2)
+    def _set_analog_in_2(self, value):
+        self.cvar.analog_in_2 = value
+    analog_in_2 = property(_get_analog_in_2, _set_analog_in_2)
 
     def _get_counter_1_low(self):
         return self.cvar.counter_1_low
@@ -107,7 +118,7 @@ class k8055_hid_report(object):
         ctypes.memmove(ctypes.addressof(self.cvar), data, 8)
 
 ##########
-# K8055N command packet
+# K8055 command packet
 ##########
 class _k8055_hid_command(ctypes.Structure):
     _pack_ = True
@@ -116,8 +127,8 @@ class _k8055_hid_command(ctypes.Structure):
         ('digital_out', uint8),
         ('analog_out_1', uint8),
         ('analog_out_2', uint8),
+        ('dummy0', uint8),
         ('dummy1', uint8),
-        ('dummy2', uint8),
         ('counter_1_debounce', uint8),
         ('counter_2_debounce', uint8),
         ]
@@ -189,21 +200,29 @@ class pyopen8055:
         Open a K8055, K8055N or Open8055 board.
         """
         _debug('pyopen8055.__init__("%s")' % card_address)
+        self.io = None
         if re.match('^card[0-9+]$', card_address):
             self.io = usbio._usbio(card_address)
         else:
             self.io = netio._netio(card_address)
 
+        self.autosend = autosend
+        self.autorecv = autorecv
+
         self.card_type = self.io.card_type
-        if self.card_type == K8055:
+        if self.card_type == K8055N:
+            self.recv_buffer = k8055_hid_report()
+            self.send_buffer = k8055_hid_command()
+            self.counter1 = 0
+            self.counter2 = 0
+            self.readback_digital_all()
+            self.readback_analog_all()
+        elif self.card_type == K8055:
             self.recv_buffer = k8055_hid_report()
             self.send_buffer = k8055_hid_command()
         else:
             raise NotImplementedError("Protocol '%s' not implemented" %
                     self.card_type)
-
-        self.autosend = autosend
-        self.autorecv = autorecv
 
     ##########
     # __del__()
@@ -230,7 +249,11 @@ class pyopen8055:
     # set_digital_all()
     ##########
     def set_digital_all(self, value):
-        if self.card_type == K8055:
+        if self.card_type == K8055N:
+            self.send_buffer.command_tag = TAG_K8055N_SET_OUTPUT
+            self.send_buffer.digital_out = value & 0xff
+            self._autosend()
+        elif self.card_type == K8055:
             self.send_buffer.command_tag = TAG_K8055_SET_OUTPUT
             self.send_buffer.digital_out = value & 0xff
             self._autosend()
@@ -242,7 +265,16 @@ class pyopen8055:
     # set_digital_port()
     ##########
     def set_digital_port(self, port, value):
-        if self.card_type == K8055:
+        if self.card_type == K8055N:
+            if port < 0 or port > 7:
+                raise ValueError('invalid port number %d' % port)
+            self.send_buffer.command_tag = TAG_K8055N_SET_OUTPUT
+            if bool(value):
+                self.send_buffer.digital_out |= (1 << port)
+            else:
+                self.send_buffer.digital_out &= ~(1 << port)
+            self._autosend()
+        elif self.card_type == K8055:
             if port < 0 or port > 7:
                 raise ValueError('invalid port number %d' % port)
             self.send_buffer.command_tag = TAG_K8055_SET_OUTPUT
@@ -259,7 +291,12 @@ class pyopen8055:
     # set_analog_all()
     ##########
     def set_analog_all(self, value1, value2):
-        if self.card_type == K8055:
+        if self.card_type == K8055N:
+            self.send_buffer.command_tag = TAG_K8055N_SET_OUTPUT
+            self.send_buffer.analog_out_1 = value1
+            self.send_buffer.analog_out_2 = value2
+            self._autosend()
+        elif self.card_type == K8055:
             self.send_buffer.command_tag = TAG_K8055_SET_OUTPUT
             self.send_buffer.analog_out_1 = value1
             self.send_buffer.analog_out_2 = value2
@@ -272,15 +309,13 @@ class pyopen8055:
     # set_analog_port()
     ##########
     def set_analog_port(self, port, value):
-        if self.card_type == K8055:
-            if port < 0 or port > 1:
-                raise ValueError('invalid port number %d' % port)
-            self.send_buffer.command_tag = TAG_K8055_SET_OUTPUT
+        if self.card_type == K8055N or self.card_type == K8055:
             if port == 0:
-                self.send_buffer.analog_out_1 = value
+                self.set_analog_all(value, self.send_buffer.analog_out_2)
+            elif port == 1:
+                self.set_analog_all(self.send_buffer.analog_out_1, value)
             else:
-                self.send_buffer.analog_out_2 = value
-            self._autosend()
+                raise ValueError('invalid port number %d' % port)
         else:
             raise NotImplementedError("Protocol '%s' not implemented" %
                     self.card_type)
@@ -289,8 +324,7 @@ class pyopen8055:
     # set_counter_debounce_time()
     ##########
     def set_counter_debounce_time(self, port, value):
-        pass
-        if self.card_type == K8055:
+        if self.card_type == K8055N:
             if port < 0 or port > 1:
                 raise ValueError('invalid port number %d' % port)
             if value < 1.0 or value > 5000.0:
@@ -300,12 +334,30 @@ class pyopen8055:
                 binval = 1
             if binval > 255:
                 binval = 255
-            print 'debounce:', binval
 
-            self.send_buffer.command_tag = TAG_K8055_SET_DEBOUNCE + port
             if port == 0:
+                self.send_buffer.command_tag = TAG_K8055N_SET_DEBOUNCE_1
                 self.send_buffer.counter_1_debounce = binval
             else:
+                self.send_buffer.command_tag = TAG_K8055N_SET_DEBOUNCE_2
+                self.send_buffer.counter_2_debounce = binval
+            self._autosend()
+        elif self.card_type == K8055:
+            if port < 0 or port > 1:
+                raise ValueError('invalid port number %d' % port)
+            if value < 1.0 or value > 5000.0:
+                raise ValueError('invalid debounce time %f' % value)
+            binval = int(round(2.20869 * math.pow(value, 0.5328)))
+            if binval < 1:
+                binval = 1
+            if binval > 255:
+                binval = 255
+
+            if port == 0:
+                self.send_buffer.command_tag = TAG_K8055_SET_DEBOUNCE_1
+                self.send_buffer.counter_1_debounce = binval
+            else:
+                self.send_buffer.command_tag = TAG_K8055_SET_DEBOUNCE_2
                 self.send_buffer.counter_2_debounce = binval
             self._autosend()
         else:
@@ -316,11 +368,22 @@ class pyopen8055:
     # reset_counter()
     ##########
     def reset_counter(self, port):
-        if self.card_type == K8055:
-            if port < 0 or port > 1:
+        if self.card_type == K8055N:
+            if port == 0:
+                self.send_buffer.command_tag = TAG_K8055N_RESET_COUNTER_1
+            elif port == 1:
+                self.send_buffer.command_tag = TAG_K8055N_RESET_COUNTER_2
+            else:
                 raise ValueError('invalid port number %d' % port)
-            self.send_buffer.command_tag = TAG_K8055_RESET_COUNTER + port
-            self._autosend()
+            self.io.send_pkt(self.send_buffer.get_binary_data())
+        elif self.card_type == K8055:
+            if port == 0:
+                self.send_buffer.command_tag = TAG_K8055_RESET_COUNTER_1
+            elif port == 1:
+                self.send_buffer.command_tag = TAG_K8055_RESET_COUNTER_2
+            else:
+                raise ValueError('invalid port number %d' % port)
+            self.io.send_pkt(self.send_buffer.get_binary_data())
         else:
             raise NotImplementedError("Protocol '%s' not implemented" %
                     self.card_type)
@@ -329,7 +392,13 @@ class pyopen8055:
     # read_digital_all()
     ##########
     def read_digital_all(self):
-        if self.card_type == K8055:
+        if self.card_type == K8055N:
+            self._autorecv(tag = TAG_K8055N_GET_DIGITAL_IN)
+            value = self.recv_buffer.digital_in
+            return (((value & 0x10) >> 4) | ((value & 0x20) >> 4) |
+                    ((value & 0x01) << 2) | ((value & 0x40) >> 3) |
+                    ((value & 0x80) >> 3))
+        elif self.card_type == K8055:
             self._autorecv()
             value = self.recv_buffer.digital_in
             return (((value & 0x10) >> 4) | ((value & 0x20) >> 4) |
@@ -340,12 +409,39 @@ class pyopen8055:
                     self.card_type)
 
     ##########
+    # read_digital_port()
+    ##########
+    def read_digital_port(self, port):
+        if self.card_type == K8055N:
+            if port < 0 or port > 5:
+                raise ValueError('invalid port number %d' % port)
+            self._autorecv(tag = TAG_K8055N_GET_DIGITAL_IN)
+            return bool(self.read_digital_all() & (1 << port))
+        elif self.card_type == K8055:
+            if port < 0 or port > 5:
+                raise ValueError('invalid port number %d' % port)
+            self._autorecv()
+            return bool(self.read_digital_all() & (1 << port))
+        else:
+            raise NotImplementedError("Protocol '%s' not implemented" %
+                    self.card_type)
+
+    ##########
     # read_counter()
     ##########
     def read_counter(self, port):
-        if self.card_type == K8055:
+        if self.card_type == K8055N:
+            if port == 0:
+                self._autorecv(tag = TAG_K8055N_GET_COUNTER_1)
+                return self.counter1
+            elif port == 1:
+                self._autorecv(tag = TAG_K8055N_GET_COUNTER_2)
+                return self.counter2
+            else:
+                raise ValueError('invalid port number %d' % port)
+        elif self.card_type == K8055:
             if port < 0 or port > 1:
-                return -1
+                raise ValueError('invalid port number %d' % port)
             self._autorecv()
             if port == 0:
                 return (self.recv_buffer.counter_1_low | 
@@ -367,7 +463,10 @@ class pyopen8055:
     # read_analog_all()
     ##########
     def read_analog_all(self):
-        if self.card_type == K8055:
+        if self.card_type == K8055N:
+            self._autorecv(tag = TAG_K8055N_GET_ANALOG_IN)
+            return self.recv_buffer.analog_in_1, self.recv_buffer.analog_in_2
+        elif self.card_type == K8055:
             self._autorecv()
             return self.recv_buffer.analog_in_1, self.recv_buffer.analog_in_2
         else:
@@ -378,7 +477,15 @@ class pyopen8055:
     # read_analog_port()
     ##########
     def read_analog_port(self, port):
-        if self.card_type == K8055:
+        if self.card_type == K8055N:
+            if port < 0 or port > 1:
+                raise ValueError('invalid port number %d' % port)
+            self._autorecv(tag = TAG_K8055N_GET_ANALOG_IN)
+            if port == 0:
+                return self.recv_buffer.analog_in_1
+            else:
+                return self.recv_buffer.analog_in_2
+        elif self.card_type == K8055:
             if port < 0 or port > 1:
                 raise ValueError('invalid port number %d' % port)
             self._autorecv()
@@ -386,6 +493,41 @@ class pyopen8055:
                 return self.recv_buffer.analog_in_1
             else:
                 return self.recv_buffer.analog_in_2
+        else:
+            raise NotImplementedError("Protocol '%s' not implemented" %
+                    self.card_type)
+
+    ##########
+    # readback_digital_all()
+    ##########
+    def readback_digital_all(self):
+        if self.card_type == K8055N:
+            if self.autorecv:
+                self.send_buffer.command_tag = TAG_K8055N_GET_DIGITAL_OUT
+                self.io.send_pkt(self.send_buffer.get_binary_data())
+                buf = self.io.recv_pkt(8)
+                self.send_buffer.digital_out = ord(buf[4])
+            return self.send_buffer.digital_out
+        elif self.card_type == K8055:
+            return self.send_buffer.digital_out
+        else:
+            raise NotImplementedError("Protocol '%s' not implemented" %
+                    self.card_type)
+
+    ##########
+    # readback_analog_all()
+    ##########
+    def readback_analog_all(self):
+        if self.card_type == K8055N:
+            if self.autorecv:
+                self.send_buffer.command_tag = TAG_K8055N_GET_ANALOG_OUT
+                self.io.send_pkt(self.send_buffer.get_binary_data())
+                buf = self.io.recv_pkt(8)
+                self.send_buffer.analog_out_1 = ord(buf[5])
+                self.send_buffer.analog_out_2 = ord(buf[6])
+            return self.send_buffer.analog_out_1, self.send_buffer.analog_out_2
+        elif self.card_type == K8055:
+            return self.send_buffer.analog_out_1, self.send_buffer.analog_out_2
         else:
             raise NotImplementedError("Protocol '%s' not implemented" %
                     self.card_type)
@@ -404,19 +546,39 @@ class pyopen8055:
         if self.card_type == K8055:
             self.io.send_pkt(self.send_buffer.get_binary_data())
         
-
     ############################################################
     # Private functions
     ############################################################
 
-    def _autorecv(self):
+    def _autorecv(self, tag = None):
         if self.autorecv:
-            if self.card_type == K8055:
+            if self.card_type == K8055N:
+                self.send_buffer.command_tag = tag
+                self.io.send_pkt(self.send_buffer.get_binary_data())
+                buf = self.io.recv_pkt(8)
+                if tag == TAG_K8055N_GET_DIGITAL_IN:
+                    self.recv_buffer.digital_in = ord(buf[0])
+                elif tag == TAG_K8055N_GET_ANALOG_IN:
+                    self.recv_buffer.analog_in_1 = ord(buf[2])
+                    self.recv_buffer.analog_in_2 = ord(buf[3])
+                elif tag == TAG_K8055N_GET_COUNTER_1:
+                    self.counter1 = (
+                            (ord(buf[4])) |
+                            (ord(buf[5])) << 8 |
+                            (ord(buf[6])) << 16 |
+                            (ord(buf[7])) << 24)
+                elif tag == TAG_K8055N_GET_COUNTER_2:
+                    self.counter2 = (
+                            (ord(buf[4])) |
+                            (ord(buf[5])) << 8 |
+                            (ord(buf[6])) << 16 |
+                            (ord(buf[7])) << 24)
+            elif self.card_type == K8055:
                 self.recv_buffer.set_binary_data(self.io.recv_pkt(8))
 
     def _autosend(self):
         if self.autosend:
-            if self.card_type == K8055:
+            if self.card_type == K8055N or self.card_type == K8055:
                 self.io.send_pkt(self.send_buffer.get_binary_data())
 
     def _dump_pkt(self, pkt):
