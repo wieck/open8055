@@ -15,14 +15,23 @@ if sys.platform.startswith('freebsd'):
     import _libusbio as usbio
     import _netio as netio
 
+##########
+# Supported card types
+##########
 K8055 = 'K8055'
 K8055N = 'K8055N'
 OPEN8055 = 'OPEN8055'
 
+##########
+# K8055 message types
+##########
 TAG_K8055_SET_DEBOUNCE = 1
 TAG_K8055_RESET_COUNTER = 3
 TAG_K8055_SET_OUTPUT = 5
 
+##########
+# K8055N message types
+##########
 TAG_K8055N_SET_PROTO = 6
 TAG_K8055N_SET_DEBOUNCE = 11
 TAG_K8055N_RESET_COUNTER = 13      # 13 and 14
@@ -34,6 +43,9 @@ TAG_K8055N_GET_COUNTER16 = 20      # 21 and 21
 TAG_K8055N_GET_DIGITAL_OUT = 24
 TAG_K8055N_GET_ANALOG_OUT = 25
 
+##########
+# Data types needed for the message structures below.
+##########
 if hasattr(ctypes, 'c_uint8'):
     uint8 = ctypes.c_uint8
     uint16 = ctypes.c_uint16
@@ -41,6 +53,9 @@ else:
     uint8 = ctypes.c_ubyte
     uint16 = ctypes.c_ushort
 
+##########
+# K8055 message structures
+##########
 class _k8055_hid_report(ctypes.Structure):
     _pack_ = True
     _fields_ = [
@@ -157,6 +172,9 @@ class k8055_hid_command(object):
     def set_binary_data(self, data):
         pass
 
+############################################################
+# pyopen8055
+############################################################
 class pyopen8055:
     """
     Implements a connection to a physically attached K8055(N)/VM110(N)
@@ -403,7 +421,7 @@ class pyopen8055:
 
     def _dump_pkt(self, pkt):
         res = []
-        for i in range(0, 8):
+        for i in range(0, len(pkt)):
             res.append('{0:02x}'.format(ord(pkt[i])))
         return ' '.join(res)
 
