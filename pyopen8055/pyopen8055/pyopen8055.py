@@ -121,8 +121,7 @@ class pyopen8055:
         if self.card_type == K8055N:
             self.recv_buffer = k8055_hid_report()
             self.send_buffer = k8055_hid_command()
-            self.counter1 = 0
-            self.counter2 = 0
+            self.counter = [0, 0]
             self.readback_digital_all()
             self.readback_analog_all()
         elif self.card_type == K8055:
@@ -248,7 +247,7 @@ class pyopen8055:
                 self.send_buffer.debounce[0] = binval
             else:
                 self.send_buffer.command_tag = TAG_K8055N_SET_DEBOUNCE_2
-                self.send_buffer.debounc[1] = binval
+                self.send_buffer.debounce[1] = binval
             self._autosend()
         elif self.card_type == K8055:
             if port < 0 or port > 1:
@@ -341,10 +340,10 @@ class pyopen8055:
         if self.card_type == K8055N:
             if port == 0:
                 self._autorecv(tag = TAG_K8055N_GET_COUNTER_1)
-                return self.counter1
+                return self.counter[0]
             elif port == 1:
                 self._autorecv(tag = TAG_K8055N_GET_COUNTER_2)
-                return self.counter2
+                return self.counter[1]
             else:
                 raise ValueError('invalid port number %d' % port)
         elif self.card_type == K8055:
