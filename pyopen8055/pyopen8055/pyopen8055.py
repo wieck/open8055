@@ -5,6 +5,7 @@ pyopen8055.py - IO module for the whole 8055 card family.
 import ctypes
 import math
 import re
+import struct
 import sys
 
 def _debug(*args):
@@ -49,139 +50,46 @@ TAG_K8055N_GET_DIGITAL_OUT = 24
 TAG_K8055N_GET_ANALOG_OUT = 25
 
 ##########
-# Data types needed for the message structures below.
+# K8055 HID report
 ##########
-if hasattr(ctypes, 'c_uint8'):
-    uint8 = ctypes.c_uint8
-    uint16 = ctypes.c_uint16
-else:
-    uint8 = ctypes.c_ubyte
-    uint16 = ctypes.c_ushort
-
-##########
-# K8055 message structures
-##########
-class _k8055_hid_report(ctypes.Structure):
-    _pack_ = True
-    _fields_ = [
-        ('digital_in', uint8),
-        ('card_address', uint8),
-        ('analog_in_1', uint8),
-        ('analog_in_2', uint8),
-        ('counter_1_low', uint8),
-        ('counter_1_high', uint8),
-        ('counter_2_low', uint8),
-        ('counter_2_high', uint8),
-        ]
-class k8055_hid_report(object):
-    """
-    K8055 HID report packet
-    """
+class k8055_hid_report:
     def __init__(self):
-        self.cvar = _k8055_hid_report()
-
-    def _get_digital_in(self):
-        return self.cvar.digital_in
-    def _set_digital_in(self, value):
-        self.cvar.digital_in = value
-    digital_in = property(_get_digital_in, _set_digital_in)
-
-    def _get_analog_in_1(self):
-        return self.cvar.analog_in_1
-    def _set_analog_in_1(self, value):
-        self.cvar.analog_in_1 = value
-    analog_in_1 = property(_get_analog_in_1, _set_analog_in_1)
-
-    def _get_analog_in_2(self):
-        return self.cvar.analog_in_2
-    def _set_analog_in_2(self, value):
-        self.cvar.analog_in_2 = value
-    analog_in_2 = property(_get_analog_in_2, _set_analog_in_2)
-
-    def _get_counter_1_low(self):
-        return self.cvar.counter_1_low
-    counter_1_low = property(_get_counter_1_low)
-
-    def _get_counter_1_high(self):
-        return self.cvar.counter_1_high
-    counter_1_high = property(_get_counter_1_high)
-
-    def _get_counter_2_low(self):
-        return self.cvar.counter_2_low
-    counter_2_low = property(_get_counter_2_low)
-
-    def _get_counter_2_high(self):
-        return self.cvar.counter_2_high
-    counter_2_high = property(_get_counter_2_high)
-
+        self.digital_in = 0
+        self.card_address = 0
+        self.analog_in = [0, 0]
+        self.counter = [0, 0]
+    
+    def get_binary_data(self):
+        return struct.pack("BBBBHH", self.digital_in, self.card_address,
+                self.analog_in[0], self.analog_in[1],
+                self.counter[0], self.counter[1])
+        
     def set_binary_data(self, data):
-        ctypes.memmove(ctypes.addressof(self.cvar), data, 8)
+        (self.digital_in, self.card_address,
+                self.analog_in[0], self.analog_in[1],
+                self.counter[0], self.counter[1]
+            ) = struct.unpack("BBBBHH", data)
 
 ##########
-# K8055 command packet
+# K8055 HID command
 ##########
-class _k8055_hid_command(ctypes.Structure):
-    _pack_ = True
-    _fields_ = [
-        ('command_tag', uint8),
-        ('digital_out', uint8),
-        ('analog_out_1', uint8),
-        ('analog_out_2', uint8),
-        ('dummy0', uint8),
-        ('dummy1', uint8),
-        ('counter_1_debounce', uint8),
-        ('counter_2_debounce', uint8),
-        ]
-class k8055_hid_command(object):
-    """
-    K8055 command packet
-    """
+class k8055_hid_command:
     def __init__(self):
-        self.cvar = _k8055_hid_command()
-
-    def _get_command_tag(self):
-        return self.cvar.command_tag
-    def _set_command_tag(self, val):
-        self.cvar.command_tag = val
-    command_tag = property(_get_command_tag, _set_command_tag)
-
-    def _get_digital_out(self):
-        return self.cvar.digital_out
-    def _set_digital_out(self, val):
-        self.cvar.digital_out = val
-    digital_out = property(_get_digital_out, _set_digital_out)
-
-    def _get_analog_out_1(self):
-        return self.cvar.analog_out_1
-    def _set_analog_out_1(self, val):
-        self.cvar.analog_out_1 = val
-    analog_out_1 = property(_get_analog_out_1, _set_analog_out_1)
-
-    def _get_analog_out_2(self):
-        return self.cvar.analog_out_2
-    def _set_analog_out_2(self, val):
-        self.cvar.analog_out_2 = val
-    analog_out_2 = property(_get_analog_out_2, _set_analog_out_2)
-
-    def _get_counter_1_debounce(self):
-        return self.cvar.counter_1_debounce
-    def _set_counter_1_debounce(self, val):
-        self.cvar.counter_1_debounce = val
-    counter_1_debounce = property(_get_counter_1_debounce, 
-            _set_counter_1_debounce)
-
-    def _get_counter_2_debounce(self):
-        return self.cvar.counter_2_debounce
-    def _set_counter_2_debounce(self, val):
-        self.cvar.counter_2_debounce = val
-    counter_2_debounce = property(_get_counter_2_debounce, 
-            _set_counter_2_debounce)
+        self.command_tag = 0
+        self.digital_out = 0
+        self.analog_out = [0, 0]
+        self.debounce = [0, 0]
 
     def get_binary_data(self):
-        return ctypes.string_at(ctypes.addressof(self.cvar), 8)
+        return struct.pack("BBBBxxBB", self.command_tag, self.digital_out,
+                self.analog_out[0], self.analog_out[1],
+                self.debounce[0], self.debounce[1])
 
     def set_binary_data(self, data):
-        pass
+        (self.command_tag, self.digital_out,
+                self.analog_out[0], self.analog_out[1],
+                self.debounce[0], self.debounce[1]
+            ) = struct.unpack("BBBBxxBB", data)
 
 ############################################################
 # pyopen8055
@@ -293,13 +201,13 @@ class pyopen8055:
     def set_analog_all(self, value1, value2):
         if self.card_type == K8055N:
             self.send_buffer.command_tag = TAG_K8055N_SET_OUTPUT
-            self.send_buffer.analog_out_1 = value1
-            self.send_buffer.analog_out_2 = value2
+            self.send_buffer.analog_out[0] = value1
+            self.send_buffer.analog_out[1] = value2
             self._autosend()
         elif self.card_type == K8055:
             self.send_buffer.command_tag = TAG_K8055_SET_OUTPUT
-            self.send_buffer.analog_out_1 = value1
-            self.send_buffer.analog_out_2 = value2
+            self.send_buffer.analog_out[0] = value1
+            self.send_buffer.analog_out[1] = value2
             self._autosend()
         else:
             raise NotImplementedError("Protocol '%s' not implemented" %
@@ -311,9 +219,9 @@ class pyopen8055:
     def set_analog_port(self, port, value):
         if self.card_type == K8055N or self.card_type == K8055:
             if port == 0:
-                self.set_analog_all(value, self.send_buffer.analog_out_2)
+                self.set_analog_all(value, self.send_buffer.analog_out[1])
             elif port == 1:
-                self.set_analog_all(self.send_buffer.analog_out_1, value)
+                self.set_analog_all(self.send_buffer.analog_out[0], value)
             else:
                 raise ValueError('invalid port number %d' % port)
         else:
@@ -337,10 +245,10 @@ class pyopen8055:
 
             if port == 0:
                 self.send_buffer.command_tag = TAG_K8055N_SET_DEBOUNCE_1
-                self.send_buffer.counter_1_debounce = binval
+                self.send_buffer.debounce[0] = binval
             else:
                 self.send_buffer.command_tag = TAG_K8055N_SET_DEBOUNCE_2
-                self.send_buffer.counter_2_debounce = binval
+                self.send_buffer.debounc[1] = binval
             self._autosend()
         elif self.card_type == K8055:
             if port < 0 or port > 1:
@@ -355,10 +263,10 @@ class pyopen8055:
 
             if port == 0:
                 self.send_buffer.command_tag = TAG_K8055_SET_DEBOUNCE_1
-                self.send_buffer.counter_1_debounce = binval
+                self.send_buffer.debounce[0] = binval
             else:
                 self.send_buffer.command_tag = TAG_K8055_SET_DEBOUNCE_2
-                self.send_buffer.counter_2_debounce = binval
+                self.send_buffer.debounce[1] = binval
             self._autosend()
         else:
             raise NotImplementedError("Protocol '%s' not implemented" %
@@ -442,12 +350,10 @@ class pyopen8055:
         elif self.card_type == K8055:
             if port == 0:
                 self._autorecv()
-                return (self.recv_buffer.counter_1_low | 
-                        (self.recv_buffer.counter_1_high << 8))
+                return self.recv_buffer.counter[0]
             elif port == 1:
                 self._autorecv()
-                return (self.recv_buffer.counter_2_low | 
-                        (self.recv_buffer.counter_2_high << 8))
+                return self.recv_buffer.counter[1]
             else:
                 raise ValueError('invalid port number %d' % port)
         else:
@@ -466,10 +372,12 @@ class pyopen8055:
     def read_analog_all(self):
         if self.card_type == K8055N:
             self._autorecv(tag = TAG_K8055N_GET_ANALOG_IN)
-            return self.recv_buffer.analog_in_1, self.recv_buffer.analog_in_2
+            return (self.recv_buffer.analog_in[0],
+                    self.recv_buffer.analog_in[1])
         elif self.card_type == K8055:
             self._autorecv()
-            return self.recv_buffer.analog_in_1, self.recv_buffer.analog_in_2
+            return (self.recv_buffer.analog_in[0],
+                    self.recv_buffer.analog_in[1])
         else:
             raise NotImplementedError("Protocol '%s' not implemented" %
                     self.card_type)
@@ -481,19 +389,19 @@ class pyopen8055:
         if self.card_type == K8055N:
             if port == 0:
                 self._autorecv(tag = TAG_K8055N_GET_ANALOG_IN)
-                return self.recv_buffer.analog_in_1
+                return self.recv_buffer.analog_in[0]
             elif port == 1:
                 self._autorecv(tag = TAG_K8055N_GET_ANALOG_IN)
-                return self.recv_buffer.analog_in_2
+                return self.recv_buffer.analog_in[1]
             else:
                 raise ValueError('invalid port number %d' % port)
         elif self.card_type == K8055:
             if port == 0:
                 self._autorecv()
-                return self.recv_buffer.analog_in_1
+                return self.recv_buffer.analog_in[0]
             elif port == 1:
                 self._autorecv()
-                return self.recv_buffer.analog_in_2
+                return self.recv_buffer.analog_in[1]
             else:
                 raise ValueError('invalid port number %d' % port)
         else:
@@ -526,11 +434,13 @@ class pyopen8055:
                 self.send_buffer.command_tag = TAG_K8055N_GET_ANALOG_OUT
                 self.io.send_pkt(self.send_buffer.get_binary_data())
                 buf = self.io.recv_pkt(8)
-                self.send_buffer.analog_out_1 = ord(buf[5])
-                self.send_buffer.analog_out_2 = ord(buf[6])
-            return self.send_buffer.analog_out_1, self.send_buffer.analog_out_2
+                self.send_buffer.analog_out[0] = ord(buf[5])
+                self.send_buffer.analog_out[1] = ord(buf[6])
+            return (self.send_buffer.analog_out[0], 
+                    self.send_buffer.analog_out[1])
         elif self.card_type == K8055:
-            return self.send_buffer.analog_out_1, self.send_buffer.analog_out_2
+            return (self.send_buffer.analog_out[0], 
+                    self.send_buffer.analog_out[1])
         else:
             raise NotImplementedError("Protocol '%s' not implemented" %
                     self.card_type)
@@ -565,13 +475,13 @@ class pyopen8055:
                     self.recv_buffer.analog_in_1 = ord(buf[2])
                     self.recv_buffer.analog_in_2 = ord(buf[3])
                 elif tag == TAG_K8055N_GET_COUNTER_1:
-                    self.counter1 = (
+                    self.counter[0] = (
                             (ord(buf[4])) |
                             (ord(buf[5])) << 8 |
                             (ord(buf[6])) << 16 |
                             (ord(buf[7])) << 24)
                 elif tag == TAG_K8055N_GET_COUNTER_2:
-                    self.counter2 = (
+                    self.counter[1] = (
                             (ord(buf[4])) |
                             (ord(buf[5])) << 8 |
                             (ord(buf[6])) << 16 |

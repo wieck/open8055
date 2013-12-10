@@ -76,6 +76,10 @@ class _usbio:
         _debug("  bConfigurationValue = %d" % config.bConfigurationValue)
         usb.set_configuration(self.handle, config.bConfigurationValue)
 
+        # ----
+        # If the card had only one configuration, it could be either a
+        # K8055 or a K8055N. Try switching it to K8055N protocol to find out.
+        # ----
         if self.card_type == pyopen8055.K8055:
             _debug("  attempting to switch to K8055N protocol")
             buf = ctypes.create_string_buffer(8)
@@ -98,6 +102,9 @@ class _usbio:
 
         _debug("  %s: card_type = %s" % (card_address, self.card_type))
 
+    ##########
+    # close()
+    ##########
     def close(self):
         """
         Close the connection to this card.
@@ -106,6 +113,9 @@ class _usbio:
         usb.close(self.handle)
         self.handle = None
         
+    ##########
+    # send_pkt()
+    ##########
     def send_pkt(self, buffer):
         rc = usb.interrupt_write(self.handle, 0x01, buffer, 0)
         if rc != len(buffer):
@@ -113,6 +123,9 @@ class _usbio:
                     'interrupt_write returned %d - expected %d' % 
                     (rc, len(buffer)))
 
+    ##########
+    # recv_pkt()
+    ##########
     def recv_pkt(self, length):
         buffer = ctypes.create_string_buffer(length)
         rc = usb.interrupt_read(self.handle, 0x81, buffer, 0)
@@ -121,3 +134,4 @@ class _usbio:
                     'interrupt_write returned %d - expected %d' % 
                     (rc, length))
         return buffer
+
