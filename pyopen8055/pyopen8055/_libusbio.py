@@ -67,7 +67,7 @@ class _usbio:
         # the existence of multiple configurations identifies the Open8055.
         # ----
         _debug("  bNumConfigurations = %d" % dev.descriptor.bNumConfigurations)
-        if False and dev.descriptor.bNumConfigurations > 1:
+        if dev.descriptor.bNumConfigurations > 1:
             config = dev.config[1]
             self.card_type = pyopen8055.OPEN8055
         else:
