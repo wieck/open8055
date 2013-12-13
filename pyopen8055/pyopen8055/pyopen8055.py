@@ -15,6 +15,11 @@ def _debug(*args):
 if sys.platform.startswith('freebsd'):
     import _libusbio as usbio
     import _netio as netio
+elif sys.platform.startswith('win'):
+    import _winusbio as usbio
+    import _netio as netio
+else:
+    raise RuntimeError('platform %s not supported yet' % sys.platform)
 
 ##########
 # Supported card types
@@ -22,6 +27,9 @@ if sys.platform.startswith('freebsd'):
 K8055 = 'K8055'
 K8055N = 'K8055N'
 OPEN8055 = 'OPEN8055'
+
+K8055_VID = 0x10cf
+K8055_PID = 0x5500
 
 ##########
 # K8055 message types

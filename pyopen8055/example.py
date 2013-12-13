@@ -7,6 +7,7 @@ import sys
 import pyopen8055
         
 def main(argv):
+    card = pyopen8055.pyopen8055('card0')
     try:
         card = pyopen8055.pyopen8055('card0')
     except Exception as err:
