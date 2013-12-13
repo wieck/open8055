@@ -169,12 +169,12 @@ USB_DEVICE_DESCRIPTOR device_dsc=
     0x00,                   // Protocol code
     USB_EP0_BUFF_SIZE,      // Max packet size for EP0, see usb_config.h
     0x10CF,                 // Vendor ID: Velleman
-    0x5500,                 // Product ID: Open8055
+    0x55F0,                 // Product ID: Open8055
     0x0000,                 // Device release number in BCD format
     0x01,                   // Manufacturer string index
     0x02,                   // Product string index
     0x00,                   // Device serial number string index
-    0x02                    // Number of possible configurations
+    0x01                    // Number of possible configurations
 };
 
 #if defined(__18CXX)
@@ -218,7 +218,7 @@ ROM BYTE configDescriptor1[]={
     USB_DESCRIPTOR_ENDPOINT,//Endpoint Descriptor
     HID_EP | _EP_IN,		//EndpointAddress
     _INTERRUPT,				//Attributes
-    0x08,0x00,				//size
+    0x20,0x00,				//size
     0x01,					//Interval
 
     /* Endpoint Descriptor */
@@ -226,7 +226,7 @@ ROM BYTE configDescriptor1[]={
     USB_DESCRIPTOR_ENDPOINT,//Endpoint Descriptor
     HID_EP | _EP_OUT,		//EndpointAddress
     _INTERRUPT,				//Attributes
-    0x08,0x00,				//size
+    0x20,0x00,				//size
     0x01					//Interval
 };
 
@@ -241,77 +241,7 @@ ROM struct{BYTE report[HID_RPT01_SIZE];}hid_rpt01={
     0x15, 0x00,             //      Logical Minimum (data bytes in the report may have minimum value = 0x00)
     0x25, 0xFF,		  	  	//      Logical Maximum (data bytes in the report may have maximum value = 0x00FF = unsigned 255)
     0x75, 0x08,             //      Report Size: 8-bit field size
-    0x95, 0x08,             //      Report Count: Make 8 8-bit fields (the next time the parser hits an "Input", "Output", or "Feature" item)
-    0x81, 0x00,             //      Input (Data, Array, Abs): Instantiates input packet fields based on the above report size, count, logical min/max, and usage.
-    0x19, 0x01,             //      Usage Minimum 
-    0x29, 0x08,             //      Usage Maximum 	//8 output usages total
-    0x75, 0x08,             //      Command Size: 8-bit field size
-    0x95, 0x08,				//      Command Count: Make 8 8-bit fields
-    0x91, 0x00,             //      Output (Data, Array, Abs): Instantiates output packet fields.  
-    0xC0}                   // End Collection
-};                  
-
-/* Configuration 2 Descriptor */
-ROM BYTE configDescriptor2[]={
-    /* Configuration Descriptor */
-    0x09,					//sizeof(USB_CFG_DSC)
-    USB_DESCRIPTOR_CONFIGURATION,// CONFIGURATION descriptor type
-    0x29,0x00,            	// Total length of data for this cfg
-    1,                      // Number of interfaces in this cfg
-    2,                      // Index value of this configuration
-    0,                      // Configuration string index
-    _DEFAULT,               // Attributes, see usb_device.h
-    50,                     // Max power consumption (2X mA)
-							
-    /* Interface Descriptor */
-    0x09,					//sizeof(USB_INTF_DSC)
-    USB_DESCRIPTOR_INTERFACE,// INTERFACE descriptor type
-    0,                      // Interface Number
-    0,                      // Alternate Setting Number
-    2,                      // Number of endpoints in this intf
-    HID_INTF,               // Class code
-    0,     					// Subclass code
-    0,     					// Protocol code
-    0,                      // Interface string index
-
-    /* HID Class-Specific Descriptor */
-    0x09,					//sizeof(USB_HID_DSC)+3
-    DSC_HID,                // HID descriptor type
-    0x11,0x01,				// HID Spec Release Number in BCD format (1.11)
-    0x00,                   // Country Code (0x00 for Not supported)
-    HID_NUM_OF_DSC2,        // Number of class descriptors, see usbcfg.h
-    DSC_RPT,                // Report descriptor type
-    HID_RPT02_SIZE,0x00,	// sizeof(hid_rpt02),      // Size of the report descriptor
-    
-    /* Endpoint Descriptor */
-    0x07,					//sizeof(USB_EP_DSC)
-    USB_DESCRIPTOR_ENDPOINT,//Endpoint Descriptor
-    HID_EP | _EP_IN,		//EndpointAddress
-    _INTERRUPT,				//Attributes
-    0x20,0x00,				//size
-    0x01,					//Interval
-
-    /* Endpoint Descriptor */
-    0x07,					//sizeof(USB_EP_DSC)
-    USB_DESCRIPTOR_ENDPOINT,//Endpoint Descriptor
-    HID_EP | _EP_OUT,		//EndpointAddress
-    _INTERRUPT,				//Attributes
-    0x20,0x00,				//size
-    0x01					//Interval
-};
-
-//Class specific descriptor - HID 
-ROM struct{BYTE report[HID_RPT02_SIZE];}hid_rpt02={
-{
-    0x06, 0x00, 0xFF,       // Usage Page = 0xFF00 (Vendor Defined Page 1)
-    0x09, 0x01,             // Usage (Vendor Usage 1)
-    0xA1, 0x01,             // Collection (Application)
-    0x19, 0x01,             //      Usage Minimum 
-    0x29, 0x08,             //      Usage Maximum 	//8 input usages total
-    0x15, 0x00,             //      Logical Minimum (data bytes in the report may have minimum value = 0x00)
-    0x25, 0xFF,		  	  	//      Logical Maximum (data bytes in the report may have maximum value = 0x00FF = unsigned 255)
-    0x75, 0x08,             //      Report Size: 8-bit field size
-    0x95, 0x20,             //      Report Count: Make 32 8-bit fields (the next time the parser hits an "Input", "Output", or "Feature" item)
+    0x95, 0x20,             //      Report Count: Make 32 8-bit fields
     0x81, 0x00,             //      Input (Data, Array, Abs): Instantiates input packet fields based on the above report size, count, logical min/max, and usage.
     0x19, 0x01,             //      Usage Minimum 
     0x29, 0x08,             //      Usage Maximum 	//8 output usages total
@@ -342,8 +272,7 @@ sizeof(sd002),USB_DESCRIPTOR_STRING,
 //Array of configuration descriptors
 ROM BYTE *ROM USB_CD_Ptr[]=
 {
-    (ROM BYTE *ROM)&configDescriptor1,
-    (ROM BYTE *ROM)&configDescriptor2
+    (ROM BYTE *ROM)&configDescriptor1
 };
 
 //Array of string descriptors

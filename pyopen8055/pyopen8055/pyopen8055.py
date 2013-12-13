@@ -30,6 +30,7 @@ OPEN8055 = 'OPEN8055'
 
 K8055_VID = 0x10cf
 K8055_PID = 0x5500
+OPEN8055_PID = 0x55f0
 
 ##########
 # K8055 message types
@@ -700,8 +701,8 @@ class pyopen8055:
                 if tag == TAG_K8055N_GET_DIGITAL_IN:
                     self.recv_buffer.digital_in = ord(buf[0])
                 elif tag == TAG_K8055N_GET_ANALOG_IN:
-                    self.recv_buffer.analog_in_1 = ord(buf[2])
-                    self.recv_buffer.analog_in_2 = ord(buf[3])
+                    self.recv_buffer.analog_in[0] = ord(buf[2])
+                    self.recv_buffer.analog_in[1] = ord(buf[3])
                 elif tag == TAG_K8055N_GET_COUNTER_1:
                     self.counter[0] = (
                             (ord(buf[4])) |

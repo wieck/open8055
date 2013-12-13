@@ -43,7 +43,13 @@ class _usbio:
             for dev in bus.devices:
                 _debug('  idVendor: 0x%04x idProduct 0x%04x' % (dev.descriptor.idVendor, dev.descriptor.idProduct))
                 if (dev.descriptor.idVendor == 0x10cf and
+                    dev.descriptor.idProduct == 0x55F0 + self.card_number):
+                    self.card_type = pyopen8055.OPEN8055
+                    found = True
+                    break
+                if (dev.descriptor.idVendor == 0x10cf and
                     dev.descriptor.idProduct == 0x5500 + self.card_number):
+                    self.card_type = pyopen8055.K8055
                     found = True
                     break
             if found:
@@ -63,22 +69,14 @@ class _usbio:
                 usb.detach_kernel_driver_np(self.handle, 0)
 
         # ----
-        # Set the active configuration. The K8055/K8055N has only one, so
-        # the existence of multiple configurations identifies the Open8055.
+        # Set the active configuration. 
         # ----
-        _debug("  bNumConfigurations = %d" % dev.descriptor.bNumConfigurations)
-        if dev.descriptor.bNumConfigurations > 1:
-            config = dev.config[1]
-            self.card_type = pyopen8055.OPEN8055
-        else:
-            config = dev.config[0]
-            self.card_type = pyopen8055.K8055
-        _debug("  bConfigurationValue = %d" % config.bConfigurationValue)
+        config = dev.config[0]
         usb.set_configuration(self.handle, config.bConfigurationValue)
 
         # ----
-        # If the card had only one configuration, it could be either a
-        # K8055 or a K8055N. Try switching it to K8055N protocol to find out.
+        # If the code above identified the card as a K8055, it could also be
+        # a K8055N. Try switching it to K8055N protocol to find out.
         # ----
         if self.card_type == pyopen8055.K8055:
             _debug("  attempting to switch to K8055N protocol")

@@ -65,7 +65,9 @@ class _usbio:
         self.send_handle = None
         self.recv_handle = None
 
-        vid_pid_str = 'hid#vid_%04x&pid_%04x' % (
+        open8055_vid_pid = 'hid#vid_%04x&pid_%04x' % (
+                pyopen8055.K8055_VID, pyopen8055.OPEN8055_PID + self.card_number)
+        k8055_vid_pid = 'hid#vid_%04x&pid_%04x' % (
                 pyopen8055.K8055_VID, pyopen8055.K8055_PID + self.card_number)
 
         # ----
@@ -124,8 +126,13 @@ class _usbio:
             # ----
             # Check if we found our card.
             # ----
-            if not str(detail_data.DevicePath).find(vid_pid_str) < 0:
+            if not str(detail_data.DevicePath).find(open8055_vid_pid) < 0:
                 device_path = str(detail_data.DevicePath)
+                self.card_type = pyopen8055.OPEN8055
+                break
+            if not str(detail_data.DevicePath).find(k8055_vid_pid) < 0:
+                device_path = str(detail_data.DevicePath)
+                self.card_type = pyopen8055.K8055
                 break
 
             index += 1
@@ -151,15 +158,8 @@ class _usbio:
                 FILE_SHARE_READ | FILE_SHARE_WRITE, None, OPEN_EXISTING, 0, 0)
 
         # ----
-        # Set the active configuration. The K8055/K8055N has only one, so
-        # the existence of multiple configurations identifies the Open8055.
-        # ----
-        _debug("  TODO: Windows doesn't know about configurations!!!")
-        self.card_type = pyopen8055.K8055
-
-        # ----
-        # If the card had only one configuration, it could be either a
-        # K8055 or a K8055N. Try switching it to K8055N protocol to find out.
+        # If the code above identified the card as K8055 it could be 
+        # a K8055N. Try switching it to K8055N protocol to find out.
         # ----
         if self.card_type == pyopen8055.K8055:
             _debug("  attempting to switch to K8055N protocol")

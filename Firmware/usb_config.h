@@ -167,7 +167,6 @@
 #define HID_NUM_OF_DSC1         1
 #define HID_NUM_OF_DSC2			1
 #define HID_RPT01_SIZE          32
-#define HID_RPT02_SIZE			32
 
 /** DEFINITIONS ****************************************************/
 

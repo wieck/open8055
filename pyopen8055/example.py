@@ -8,11 +8,11 @@ import pyopen8055
         
 def main(argv):
     card = pyopen8055.pyopen8055('card0')
-    try:
-        card = pyopen8055.pyopen8055('card0')
-    except Exception as err:
-        sys.stderr.write(str(err) + '\n')
-        return 1
+    #try:
+    #    card = pyopen8055.pyopen8055('card0')
+    #except Exception as err:
+    #    sys.stderr.write(str(err) + '\n')
+    #    return 1
     print "card0 of type '%s' opened" % card.card_type
 
     print 'DIGITAL_OUT:', card.readback_digital_all()
