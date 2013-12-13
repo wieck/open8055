@@ -15,6 +15,9 @@ def _debug(*args):
 if sys.platform.startswith('freebsd'):
     import _libusbio as usbio
     import _netio as netio
+elif sys.platform.startswith('linux'):
+    import _libusbio as usbio
+    import _netio as netio
 elif sys.platform.startswith('win'):
     import _winusbio as usbio
     import _netio as netio
