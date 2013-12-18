@@ -345,20 +345,24 @@ class pyopen8055:
     # set_analog_all()
     ##########
     def set_analog_all(self, value1, value2):
+        if value1 < 0.0 or value1 > 1.0:
+            raise ValueError('invalid analog output value %f' % value1)
+        if value2 < 0.0 or value2 > 1.0:
+            raise ValueError('invalid analog output value %f' % value2)
         if self.card_type == OPEN8055:
             self.send_buffer.msg_type = TAG_OPEN8055_OUTPUT
-            self.send_buffer.output_pwm[0] = value1
-            self.send_buffer.output_pwm[1] = value2
+            self.send_buffer.output_pwm[0] = int(value1 * 1023)
+            self.send_buffer.output_pwm[1] = int(value2 * 1023)
             self._autosend()
         elif self.card_type == K8055N:
             self.send_buffer.command_tag = TAG_K8055N_SET_OUTPUT
-            self.send_buffer.analog_out[0] = value1
-            self.send_buffer.analog_out[1] = value2
+            self.send_buffer.analog_out[0] = int(value1 * 255)
+            self.send_buffer.analog_out[1] = int(value2 * 255)
             self._autosend()
         elif self.card_type == K8055:
             self.send_buffer.command_tag = TAG_K8055_SET_OUTPUT
-            self.send_buffer.analog_out[0] = value1
-            self.send_buffer.analog_out[1] = value2
+            self.send_buffer.analog_out[0] = int(value1 * 255)
+            self.send_buffer.analog_out[1] = int(value2 * 255)
             self._autosend()
         else:
             raise NotImplementedError("Protocol '%s' not implemented" %
@@ -368,20 +372,22 @@ class pyopen8055:
     # set_analog_port()
     ##########
     def set_analog_port(self, port, value):
+        if port < 0 or port > 1:
+            raise ValueError('invalid analog port number %d' % port)
+        if value < 0.0 or value > 1.0:
+            raise ValueError('invalid analog output value %f' % value1)
         if self.card_type == OPEN8055:
-            if port == 0:
-                self.set_analog_all(value, self.send_buffer.output_pwm[1])
-            elif port == 1:
-                self.set_analog_all(self.send_buffer.output_pwm[0], value)
-            else:
-                raise ValueError('invalid port number %d' % port)
-        elif self.card_type == K8055N or self.card_type == K8055:
-            if port == 0:
-                self.set_analog_all(value, self.send_buffer.analog_out[1])
-            elif port == 1:
-                self.set_analog_all(self.send_buffer.analog_out[0], value)
-            else:
-                raise ValueError('invalid port number %d' % port)
+            self.send_buffer.msg_type = TAG_OPEN8055_OUTPUT
+            self.send_buffer.output_pwm[port] = int(value * 1023)
+            self._autosend()
+        elif self.card_type == K8055N:
+            self.send_buffer.command_tag = TAG_K8055N_SET_OUTPUT
+            self.send_buffer.analog_out[port] = int(value * 255)
+            self._autosend()
+        elif self.card_type == K8055:
+            self.send_buffer.command_tag = TAG_K8055_SET_OUTPUT
+            self.send_buffer.analog_out[port] = int(value * 255)
+            self._autosend()
         else:
             raise NotImplementedError("Protocol '%s' not implemented" %
                     self.card_type)
@@ -554,16 +560,16 @@ class pyopen8055:
     def read_analog_all(self):
         if self.card_type == OPEN8055:
             self._autorecv(tag = TAG_OPEN8055_GETINPUT)
-            return (self.recv_buffer.input_adc[0],
-                    self.recv_buffer.input_adc[1])
+            return (float(self.recv_buffer.input_adc[0]) / 1023,
+                    float(self.recv_buffer.input_adc[1]) / 1023)
         elif self.card_type == K8055N:
             self._autorecv(tag = TAG_K8055N_GET_ANALOG_IN)
-            return (self.recv_buffer.analog_in[0],
-                    self.recv_buffer.analog_in[1])
+            return (float(self.recv_buffer.analog_in[0]) / 255,
+                    float(self.recv_buffer.analog_in[1]) / 255)
         elif self.card_type == K8055:
             self._autorecv()
-            return (self.recv_buffer.analog_in[0],
-                    self.recv_buffer.analog_in[1])
+            return (float(self.recv_buffer.analog_in[0]) / 255,
+                    float(self.recv_buffer.analog_in[1]) / 255)
         else:
             raise NotImplementedError("Protocol '%s' not implemented" %
                     self.card_type)
@@ -575,28 +581,28 @@ class pyopen8055:
         if self.card_type == OPEN8055:
             if port == 0:
                 self._autorecv(tag = TAG_OPEN8055_GETINPUT)
-                return self.recv_buffer.input_adc[0]
+                return float(self.recv_buffer.input_adc[0]) / 1023
             elif port == 1:
                 self._autorecv(tag = TAG_OPEN8055_GETINPUT)
-                return self.recv_buffer.input_adc[1]
+                return float(self.recv_buffer.input_adc[1]) / 1023
             else:
                 raise ValueError('invalid port number %d' % port)
         elif self.card_type == K8055N:
             if port == 0:
                 self._autorecv(tag = TAG_K8055N_GET_ANALOG_IN)
-                return self.recv_buffer.analog_in[0]
+                return float(self.recv_buffer.analog_in[0]) / 255
             elif port == 1:
                 self._autorecv(tag = TAG_K8055N_GET_ANALOG_IN)
-                return self.recv_buffer.analog_in[1]
+                return float(self.recv_buffer.analog_in[1]) / 255
             else:
                 raise ValueError('invalid port number %d' % port)
         elif self.card_type == K8055:
             if port == 0:
                 self._autorecv()
-                return self.recv_buffer.analog_in[0]
+                return float(self.recv_buffer.analog_in[0]) / 255
             elif port == 1:
                 self._autorecv()
-                return self.recv_buffer.analog_in[1]
+                return float(self.recv_buffer.analog_in[1]) / 255
             else:
                 raise ValueError('invalid port number %d' % port)
         else:
@@ -627,7 +633,9 @@ class pyopen8055:
     ##########
     def readback_analog_all(self):
         if self.card_type == OPEN8055:
-            return self.send_buffer.output_pwm
+            self.readback_all()
+            return (float(self.send_buffer.output_pwm[0]) / 1023,
+                    float(self.send_buffer.output_pwm[1]) / 1023)
         elif self.card_type == K8055N:
             if self.autorecv:
                 self.send_buffer.command_tag = TAG_K8055N_GET_ANALOG_OUT
@@ -635,11 +643,11 @@ class pyopen8055:
                 buf = self.io.recv_pkt(8)
                 self.send_buffer.analog_out[0] = ord(buf[5])
                 self.send_buffer.analog_out[1] = ord(buf[6])
-            return (self.send_buffer.analog_out[0], 
-                    self.send_buffer.analog_out[1])
+            return (float(self.send_buffer.analog_out[0]) / 255,
+                    float(self.send_buffer.analog_out[1]) / 255)
         elif self.card_type == K8055:
-            return (self.send_buffer.analog_out[0], 
-                    self.send_buffer.analog_out[1])
+            return (float(self.send_buffer.analog_out[0]) / 255,
+                    float(self.send_buffer.analog_out[1]) / 255)
         else:
             raise NotImplementedError("Protocol '%s' not implemented" %
                     self.card_type)
