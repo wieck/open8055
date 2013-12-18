@@ -53,7 +53,7 @@ TAG_K8055N_SET_DEBOUNCE_2 = 12
 TAG_K8055N_RESET_COUNTER_1 = 13
 TAG_K8055N_RESET_COUNTER_2 = 14
 TAG_K8055N_SET_OUTPUT = 15
-TAG_K8055N_GET_DIGITAL_IN = 16
+TAG_K8055N_GET_INPUT = 16
 TAG_K8055N_GET_ANALOG_IN = 17
 TAG_K8055N_GET_COUNTER_1 = 18
 TAG_K8055N_GET_COUNTER_2 = 19
@@ -72,48 +72,6 @@ TAG_OPEN8055_SAVECONFIG = 0x05
 TAG_OPEN8055_SAVEALL = 0x06
 TAG_OPEN8055_RESET = 0x7f
 TAG_OPEN8055_INPUT = 0x81
-
-##########
-# K8055 HID report
-##########
-class k8055_hid_report:
-    def __init__(self):
-        self.digital_in = 0
-        self.card_address = 0
-        self.analog_in = [0, 0]
-        self.counter = [0, 0]
-    
-    def get_binary_data(self):
-        return struct.pack("BBBBHH", self.digital_in, self.card_address,
-                self.analog_in[0], self.analog_in[1],
-                self.counter[0], self.counter[1])
-        
-    def set_binary_data(self, data):
-        (self.digital_in, self.card_address,
-                self.analog_in[0], self.analog_in[1],
-                self.counter[0], self.counter[1]
-            ) = struct.unpack("BBBBHH", data)
-
-##########
-# K8055 HID command
-##########
-class k8055_hid_command:
-    def __init__(self):
-        self.command_tag = 0
-        self.digital_out = 0
-        self.analog_out = [0, 0]
-        self.debounce = [0, 0]
-
-    def get_binary_data(self):
-        return struct.pack("BBBBxxBB", self.command_tag, self.digital_out,
-                self.analog_out[0], self.analog_out[1],
-                self.debounce[0], self.debounce[1])
-
-    def set_binary_data(self, data):
-        (self.command_tag, self.digital_out,
-                self.analog_out[0], self.analog_out[1],
-                self.debounce[0], self.debounce[1]
-            ) = struct.unpack("BBBBxxBB", data)
 
 ##########
 # Open8055 input report
@@ -218,7 +176,90 @@ class open8055_hid_config1:
                 self.debounce[4],
                 self.card_address
             ) = struct.unpack("!B2B5B8B2B5HB3x", data)
-        pass
+
+##########
+# K8055N HID input
+##########
+class k8055n_hid_input:
+    def __init__(self):
+        self.digital_in = 0
+        self.card_address = 0
+        self.analog_in = [0, 0]
+        self.counter = [0, 0]
+    
+    def get_binary_data(self):
+        return struct.pack("BBBBHH", self.digital_in, self.card_address,
+                self.analog_in[0], self.analog_in[1],
+                self.counter[0], self.counter[1])
+        
+    def set_binary_data(self, data):
+        (self.digital_in, self.card_address,
+                self.analog_in[0], self.analog_in[1],
+                self.counter[0], self.counter[1]
+            ) = struct.unpack("BBBBHH", data)
+
+##########
+# K8055N HID output
+##########
+class k8055n_hid_output:
+    def __init__(self):
+        self.command_tag = 0
+        self.digital_out = 0
+        self.analog_out = [0, 0]
+        self.debounce = [2, 2]
+
+    def get_binary_data(self):
+        return struct.pack("BBBBxxBB", self.command_tag, self.digital_out,
+                self.analog_out[0], self.analog_out[1],
+                self.debounce[0], self.debounce[1])
+
+    def set_binary_data(self, data):
+        (self.command_tag, self.digital_out,
+                self.analog_out[0], self.analog_out[1],
+                self.debounce[0], self.debounce[1],
+            ) = struct.unpack("BBBBxxBB", data)
+
+##########
+# K8055 HID input
+##########
+class k8055_hid_input:
+    def __init__(self):
+        self.digital_in = 0
+        self.card_address = 0
+        self.analog_in = [0, 0]
+        self.counter = [0, 0]
+    
+    def get_binary_data(self):
+        return struct.pack("BBBBHH", self.digital_in, self.card_address,
+                self.analog_in[0], self.analog_in[1],
+                self.counter[0], self.counter[1])
+        
+    def set_binary_data(self, data):
+        (self.digital_in, self.card_address,
+                self.analog_in[0], self.analog_in[1],
+                self.counter[0], self.counter[1]
+            ) = struct.unpack("BBBBHH", data)
+
+##########
+# K8055 HID output
+##########
+class k8055_hid_output:
+    def __init__(self):
+        self.command_tag = 0
+        self.digital_out = 0
+        self.analog_out = [0, 0]
+        self.debounce = [0, 0]
+
+    def get_binary_data(self):
+        return struct.pack("BBBBxxBB", self.command_tag, self.digital_out,
+                self.analog_out[0], self.analog_out[1],
+                self.debounce[0], self.debounce[1])
+
+    def set_binary_data(self, data):
+        (self.command_tag, self.digital_out,
+                self.analog_out[0], self.analog_out[1],
+                self.debounce[0], self.debounce[1]
+            ) = struct.unpack("BBBBxxBB", data)
 
 ############################################################
 # pyopen8055
@@ -253,14 +294,14 @@ class pyopen8055:
             self.recv_buffer = open8055_hid_input()
             self.readback_all()
         elif self.card_type == K8055N:
-            self.recv_buffer = k8055_hid_report()
-            self.send_buffer = k8055_hid_command()
+            self.recv_buffer = k8055n_hid_input()
+            self.send_buffer = k8055n_hid_output()
             self.counter = [0, 0]
             self.readback_digital_all()
             self.readback_analog_all()
         elif self.card_type == K8055:
-            self.recv_buffer = k8055_hid_report()
-            self.send_buffer = k8055_hid_command()
+            self.recv_buffer = k8055_hid_input()
+            self.send_buffer = k8055_hid_output()
         else:
             raise NotImplementedError("Protocol '%s' not implemented" %
                     self.card_type)
@@ -482,7 +523,7 @@ class pyopen8055:
             self._autorecv(tag = TAG_OPEN8055_GETINPUT)
             return self.recv_buffer.input_bits
         elif self.card_type == K8055N:
-            self._autorecv(tag = TAG_K8055N_GET_DIGITAL_IN)
+            self._autorecv(tag = TAG_K8055N_GET_INPUT)
             value = self.recv_buffer.digital_in
             return (((value & 0x10) >> 4) | ((value & 0x20) >> 4) |
                     ((value & 0x01) << 2) | ((value & 0x40) >> 3) |
@@ -709,7 +750,7 @@ class pyopen8055:
                 self.send_buffer.command_tag = tag
                 self.io.send_pkt(self.send_buffer.get_binary_data())
                 buf = self.io.recv_pkt(8)
-                if tag == TAG_K8055N_GET_DIGITAL_IN:
+                if tag == TAG_K8055N_GET_INPUT:
                     self.recv_buffer.digital_in = ord(buf[0])
                 elif tag == TAG_K8055N_GET_ANALOG_IN:
                     self.recv_buffer.analog_in[0] = ord(buf[2])
