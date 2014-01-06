@@ -85,7 +85,7 @@ bootloader to use more program memory.
 #include "usb.h"                         
 #include "io_cfg.h"                     
 #include "BootPIC18NonJ.h"
-
+
 /** C O N F I G U R A T I O N ************************************************/
 // Note: For a complete list of the available config pragmas and their values, 
 // see the compiler documentation, and/or click "Help --> Topics..." and then 
@@ -274,7 +274,7 @@ void main(void)
 static void ReadCardAddress(void)
 {
 	#if (OPEN8055_PCB == P8055-1)
-		cardAddress = ((sk6) ? 0 : 2) + ((sk5) ? 0 : 1);
+		cardAddress = ((sk6) ? 2 : 0) + ((sk5) ? 1 : 0);
 	#elif (OPEN8055_PCB == P8055N-2)
 		mInitAllJumpers();
 		sk56power = 1;				//Provide full power to sk5 and sk6
