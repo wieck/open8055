@@ -5,7 +5,8 @@ import ttk
 import signal
 import sys
 import threading
-import open8055
+sys.path = ['../../pyopen8055'] + sys.path
+import pyopen8055
 
 def main(argv):
     signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -31,13 +32,12 @@ class Demo(tk.Frame):
 
         parent.wm_protocol('WM_DELETE_WINDOW', self.cancel)
         self.parent = parent
-        self.destination = tk.StringVar(value='open8055://nobody@localhost/card0')
+        self.after_id = None
+        #self.destination = tk.StringVar(value='open8055://nobody@localhost/card0')
+        self.destination = tk.StringVar(value='card0')
         self.conn = None
         self.password = tk.StringVar(value=None)
         self.message = tk.StringVar(value='Not connected')
-
-        self.I1_mode = open8055.MODE_INPUT
-        self.I1_checked = tk.BooleanVar(value=False)
 
         f0 = tk.Frame(self, borderwidth=2, relief=tk.FLAT)
         f0.pack(side=tk.TOP, fill=tk.X, pady=8)
@@ -184,9 +184,9 @@ class Demo(tk.Frame):
         self.b0.configure(state=tk.DISABLED)
 
         try:
-            conninfo = open8055.conninfo(self.destination.get(),
+            conninfo = pyopen8055.conninfo(self.destination.get(),
                     self.password.get())
-            self.conn = open8055.open(conninfo)
+            self.conn = pyopen8055.pyopen8055(conninfo)
         except Exception as err:
             self.message.set(str(err))
             self.e0.configure(state=tk.NORMAL)
@@ -200,15 +200,12 @@ class Demo(tk.Frame):
         self.b1.focus()
 
         self.conn_update()
-
-        self.bgworker = BackgroundWorker(self, self.conn, '<<Open8055>>')
-        self.bgworker.start()
+        self.after_id = self.after(50, self.conn_update)
 
     def disconnect(self, event=None):
-        self.bgworker.set_term_flag()
-        self.conn.request_input()
-        self.bgworker.join()
-
+        if self.after_id is not None:
+            self.after_cancel(self.after_id)
+            self.after_id = None
         self.conn.close()
         self.conn = None
         self.message.set('Connection closed')
@@ -230,10 +227,9 @@ class Demo(tk.Frame):
         self.parent.destroy()
 
     def reset_card(self, event=None):
-        self.bgworker.set_term_flag()
-        self.conn.request_input()
-        self.bgworker.join()
-
+        if self.after_id is not None:
+            self.after_cancel(self.after_id)
+            self.after_id = None
         self.conn.reset()
         self.conn = None
         self.message.set('Card reset')
@@ -257,23 +253,27 @@ class Demo(tk.Frame):
             self.message.set(str(err))
 
     def conn_update(self):
-        self.adc1.update()
-        self.adc2.update()
-        self.in1.update()
-        self.in2.update()
-        self.in3.update()
-        self.in4.update()
-        self.in5.update()
-        self.pwm1.update()
-        self.pwm2.update()
-        self.out1.update()
-        self.out2.update()
-        self.out3.update()
-        self.out4.update()
-        self.out5.update()
-        self.out6.update()
-        self.out7.update()
-        self.out8.update()
+        try:
+            self.adc1.update()
+            self.adc2.update()
+            self.in1.update()
+            self.in2.update()
+            self.in3.update()
+            self.in4.update()
+            self.in5.update()
+            self.pwm1.update()
+            self.pwm2.update()
+            self.out1.update()
+            self.out2.update()
+            self.out3.update()
+            self.out4.update()
+            self.out5.update()
+            self.out6.update()
+            self.out7.update()
+            self.out8.update()
+            self.after(50, self.conn_update)
+        except Exception as err:
+            pass   
 
 class Input(tk.Frame):
     def __init__(self, parent, main, port):
@@ -319,15 +319,15 @@ class Input(tk.Frame):
         if self.main.conn is not None:
             self.active.set(self.main.conn.get_input(self.port))
             self.mode.configure(state=tk.NORMAL)
-            if self.main.conn.get_input_mode(self.port) == open8055.MODE_INPUT and self.curmode.get() != 'Mode Normal':
+            if self.main.conn.get_input_mode(self.port) == pyopen8055.MODE_INPUT and self.curmode.get() != 'Mode Normal':
                 self.curmode.set('Mode Normal')
-            elif self.main.conn.get_input_mode(self.port) == open8055.MODE_FREQUENCY and self.curmode.get() != 'Mode Frequency':
+            elif self.main.conn.get_input_mode(self.port) == pyopen8055.MODE_FREQUENCY and self.curmode.get() != 'Mode Frequency':
                 self.curmode.set('Mode Frequency')
             self.counter.set(str(self.main.conn.get_counter(self.port)))
             self.reset.configure(state=tk.NORMAL)
             self.debounce.configure(state=tk.NORMAL)
             self.debset.configure(state=tk.NORMAL)
-            deb = self.main.conn.get_debounce(self.port) * 1000.0
+            deb = self.main.conn.get_debounce(self.port)
             if deb != self.lastdebounce:
                 self.curdebounce.set('{0:.1f}'.format(deb))
                 self.lastdebounce = deb
@@ -344,9 +344,9 @@ class Input(tk.Frame):
 
     def mode_change(self, var, val, action):
         if self.curmode.get() == 'Mode Normal':
-            self.main.conn.set_input_mode(self.port, open8055.MODE_INPUT)
+            self.main.conn.set_input_mode(self.port, pyopen8055.MODE_INPUT)
         elif self.curmode.get() == 'Mode Frequency':
-            self.main.conn.set_input_mode(self.port, open8055.MODE_FREQUENCY)
+            self.main.conn.set_input_mode(self.port, pyopen8055.MODE_FREQUENCY)
 
     def reset_counter(self):
         self.main.conn.reset_counter(self.port)
@@ -358,7 +358,7 @@ class Input(tk.Frame):
             deb = '{0:.1}'.format(self.lastdebounce)
         if float(deb) > 5000.0:
             deb = '5000.0'
-        self.main.conn.set_debounce(self.port, float(deb) / 1000.0)
+        self.main.conn.set_debounce(self.port, float(deb))
 
 class Adc(tk.Frame):
     def __init__(self, parent, main, port):
@@ -381,15 +381,15 @@ class Adc(tk.Frame):
                 tags='bar')
         
         self.adc10 = tk.Radiobutton(self, borderwidth=0, relief=tk.FLAT,
-                text='10 Bit', variable=self.curmode, value=open8055.MODE_ADC10,
+                text='10 Bit', variable=self.curmode, value=pyopen8055.MODE_ADC10,
                 state=tk.DISABLED, command=self.change_bits)
         self.adc10.pack(side=tk.LEFT, padx=4, pady=2)
         self.adc9 = tk.Radiobutton(self, borderwidth=0, relief=tk.FLAT,
-                text='9 Bit', variable=self.curmode, value=open8055.MODE_ADC9,
+                text='9 Bit', variable=self.curmode, value=pyopen8055.MODE_ADC9,
                 state=tk.DISABLED, command=self.change_bits)
         self.adc9.pack(side=tk.LEFT, padx=4, pady=2)
         self.adc8 = tk.Radiobutton(self, borderwidth=0, relief=tk.FLAT,
-                text='8 Bit', variable=self.curmode, value=open8055.MODE_ADC8,
+                text='8 Bit', variable=self.curmode, value=pyopen8055.MODE_ADC8,
                 state=tk.DISABLED, command=self.change_bits)
         self.adc8.pack(side=tk.LEFT, padx=4, pady=2)
 
@@ -401,7 +401,7 @@ class Adc(tk.Frame):
             self.value.set('{0:7.6f}'.format(
                     self.main.conn.get_adc(self.port)))
             self.can.coords('bar', 0, 0, float(self.value.get()) * 512, 50)
-            self.curmode.set(self.main.conn.get_adc_mode(self.port))
+            self.curmode.set(self.main.conn.get_analog_mode(self.port))
         else:
             self.adc10.configure(state=tk.DISABLED)
             self.adc9.configure(state=tk.DISABLED)
@@ -485,14 +485,14 @@ class Output(tk.Frame):
             self.cb.configure(state=tk.NORMAL)
             self.active.set(self.main.conn.get_output(self.port))
             self.mode.configure(state=tk.NORMAL)
-            if self.main.conn.get_output_mode(self.port) == open8055.MODE_OUTPUT and self.curmode.get() != 'Mode Normal':
+            if self.main.conn.get_output_mode(self.port) == pyopen8055.MODE_OUTPUT and self.curmode.get() != 'Mode Normal':
                 self.curmode.set('Mode Normal')
-            elif self.main.conn.get_output_mode(self.port) == open8055.MODE_SERVO and self.curmode.get() != 'Mode Servo':
+            elif self.main.conn.get_output_mode(self.port) == pyopen8055.MODE_SERVO and self.curmode.get() != 'Mode Servo':
                 self.curmode.set('Mode Servo')
-            elif self.main.conn.get_output_mode(self.port) == open8055.MODE_ISERVO and self.curmode.get() != 'Mode IServo':
+            elif self.main.conn.get_output_mode(self.port) == pyopen8055.MODE_ISERVO and self.curmode.get() != 'Mode IServo':
                 self.curmode.set('Mode IServo')
 
-            if self.main.conn.get_output_mode(self.port) == open8055.MODE_OUTPUT:
+            if self.main.conn.get_output_mode(self.port) == pyopen8055.MODE_OUTPUT:
                 self.value.set(0.0)
                 self.slider.configure(state=tk.DISABLED)
                 self.strval.set('')
@@ -511,12 +511,12 @@ class Output(tk.Frame):
 
     def mode_change(self, var, val, action):
         if self.curmode.get() == 'Mode Normal':
-            self.main.conn.set_output_mode(self.port, open8055.MODE_OUTPUT)
+            self.main.conn.set_output_mode(self.port, pyopen8055.MODE_OUTPUT)
             self.main.conn.set_output(self.port, self.active.get())
         elif self.curmode.get() == 'Mode Servo':
-            self.main.conn.set_output_mode(self.port, open8055.MODE_SERVO)
+            self.main.conn.set_output_mode(self.port, pyopen8055.MODE_SERVO)
         elif self.curmode.get() == 'Mode IServo':
-            self.main.conn.set_output_mode(self.port, open8055.MODE_ISERVO)
+            self.main.conn.set_output_mode(self.port, pyopen8055.MODE_ISERVO)
         self.update()
 
     def state_change(self, event=None):
@@ -526,41 +526,6 @@ class Output(tk.Frame):
         if self.main.conn is not None:
             self.main.conn.set_output_servo(self.port, self.value.get())
             self.update()
-
-class BackgroundWorker(threading.Thread):
-    def __init__(self, main, conn, event):
-        threading.Thread.__init__(self)
-        self.main = main
-        self.conn = conn
-        main.event = event
-        self.term_flag = False
-        self.lock = threading.Lock()
-
-    def run(self):
-        while not self.get_term_flag():
-            if self.conn.socket is None:
-                break
-            self.conn.poll(timeout = None)
-            self.lock.acquire()
-            # ----
-            # When we receive the forced input on disconnect, we cannot
-            # send the event to Tkinter because the Tkinter thread is
-            # waiting for us to terminate.
-            # ----
-            if not self.term_flag:
-                self.main.event_generate(self.main.event)
-            self.lock.release()
-
-    def get_term_flag(self):
-        self.lock.acquire()
-        res = self.term_flag
-        self.lock.release()
-        return res
-
-    def set_term_flag(self):
-        self.lock.acquire()
-        self.term_flag = True
-        self.lock.release()
 
 # ----------------------------------------------------------------------
 # Call main()

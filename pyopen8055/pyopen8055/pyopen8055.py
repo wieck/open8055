@@ -297,6 +297,9 @@ class k8055_hid_output:
                 self.debounce[0], self.debounce[1]
             ) = struct.unpack("BBBBxxBB", data)
 
+##########
+# conninfo()
+##########
 def conninfo(dest = 'card0', password = None):
     return dest
 
@@ -366,6 +369,23 @@ class pyopen8055:
         device driver (if there was one on open).
         """
         if self.io is not None:
+            self.io.close()
+        self.io = None
+
+    ##########
+    # reset()
+    ##########
+    def reset(self):
+        """
+        Reset the card (if it is an OPEN8055) or close it
+        otherwise.
+        """
+        if self.card_type == OPEN8055:
+            self.send_buffer.msg_type = TAG_OPEN8055_RESET
+            self.io.send_pkt(self.send_buffer.get_binary_data())
+            self.io.close()
+            self.io = None
+        elif self.io is not None:
             self.io.close()
         self.io = None
 
@@ -523,7 +543,7 @@ class pyopen8055:
             if value < 1.0 or value > 5000.0:
                 raise ValueError('invalid debounce time %f' % value)
             self.config1.msg_type = TAG_OPEN8055_SETCONFIG1
-            self.config1.debounce[port] = float(value) * 10.0
+            self.config1.debounce[port] = int(float(value) * 10.0 + 1)
             self.io.send_pkt(self.config1.get_binary_data())
         elif self.card_type == K8055N:
             if port < 0 or port > 1:
@@ -572,7 +592,7 @@ class pyopen8055:
         if self.card_type == OPEN8055:
             if port < 0 or port > 4:
                 raise ValueError('invalid port number %d' % port)
-            return float(self.config1.debounce[port]) / 10.0
+            return float(self.config1.debounce[port] - 1) / 10.0
         else:
             if port < 0 or port > 1:
                 raise ValueError('invalid port number %d' % port)
@@ -666,13 +686,31 @@ class pyopen8055:
     # set_output_mode()
     ##########
     def set_output_mode(self, port, mode):
-        pass
+        if self.card_type == OPEN8055:
+            if port < 0 or port > 7:
+                raise ValueError('invalid port number %d' % port)
+            if mode != MODE_OUTPUT and mode != MODE_SERVO and mode != MODE_ISERVO:
+                raise ValueError('invalid output port mode')
+            self.config1.mode_output[port] = mode
+            self.io.send_pkt(self.config1.get_binary_data())
+        else:
+            if port < 0 or port > 7:
+                raise ValueError('invalid port number %d' % port)
+            if mode != MODE_OUTPUT:
+                raise ValueError('invalid output port mode')
 
     ##########
     # get_output_mode()
     ##########
     def get_output_mode(self, port):
-        pass
+        if self.card_type == OPEN8055:
+            if port < 0 or port > 7:
+                raise ValueError('invalid port number %d' % port)
+            return self.config1.mode_output[port]
+        else:
+            if port < 0 or port > 7:
+                raise ValueError('invalid port number %d' % port)
+            return MODE_OUTPUT
 
     ##########
     # set_output_all()
@@ -715,7 +753,7 @@ class pyopen8055:
         if self.card_type == OPEN8055:
             if port < 0 or port > 7:
                 raise ValueError('invalid port number %d' % port)
-            self.send_buffer.command_tag = TAG_OPEN8055_OUTPUT
+            self.send_buffer.msg_type = TAG_OPEN8055_OUTPUT
             if bool(value):
                 self.send_buffer.output_bits |= (1 << port)
             else:
@@ -762,6 +800,32 @@ class pyopen8055:
         else:
             raise NotImplementedError("Protocol '%s' not implemented" %
                     self.card_type)
+
+    ##########
+    # set_output_servo()
+    ##########
+    def set_output_servo(self, port, millisec):
+        if self.card_type == OPEN8055:
+            self.send_buffer.msg_type = TAG_OPEN8055_OUTPUT
+            if port < 0 or port > 7:
+                raise ValueError('invalid port number %d' % port)
+            if millisec < 0.5 or millisec > 2.5:
+                raise ValueError('invalid pulse width %f for servo' % millisec)
+            self.send_buffer.output_value[port] = int(millisec * 12000)
+            self._autosend()
+        else:
+            return
+
+    ##########
+    # get_output_servo()
+    ##########
+    def get_output_servo(self, port):
+        if self.card_type == OPEN8055:
+            if port < 0 or port > 7:
+                raise ValueError('invalid port number %d' % port)
+            return float(self.send_buffer.output_value[port]) / 12000.0
+        else:
+            return 0
 
     ############################################################
     # Methods related to pwm outputs
@@ -814,6 +878,22 @@ class pyopen8055:
             self.send_buffer.command_tag = TAG_K8055_SET_OUTPUT
             self.send_buffer.analog_out[port] = int(value * 255)
             self._autosend()
+        else:
+            raise NotImplementedError("Protocol '%s' not implemented" %
+                    self.card_type)
+
+    ##########
+    # get_pwm()
+    ##########
+    def get_pwm(self, port):
+        if port < 0 or port > 1:
+            raise ValueError('invalid analog port number %d' % port)
+        if self.card_type == OPEN8055:
+            return float(self.send_buffer.output_pwm[port]) / 1023.0
+        elif self.card_type == K8055N:
+            return float(self.send_buffer.analog_out[port]) / 255.0
+        elif self.card_type == K8055:
+            return float(self.send_buffer.analog_out[port]) / 255.0
         else:
             raise NotImplementedError("Protocol '%s' not implemented" %
                     self.card_type)
