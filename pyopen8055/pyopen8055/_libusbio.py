@@ -52,7 +52,7 @@ class _usbio:
             # ----
             # Try opening the specified K8055(N) card
             # ----
-            self.handle = usb_cxt.openByVendorIDAndProductID(
+            self.handle = self.cxt.openByVendorIDAndProductID(
                         VENDOR_ID, PID_K8055 + self.card_number,
                         skip_on_error = True)
             if self.handle is not None:
