@@ -1,14 +1,16 @@
 import ctypes
 import math
 import pyopen8055
-import pylibusb as usb
+import usb1
 import re
+
+VENDOR_ID = 0x10cf
+PID_K8055 = 0x5500
+PID_OPEN8055 = 0x55f0
 
 def _debug(*args):
     print 'DEBUG:', args
     pass
-
-usb.init()
 
 class _usbio:
     """
@@ -31,48 +33,64 @@ class _usbio:
         _debug('  card_number = %d' % self.card_number)
 
         # ----
-        # Find the actual device
+        # Open the device
         # ----
-        busses = usb.get_busses()
-        if not busses:
-            usb.find_busses()
-            usb.find_devices()
-            busses = usb.get_busses()
+        self.cxt = usb1.USBContext()
         found = False
-        for bus in busses:
-            for dev in bus.devices:
-                _debug('  idVendor: 0x%04x idProduct 0x%04x' % (dev.descriptor.idVendor, dev.descriptor.idProduct))
-                if (dev.descriptor.idVendor == 0x10cf and
-                    dev.descriptor.idProduct == 0x55F0 + self.card_number):
-                    self.card_type = pyopen8055.OPEN8055
-                    found = True
-                    break
-                if (dev.descriptor.idVendor == 0x10cf and
-                    dev.descriptor.idProduct == 0x5500 + self.card_number):
-                    self.card_type = pyopen8055.K8055
-                    found = True
-                    break
-            if found:
+        while True:
+            # ----
+            # Try opening the specified Open8055 card
+            # ----
+            self.handle = self.cxt.openByVendorIDAndProductID(
+                        VENDOR_ID, PID_OPEN8055 + self.card_number,
+                        skip_on_error = True)
+            if self.handle is not None:
+                self.card_type = pyopen8055.OPEN8055
+                found = True
                 break
+
+            # ----
+            # Try opening the specified K8055(N) card
+            # ----
+            self.handle = usb_cxt.openByVendorIDAndProductID(
+                        VENDOR_ID, PID_K8055 + self.card_number,
+                        skip_on_error = True)
+            if self.handle is not None:
+                self.card_type = pyopen8055.K8055
+                found = True
+                break
+
+            # ----
+            # Nothing found
+            # ----
+            break
+
         if not found:
             raise RuntimeError("'%s' not found" % card_address)
-        _debug("  found device '%s'" % dev)
+        _debug("  device open")
 
         # ----
-        # Open the device and detach an eventually existing kernel driver.
+        # Detach an eventually existing kernel driver on interface 0
         # ----
-        self.handle = usb.open(dev)
-        if hasattr(usb, 'get_driver_np'):
-            name = usb.get_driver_np(self.handle, 0)
-            if name != '':
-                _debug("  attached to kernel driver '%s' - detaching" % name)
-                usb.detach_kernel_driver_np(self.handle, 0)
+        if self.handle.kernelDriverActive(0):
+            self.had_kernel_driver = True
+            self.handle.detachKernelDriver(0)
+            _debug("  kernel driver detached")
+        else:
+            self.had_kernel_driver = False
+            _debug("  no kernel driver active")
 
         # ----
-        # Set the active configuration. 
+        # Set the active configuration.
         # ----
-        config = dev.config[0]
-        usb.set_configuration(self.handle, config.bConfigurationValue)
+        #self.handle.setConfiguration(0)
+        #_debug("  configuration 0 set")
+
+        # ----
+        # Claim interface 0
+        # ----
+        self.handle.claimInterface(0)
+        _debug("  interface claimed")
 
         # ----
         # If the code above identified the card as a K8055, it could also be
@@ -107,29 +125,46 @@ class _usbio:
         """
         Close the connection to this card.
         """
-        usb.release_interface(self.handle, 0)
-        usb.close(self.handle)
+        _debug("Closing card")
+
+        # ----
+        # Release interface 0
+        # ----
+        self.handle.releaseInterface(0)
+        _debug("  interface released")
+
+        # ----
+        # If it had a kernel driver attached, reattach that
+        # ----
+        if self.had_kernel_driver:
+            self.handle.attachKernelDriver(0)
+            _debug("  kernel driver attached")
+
+        # ----
+        # Close it.
+        # ----
+        self.handle.close()
         self.handle = None
-        
+        _debug("  card closed")
+
     ##########
     # send_pkt()
     ##########
     def send_pkt(self, buffer):
-        rc = usb.interrupt_write(self.handle, 0x01, buffer, 0)
+        rc = self.handle.interruptWrite(0x01, buffer, timeout = 0)
         if rc != len(buffer):
             raise RuntimeError(
-                    'interrupt_write returned %d - expected %d' % 
+                    'interruptWrite returned %d - expected %d' %
                     (rc, len(buffer)))
 
     ##########
     # recv_pkt()
     ##########
     def recv_pkt(self, length):
-        buffer = ctypes.create_string_buffer(length)
-        rc = usb.interrupt_read(self.handle, 0x81, buffer, 0)
-        if rc != length:
+        data = str(self.handle.interruptRead(0x81, length, timeout = 0))
+        if len(data) != length:
             raise RuntimeError(
-                    'interrupt_write returned %d - expected %d' % 
-                    (rc, length))
-        return buffer
+                    'interruptRead returned %d - expected %d' %
+                    (len(data), length))
+        return data
 

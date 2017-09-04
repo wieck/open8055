@@ -5,7 +5,10 @@ setup(name='pyopen8055',
       url='https://github.com/wieck/open8055',
       version='0.1',
       author='Jan Wieck',
-      author_email='JanWieck@Yahoo.com',
+      author_email='jan@wi3ck.info',
       license='BSD',
+      install_requires = [
+          "libusb1",
+      ],
       packages = ['pyopen8055'],
       )
