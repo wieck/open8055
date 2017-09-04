@@ -347,6 +347,7 @@ class pyopen8055:
             self.recv_buffer = k8055_hid_input()
             self.send_buffer = k8055_hid_output()
             self.debounce = [2, 2]
+            self.counter = [0, 0]
         else:
             raise NotImplementedError("Protocol '%s' not implemented" %
                     self.card_type)
